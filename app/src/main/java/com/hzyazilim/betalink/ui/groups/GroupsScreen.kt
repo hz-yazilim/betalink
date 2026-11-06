@@ -50,7 +50,7 @@ fun GroupsScreen() {
     var showCreate by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     var selectedGroup by remember { mutableStateOf<TesterGroup?>(null) }
-    var members by remember { mutableStateOf<List<GroupMember>>(emptyList()) }\n    var testGroup by remember { mutableStateOf<TesterGroup?>(null) }\n    var groupSnapshot by remember { mutableStateOf<GroupSnapshot?>(null) }\n    var shareEmail by remember { mutableStateOf(false) }\n    var snapshotLoading by remember { mutableStateOf(false) }
+    var members by remember { mutableStateOf<List<GroupMember>>(emptyList()) }\n    var testGroup by remember { mutableStateOf<TesterGroup?>(null) }\n    var groupSnapshot by remember { mutableStateOf<GroupSnapshot?>(null) }\n    var shareEmail by remember { mutableStateOf(false) }\n    var playTestEmail by remember { mutableStateOf("") }\n    var snapshotLoading by remember { mutableStateOf(false) }
 
     LaunchedEffect(refresh) {
         loading = true
@@ -98,7 +98,7 @@ fun GroupsScreen() {
                                         snapshotLoading = true
                                         val result = withContext(Dispatchers.IO) { repository.groupSnapshot(group.id) }
                                         groupSnapshot = result.first
-                                        shareEmail = result.first?.myEmailShared ?: false
+                                        shareEmail = result.first?.myEmailShared ?: false\n                                        playTestEmail = result.first?.myPlayTestEmail ?: ""
                                         message = result.second
                                         testGroup = if (result.first != null) group else null
                                         snapshotLoading = false
@@ -192,18 +192,18 @@ fun GroupsScreen() {
                         Row {
                             Checkbox(checked = shareEmail, onCheckedChange = { shareEmail = it })
                             Column(Modifier.padding(top = 8.dp)) {
-                                Text("E-posta adresimi bu grubun onaylı üyeleriyle paylaş", fontSize = 12.sp)
+                                Text("Google Play test e-posta adresimi bu grubun onaylı üyeleriyle paylaş", fontSize = 12.sp)
                                 Text("İstediğin zaman izni geri alabilirsin.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         TextButton(onClick = {
                             scope.launch {
-                                val error = withContext(Dispatchers.IO) { repository.setGroupEmailConsent(group.id, shareEmail) }
+                                val error = withContext(Dispatchers.IO) { repository.setGroupEmailConsent(group.id, shareEmail, playTestEmail) }
                                 message = error ?: "E-posta paylaşım tercihin kaydedildi."
                                 if (error == null) {
                                     val result = withContext(Dispatchers.IO) { repository.groupSnapshot(group.id) }
                                     groupSnapshot = result.first
-                                    shareEmail = result.first?.myEmailShared ?: shareEmail
+                                    shareEmail = result.first?.myEmailShared ?: shareEmail\n                                    playTestEmail = result.first?.myPlayTestEmail ?: playTestEmail
                                 }
                             }
                         }) { Text("Paylaşım iznini kaydet") }
