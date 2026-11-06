@@ -39,7 +39,8 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun GroupsScreen() {
-    val repository = remember { CampaignRepository(LocalContext.current) }
+    val context = LocalContext.current
+    val repository = remember(context) { CampaignRepository(context) }
     val scope = rememberCoroutineScope()
     var groups by remember { mutableStateOf<List<TesterGroup>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
