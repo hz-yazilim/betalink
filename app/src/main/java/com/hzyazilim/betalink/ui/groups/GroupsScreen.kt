@@ -50,7 +50,12 @@ fun GroupsScreen() {
     var showCreate by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     var selectedGroup by remember { mutableStateOf<TesterGroup?>(null) }
-    var members by remember { mutableStateOf<List<GroupMember>>(emptyList()) }\n    var testGroup by remember { mutableStateOf<TesterGroup?>(null) }\n    var groupSnapshot by remember { mutableStateOf<GroupSnapshot?>(null) }\n    var shareEmail by remember { mutableStateOf(false) }\n    var playTestEmail by remember { mutableStateOf("") }\n    var snapshotLoading by remember { mutableStateOf(false) }
+    var members by remember { mutableStateOf<List<GroupMember>>(emptyList()) }
+    var testGroup by remember { mutableStateOf<TesterGroup?>(null) }
+    var groupSnapshot by remember { mutableStateOf<GroupSnapshot?>(null) }
+    var shareEmail by remember { mutableStateOf(false) }
+    var playTestEmail by remember { mutableStateOf("") }
+    var snapshotLoading by remember { mutableStateOf(false) }
 
     LaunchedEffect(refresh) {
         loading = true
@@ -189,6 +194,12 @@ fun GroupsScreen() {
                             }
                         }
                         Spacer(Modifier.height(8.dp))
+                        androidx.compose.material3.OutlinedTextField(
+                            value = playTestEmail, onValueChange = { playTestEmail = it },
+                            label = { Text("Google Play test e-posta adresin") },
+                            placeholder = { Text("ornek@gmail.com") }, singleLine = true,
+                            enabled = shareEmail, modifier = Modifier.fillMaxWidth()
+                        )
                         Row {
                             Checkbox(checked = shareEmail, onCheckedChange = { shareEmail = it })
                             Column(Modifier.padding(top = 8.dp)) {
@@ -203,7 +214,8 @@ fun GroupsScreen() {
                                 if (error == null) {
                                     val result = withContext(Dispatchers.IO) { repository.groupSnapshot(group.id) }
                                     groupSnapshot = result.first
-                                    shareEmail = result.first?.myEmailShared ?: shareEmail\n                                    playTestEmail = result.first?.myPlayTestEmail ?: playTestEmail
+                                    shareEmail = result.first?.myEmailShared ?: shareEmail
+                                    playTestEmail = result.first?.myPlayTestEmail ?: playTestEmail
                                 }
                             }
                         }) { Text("Paylaşım iznini kaydet") }
