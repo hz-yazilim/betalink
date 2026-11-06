@@ -327,7 +327,7 @@ private fun DeveloperCampaignsScreen() {
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
-    var selectedCampaign by remember { mutableStateOf<Campaign?>(null) }
+    var selectedCampaign by remember { mutableStateOf<Campaign?>(null) }\n    var showCreate by remember { mutableStateOf(false) }
     var applicants by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.CampaignMember>>(emptyList()) }
 
     LaunchedEffect(refresh) {
@@ -340,7 +340,7 @@ private fun DeveloperCampaignsScreen() {
 
     Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         Text("GELİŞTİRİCİ PANELİ", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
-        Text("Oluşturduğun kampanyalar", style = MaterialTheme.typography.headlineSmall)
+        Text("Oluşturduğun kampanyalar", style = MaterialTheme.typography.headlineSmall)\n        Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("＋ Yeni kampanya oluştur") }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (loading) CircularProgressIndicator(Modifier.padding(20.dp))
         else if (campaigns.isEmpty()) Text("Henüz kampanya oluşturmadın. Kampanya oluşturmak için Testlerim ekranındaki butonu kullan.", modifier = Modifier.padding(top = 16.dp))
@@ -367,7 +367,7 @@ private fun DeveloperCampaignsScreen() {
         }
     }
 
-    selectedCampaign?.let { campaign ->
+    if (showCreate) {\n        CreateCampaignDialog(\n            onDismiss = { showCreate = false },\n            onCreate = { name, url, description, category, target, minAndroid ->\n                scope.launch {\n                    val error = withContext(Dispatchers.IO) { repository.createCampaign(name, url, description, category, target, minAndroid) }\n                    message = error ?: "Kampanya oluşturuldu."\n                    if (error == null) { showCreate = false; refresh++ }\n                }\n            }\n        )\n    }\n\n    selectedCampaign?.let { campaign ->
         AlertDialog(
             onDismissRequest = { selectedCampaign = null },
             title = { Text("${campaign.appName} · Başvurular") },
