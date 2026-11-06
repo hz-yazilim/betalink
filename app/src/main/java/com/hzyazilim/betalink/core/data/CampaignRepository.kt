@@ -11,7 +11,8 @@ import java.net.URL
 import java.net.URLEncoder
 
 data class CampaignMember(val id: String, val testerId: String, val status: String)
-data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?)
+data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?, val isCreator: Boolean)
+data class GroupMember(val id: String, val userId: String, val status: String)
 data class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)
 data class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int)
 data class TaskSubmission(val id: String, val taskTitle: String, val testerId: String, val status: String, val notes: String)
@@ -115,7 +116,7 @@ class CampaignRepository(context: Context) {
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return emptyList<TesterGroup>() to "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
-        val groupsResponse = call("/rest/v1/tester_groups?select=id,name,description,is_private&order=created_at.desc", "GET", token)
+        val groupsResponse = call("/rest/v1/tester_groups?select=id,name,description,is_private,created_by&order=created_at.desc", "GET", token)
         if (groupsResponse.first !in 200..299) return emptyList<TesterGroup>() to message(groupsResponse.second)
         val memberResponse = call("/rest/v1/group_members?select=group_id,status&user_id=eq.$userId", "GET", token)
         if (memberResponse.first !in 200..299) return emptyList<TesterGroup>() to message(memberResponse.second)
@@ -129,7 +130,7 @@ class CampaignRepository(context: Context) {
         return (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
             val id = row.getString("id")
-            TesterGroup(id, row.getString("name"), row.optString("description"), row.optBoolean("is_private"), statuses[id])
+            TesterGroup(id, row.getString("name"), row.optString("description"), row.optBoolean("is_private"), statuses[id], row.optString("created_by") == userId)
         } to null
     }
 
@@ -153,6 +154,28 @@ class CampaignRepository(context: Context) {
         val body = JSONObject().put("group_id", group.id).put("user_id", userId)
             .put("member_role", "member").put("status", statusValue)
         val (status, response) = call("/rest/v1/group_members", "POST", token, body)
+        return if (status in 200..299) null else message(response)
+    }
+
+
+    fun groupMembers(groupId: String): Pair<List<GroupMember>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<GroupMember>() to "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/group_members?select=id,user_id,status&group_id=eq.$groupId&order=joined_at.asc",
+            "GET", token
+        )
+        if (status !in 200..299) return emptyList<GroupMember>() to message(body)
+        val array = JSONArray(body)
+        return (0 until array.length()).map { i ->
+            val row = array.getJSONObject(i)
+            GroupMember(row.getString("id"), row.getString("user_id"), row.optString("status"))
+        } to null
+    }
+
+    fun reviewGroupMember(memberId: String, approved: Boolean): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val body = JSONObject().put("status", if (approved) "approved" else "removed")
+        val (status, response) = call("/rest/v1/group_members?id=eq.$memberId", "PATCH", token, body)
         return if (status in 200..299) null else message(response)
     }
 
