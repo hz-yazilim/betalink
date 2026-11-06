@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.hzyazilim.betalink.core.data.CampaignRepository
 import com.hzyazilim.betalink.ui.wallet.WalletStatusCard
 import com.hzyazilim.betalink.core.data.TesterGroup
-import com.hzyazilim.betalink.core.data.GroupMember
+import com.hzyazilim.betalink.core.data.GroupMember\nimport com.hzyazilim.betalink.core.data.GroupSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,7 +50,7 @@ fun GroupsScreen() {
     var showCreate by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     var selectedGroup by remember { mutableStateOf<TesterGroup?>(null) }
-    var members by remember { mutableStateOf<List<GroupMember>>(emptyList()) }
+    var members by remember { mutableStateOf<List<GroupMember>>(emptyList()) }\n    var testGroup by remember { mutableStateOf<TesterGroup?>(null) }\n    var groupSnapshot by remember { mutableStateOf<GroupSnapshot?>(null) }\n    var shareEmail by remember { mutableStateOf(false) }\n    var snapshotLoading by remember { mutableStateOf(false) }
 
     LaunchedEffect(refresh) {
         loading = true
@@ -91,7 +91,20 @@ fun GroupsScreen() {
                             }) { Text("Üye isteklerini yönet") }
                         }
                         when (group.membershipStatus) {
-                            "approved" -> Text("Grup üyesisin", color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 8.dp))
+                            "approved" -> {
+                                Text("Grup üyesisin", color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 8.dp))
+                                TextButton(onClick = {
+                                    scope.launch {
+                                        snapshotLoading = true
+                                        val result = withContext(Dispatchers.IO) { repository.groupSnapshot(group.id) }
+                                        groupSnapshot = result.first
+                                        shareEmail = result.first?.myEmailShared ?: false
+                                        message = result.second
+                                        testGroup = if (result.first != null) group else null
+                                        snapshotLoading = false
+                                    }
+                                }) { Text("14 günlük test süreci ve tester e-postaları") }
+                            }
                             "pending" -> Text("Katılım isteğin bekliyor", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
                             else -> Button(onClick = {
                                 scope.launch {
@@ -143,6 +156,61 @@ fun GroupsScreen() {
                 }
             },
             confirmButton = { TextButton(onClick = { selectedGroup = null }) { Text("Kapat") } }
+        )
+    }
+
+    if (testGroup != null) {
+        val group = testGroup!!
+        val snapshot = groupSnapshot
+        AlertDialog(
+            onDismissRequest = { testGroup = null },
+            title = { Text(group.name + " · Test süreci") },
+            text = {
+                Column {
+                    if (snapshotLoading || snapshot == null) {
+                        CircularProgressIndicator()
+                    } else {
+                        val statusText = when (snapshot.status) {
+                            "running" -> "Test süreci başladı"
+                            "completed" -> "14 günlük süreç tamamlandı"
+                            "paused" -> "Üye sayısı eksildi · Süre duraklatıldı"
+                            else -> "15 tester bekleniyor"
+                        }
+                        Text(statusText, color = MaterialTheme.colorScheme.secondary)
+                        Text("${snapshot.approvedMembers}/${snapshot.requiredMembers} onaylı üye")
+                        Text("${snapshot.elapsedDays}/${snapshot.requiredDays} gün tamamlandı")
+                        if (snapshot.status == "waiting" || snapshot.status == "paused") {
+                            Text("15 kişi onaylandığında 14 günlük sayaç başlayacak. Üye sayısı 15'in altına düşerse sayaç durur ve 15 kişi yeniden tamamlandığında 14 gün baştan başlar.", fontSize = 11.sp)
+                        } else {
+                            Text("Testte kullanılacak e-posta adresleri (yalnızca paylaşım izni veren üyeler):", fontSize = 12.sp)
+                            if (snapshot.emails.isEmpty()) Text("Henüz paylaşım izni veren üye yok.", fontSize = 11.sp)
+                            snapshot.emails.forEach { item ->
+                                Text((item.displayName.ifBlank { "Tester" }) + " · " + item.email, fontSize = 11.sp)
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Row {
+                            Checkbox(checked = shareEmail, onCheckedChange = { shareEmail = it })
+                            Column(Modifier.padding(top = 8.dp)) {
+                                Text("E-posta adresimi bu grubun onaylı üyeleriyle paylaş", fontSize = 12.sp)
+                                Text("İstediğin zaman izni geri alabilirsin.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        TextButton(onClick = {
+                            scope.launch {
+                                val error = withContext(Dispatchers.IO) { repository.setGroupEmailConsent(group.id, shareEmail) }
+                                message = error ?: "E-posta paylaşım tercihin kaydedildi."
+                                if (error == null) {
+                                    val result = withContext(Dispatchers.IO) { repository.groupSnapshot(group.id) }
+                                    groupSnapshot = result.first
+                                    shareEmail = result.first?.myEmailShared ?: shareEmail
+                                }
+                            }
+                        }) { Text("Paylaşım iznini kaydet") }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { testGroup = null }) { Text("Kapat") } }
         )
     }
 
