@@ -9,6 +9,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
+data class CampaignMember(val id: String, val testerId: String, val status: String)
+
 data class Campaign(
     val id: String,
     val appName: String,
@@ -74,6 +76,54 @@ class CampaignRepository(context: Context) {
         return if (status in 200..299) null else message(response)
     }
 
+
+
+    fun myDeveloperCampaigns(): Pair<List<Campaign>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<Campaign>() to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return emptyList<Campaign>() to "Oturum doğrulanamadı."
+        val id = JSONObject(user.second).optString("id")
+        val (status, body) = call(
+            "/rest/v1/campaigns?select=id,app_name,description,category,play_opt_in_url,target_testers,status,minimum_android_version&developer_id=eq.$id&order=created_at.desc",
+            "GET", token
+        )
+        if (status !in 200..299) return emptyList<Campaign>() to message(body)
+        val array = JSONArray(body)
+        val result = (0 until array.length()).map { i ->
+            val j = array.getJSONObject(i)
+            Campaign(
+                j.getString("id"), j.getString("app_name"), j.optString("description"),
+                j.optString("category"), j.getString("play_opt_in_url"),
+                j.optInt("target_testers", 12), j.optString("status"),
+                if (j.isNull("minimum_android_version")) null else j.optInt("minimum_android_version")
+            )
+        }
+        return result to null
+    }
+
+    fun applicants(campaignId: String): Pair<List<CampaignMember>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<CampaignMember>() to "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/campaign_members?select=id,tester_id,status&campaign_id=eq.$campaignId&order=joined_at.asc",
+            "GET", token
+        )
+        if (status !in 200..299) return emptyList<CampaignMember>() to message(body)
+        val array = JSONArray(body)
+        return (0 until array.length()).map { i ->
+            val j = array.getJSONObject(i)
+            CampaignMember(j.getString("id"), j.getString("tester_id"), j.optString("status"))
+        } to null
+    }
+
+    fun reviewApplicant(memberId: String, statusValue: String): String? {
+        if (statusValue !in listOf("accepted","rejected","waitlisted")) return "Geçersiz başvuru durumu."
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val body = JSONObject().put("status", statusValue)
+        val (status, response) = call(
+            "/rest/v1/campaign_members?id=eq.$memberId", "PATCH", token, body
+        )
+        return if (status in 200..299) null else message(response)
+    }
 
     fun confirmPlayOptIn(campaignId: String): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
