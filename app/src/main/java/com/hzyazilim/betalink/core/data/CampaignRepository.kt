@@ -250,6 +250,20 @@ class CampaignRepository(context: Context) {
 
 
 
+
+    fun myReputationScore(): Pair<Int, String?> {
+        val token = sessions.read()?.first ?: return 0 to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return 0 to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val (status, body) = call("/rest/v1/reputation_events?select=points&user_id=eq.$userId", "GET", token)
+        if (status !in 200..299) return 0 to message(body)
+        val array = JSONArray(body)
+        var total = 0
+        for (i in 0 until array.length()) total += array.getJSONObject(i).optInt("points")
+        return total to null
+    }
+
     fun listNotifications(): Pair<List<BetalinkNotification>, String?> {
         val token = sessions.read()?.first ?: return emptyList<BetalinkNotification>() to "Oturum bulunamadı."
         val (status, body) = call(
