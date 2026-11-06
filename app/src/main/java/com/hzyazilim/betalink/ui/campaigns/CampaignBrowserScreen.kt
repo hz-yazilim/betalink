@@ -180,7 +180,7 @@ private fun CreateCampaignDialog(
                 when {
                     name.trim().length < 2 -> error = "Uygulama adını gir."
                     !url.trim().startsWith("https://") -> error = "Google Play bağlantısı https:// ile başlamalı."
-                    count == null || count !in 1..1000 -> error = "Tester hedefi 1–1000 arasında olmalı."
+                    count == null || count !in 12..1000 -> error = "Kapalı test hedefi en az 12, en fazla 1000 tester olmalı."
                     android.isNotBlank() && (min == null || min < 1) -> error = "Android sürümünü sayı olarak gir."
                     else -> onCreate(name, url, description, category.ifBlank { "other" }, count, min)
                 }
