@@ -67,6 +67,11 @@ fun AuthGate() {
             onSignOut = {
                 withContext(Dispatchers.IO) { repository.signOut() }
                 user = null
+            },
+            onDeleteAccount = {
+                val error = withContext(Dispatchers.IO) { repository.deleteAccount() }
+                if (error == null) user = null
+                error
             }
         )
     }
