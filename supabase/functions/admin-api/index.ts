@@ -35,8 +35,8 @@ Deno.serve(async (req: Request) => {
 
   // Betalink's sole initial administrator is pinned server-side to this exact verified account.
   // The Android client cannot grant itself admin privileges or override this allowlist.
-  if ((userData.user.email ?? "").trim().toLowerCase() !== "hz.yazilimm@gmail.com") {
-    return Response.json({ error: "Administrator access required" }, { status: 403, headers: cors });
+  if ((userData.user.email ?? "").trim().toLowerCase() !== "hz.yazilimm@gmail.com" || !userData.user.email_confirmed_at) {
+    return Response.json({ error: "Verified owner account required" }, { status: 403, headers: cors });
   }
 
   const admin = createClient(url, service, {
