@@ -24,7 +24,7 @@ class SupabaseAuthRepository(context: Context) {
     fun restoreSession(): BetalinkUser? {
         val saved = sessions.read() ?: return null
         val response = request("/auth/v1/user", "GET", token = saved.first)
-        if (response.first in 200..299) return parseUser(response.second)
+        if (response.first in 200..299) return parseUser(JSONObject(response.second))
         if (response.first != 401) return null
 
         val refreshBody = JSONObject().put("refresh_token", saved.second)
