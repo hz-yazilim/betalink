@@ -31,8 +31,11 @@ class CampaignRepository(context: Context) {
 
     fun listOpenCampaigns(): Pair<List<Campaign>, String?> {
         val token = sessions.read()?.first ?: return emptyList<Campaign>() to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return emptyList<Campaign>() to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
         val (status, body) = call(
-            "/rest/v1/campaigns?select=id,app_name,description,category,play_opt_in_url,target_testers,status,minimum_android_version&status=eq.open&order=created_at.desc",
+            "/rest/v1/campaigns?select=id,app_name,description,category,play_opt_in_url,target_testers,status,minimum_android_version&status=eq.open&developer_id=neq.$userId&order=created_at.desc",
             "GET", token
         )
         if (status !in 200..299) return emptyList<Campaign>() to message(body)
