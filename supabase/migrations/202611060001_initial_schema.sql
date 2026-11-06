@@ -244,7 +244,9 @@ using (
 );
 create policy "campaign_checkins_insert_self" on public.campaign_daily_checkins for insert to authenticated
 with check (
-  tester_id = (select auth.uid()) and exists (
+  tester_id = (select auth.uid())
+  and checkin_date = (now() at time zone 'utc')::date
+  and exists (
     select 1 from public.campaign_members m
     where m.campaign_id = campaign_id and m.tester_id = (select auth.uid()) and m.status in ('accepted','opted_in','active')
   )
