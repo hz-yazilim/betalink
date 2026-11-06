@@ -45,6 +45,8 @@ jobs:
             git commit -m "Add Gradle wrapper"
             git push
           fi
+      - name: Run unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest
       - name: Build debug APK
         run: ./gradlew --no-daemon assembleDebug
       - name: Upload debug APK
