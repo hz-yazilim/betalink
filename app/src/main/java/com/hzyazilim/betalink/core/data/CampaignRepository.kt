@@ -108,12 +108,15 @@ class CampaignRepository(context: Context) {
 
 
 
-    fun listGroups(): Pair<List<TesterGroup>, String?> {
+    fun listGroups(searchQuery: String): Pair<List<TesterGroup>, String?> {
         val token = sessions.read()?.first ?: return emptyList<TesterGroup>() to "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return emptyList<TesterGroup>() to "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
-        val groupsResponse = call("/rest/v1/tester_groups?select=id,name,description,is_private,created_by&order=created_at.desc", "GET", token)
+        val query = searchQuery.trim()
+        if (query.length < 2) return emptyList<TesterGroup>() to null
+        val escapedQuery = java.net.URLEncoder.encode(query, "UTF-8")
+        val groupsResponse = call("/rest/v1/tester_groups?select=id,name,description,is_private,created_by&name=ilike.*" + escapedQuery + "*&order=created_at.desc&limit=30", "GET", token)
         if (groupsResponse.first !in 200..299) return emptyList<TesterGroup>() to message(groupsResponse.second)
         val memberResponse = call("/rest/v1/group_members?select=group_id,status&user_id=eq.$userId", "GET", token)
         if (memberResponse.first !in 200..299) return emptyList<TesterGroup>() to message(memberResponse.second)
