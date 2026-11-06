@@ -445,7 +445,9 @@ private fun DeveloperCampaignsScreen() {
     Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         Text("GELİŞTİRİCİ PANELİ", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
         Text("Oluşturduğun kampanyalar", style = MaterialTheme.typography.headlineSmall)
-        Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("＋ Yeni kampanya oluştur") }
+        WalletStatusCard()
+        Text("Kampanya açma: en az 2 tamamlanmış destek testi + 50 BP", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+        Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("＋ Yeni kampanya oluştur · 50 BP") }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (loading) CircularProgressIndicator(Modifier.padding(20.dp))
         else if (campaigns.isEmpty()) Text("Henüz kampanya oluşturmadın. Kampanya oluşturmak için Testlerim ekranındaki butonu kullan.", modifier = Modifier.padding(top = 16.dp))
