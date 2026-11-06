@@ -40,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.hzyazilim.betalink.ui.auth.AuthGate
 import com.hzyazilim.betalink.core.auth.BetalinkUser
+import com.hzyazilim.betalink.ui.campaigns.CampaignBrowserScreen
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -115,24 +116,14 @@ fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit, onDele
         ) {
             when (selectedTab) {
                 0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 3 })
-                1 -> EmptyListScreen(
-                    eyebrow = "KEŞFET",
-                    title = "Sana uygun testleri bul",
-                    message = "Cihazına ve Android sürümüne uygun açık kampanyalar burada listelenecek.",
-                    action = "Filtreleri backend hazır olduğunda kullanabileceksin."
-                )
+                1 -> CampaignBrowserScreen(myTests = false)
                 2 -> EmptyListScreen(
                     eyebrow = "TOPLULUK",
                     title = "Tester grupları",
                     message = "Açık gruplara katıl, özel gruplara davetle gir ve kampanyalar için birlikte organize ol.",
                     action = "Henüz gösterilecek grup yok."
                 )
-                3 -> EmptyListScreen(
-                    eyebrow = "KONTROL PANELİ",
-                    title = "Testlerin burada",
-                    message = "Katıldığın kampanyalar, her kampanyanın 14 günlük süresi, görevleri ve yedek liste durumun burada takip edilecek.",
-                    action = "Henüz katıldığın kampanya yok."
-                )
+                3 -> CampaignBrowserScreen(myTests = true)
                 else -> ProfileScreen(currentUser, deleteMessage = deleteMessage, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
             }
         }
