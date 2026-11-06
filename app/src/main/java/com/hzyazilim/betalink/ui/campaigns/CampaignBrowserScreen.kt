@@ -380,6 +380,22 @@ private fun DeveloperReviewDialog(
                         Column {
                             Text("${item.rating ?: "—"}/5 · ${item.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
                             Text(item.body, fontSize = 13.sp)
+                            Row {
+                                TextButton(onClick = {
+                                    scope.launch {
+                                        val error = withContext(Dispatchers.IO) {
+                                            repository.reportUser(item.testerId, campaign.id, "suspicious_feedback", "Geri bildirim geliştirici tarafından incelenmek üzere bildirildi.")
+                                        }
+                                        onMessage(error ?: "Geri bildirim yönetici incelemesine gönderildi.")
+                                    }
+                                }) { Text("Şikâyet et") }
+                                TextButton(onClick = {
+                                    scope.launch {
+                                        val error = withContext(Dispatchers.IO) { repository.blockUser(item.testerId) }
+                                        onMessage(error ?: "Tester engellendi.")
+                                    }
+                                }) { Text("Engelle") }
+                            }
                             OutlinedTextField(reply, { reply = it }, label = { Text("Geliştirici yanıtı") }, minLines = 2)
                             Button(
                                 onClick = {
