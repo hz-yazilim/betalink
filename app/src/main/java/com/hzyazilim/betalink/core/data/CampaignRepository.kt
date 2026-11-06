@@ -17,7 +17,8 @@ data class Campaign(
     val optInUrl: String,
     val targetTesters: Int,
     val status: String,
-    val minimumAndroid: Int?
+    val minimumAndroid: Int?,
+    val membershipStatus: String? = null
 )
 
 class CampaignRepository(context: Context) {
@@ -73,13 +74,34 @@ class CampaignRepository(context: Context) {
         return if (status in 200..299) null else message(response)
     }
 
+
+    fun confirmPlayOptIn(campaignId: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val (status, response) = call(
+            "/rest/v1/rpc/confirm_betalink_play_opt_in", "POST", token,
+            JSONObject().put("p_campaign_id", campaignId)
+        )
+        return if (status in 200..299) null else message(response)
+    }
+
+    fun checkInToday(campaignId: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val body = JSONObject().put("campaign_id", campaignId).put("tester_id", userId)
+            .put("note", "Uygulama içi günlük test onayı")
+        val (status, response) = call("/rest/v1/campaign_daily_checkins", "POST", token, body)
+        return if (status in 200..299) null else message(response)
+    }
+
     fun myCampaigns(): Pair<List<Campaign>, String?> {
         val token = sessions.read()?.first ?: return emptyList<Campaign>() to "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return emptyList<Campaign>() to "Oturum doğrulanamadı."
         val id = JSONObject(user.second).optString("id")
         val (status, body) = call(
-            "/rest/v1/campaign_members?select=campaign_id,campaigns(id,app_name,description,category,play_opt_in_url,target_testers,status,minimum_android_version)&tester_id=eq.$id&order=joined_at.desc",
+            "/rest/v1/campaign_members?select=status,campaigns(id,app_name,description,category,play_opt_in_url,target_testers,status,minimum_android_version)&tester_id=eq.$id&order=joined_at.desc",
             "GET", token
         )
         if (status !in 200..299) return emptyList<Campaign>() to message(body)
@@ -91,7 +113,8 @@ class CampaignRepository(context: Context) {
                 campaign.getString("id"), campaign.getString("app_name"), campaign.optString("description"),
                 campaign.optString("category"), campaign.getString("play_opt_in_url"),
                 campaign.optInt("target_testers", 12), campaign.optString("status"),
-                if (campaign.isNull("minimum_android_version")) null else campaign.optInt("minimum_android_version")
+                if (campaign.isNull("minimum_android_version")) null else campaign.optInt("minimum_android_version"),
+                array.getJSONObject(i).optString("status")
             )
         }
         return result to null
