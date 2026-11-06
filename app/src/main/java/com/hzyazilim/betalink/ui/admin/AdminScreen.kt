@@ -180,6 +180,7 @@ fun AdminScreen(onClose: () -> Unit) {
             }
         }
         }
+        }
     }
 
     if (showAnnouncement) {
