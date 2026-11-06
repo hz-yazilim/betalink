@@ -66,8 +66,9 @@ fun GroupsScreen() {
         Text("Tester grupları", style = MaterialTheme.typography.headlineSmall)
         Text("Açık gruplara katıl veya özel gruplara katılım isteği gönder.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         WalletStatusCard()
-        Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-            Text("＋ Yeni grup oluştur")
+        Text("Grup oluşturma: en az 2 tamamlanmış destek testi + 30 BP · Açık gruba katılım: 5 BP", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+        Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Text("＋ Yeni grup oluştur · 30 BP")
         }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
         if (loading) CircularProgressIndicator(Modifier.padding(24.dp))
@@ -99,7 +100,7 @@ fun GroupsScreen() {
                                     if (error == null) refresh++
                                 }
                             }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                                Text(if (group.isPrivate) "Katılım isteği gönder" else "Gruba katıl")
+                                Text(if (group.isPrivate) "Katılım isteği gönder" else "Gruba katıl · 5 BP")
                             }
                         }
                     }
