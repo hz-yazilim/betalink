@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -16,8 +18,18 @@ android {
         versionName = "0.2.0"
         buildConfigField("String", "SUPABASE_URL", "\"https://lwloymjcnmzobjmgvlnp.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_iafVZ3uELvqqUKYaMfYwgA_kEu5LACD\"")
-        val googleWebClientId = providers.gradleProperty("BETALINK_GOOGLE_WEB_CLIENT_ID").orElse("").get()
-        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${googleWebClientId}\"")
+        // Resolve the public Google Web OAuth client ID for Android Studio and CI builds.
+        // Keep local.properties uncommitted; GitHub Actions supplies the Gradle property with -P.
+        val localProperties = Properties().apply {
+            val localFile = rootProject.file("local.properties")
+            if (localFile.isFile) localFile.inputStream().use { load(it) }
+        }
+        val googleWebClientId = providers.gradleProperty("BETALINK_GOOGLE_WEB_CLIENT_ID")
+            .orElse(providers.environmentVariable("BETALINK_GOOGLE_WEB_CLIENT_ID"))
+            .orElse(localProperties.getProperty("BETALINK_GOOGLE_WEB_CLIENT_ID").orEmpty())
+            .get()
+        val escapedGoogleWebClientId = googleWebClientId.replace("\\", "\\\\").replace("\"", "\\\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$escapedGoogleWebClientId\"")
     }
 
     buildFeatures {
