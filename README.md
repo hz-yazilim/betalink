@@ -65,3 +65,15 @@ Never commit Supabase service-role keys. The Android client contains only the pr
 - End-to-end tests with real tester/developer accounts and real Play Console campaigns remain necessary.
 - Admin identity, support contact, privacy policy, and external account-deletion URL must be finalized with the owner before Play Store submission.
 - The app has not yet completed real-device QA or a signed release build.
+
+
+## BetaPuan economy
+
+- Currency: BetaPuan (BP), virtual and non-transferable; it has no cash value.
+- A user must complete at least two distinct 14-day campaign tests before creating campaigns, creating tester groups, or joining groups.
+- A completed campaign test awards 25 BP once per user/campaign.
+- Creating a developer campaign costs 50 BP.
+- Creating a tester group costs 30 BP.
+- Joining a public tester group costs 5 BP. Private-group join requests are free after the two-test eligibility gate.
+- Wallet balance and spending are enforced by private-schema database functions; the Android client cannot directly change balances.
+- Campaign rewards are issued when the campaign tracking endpoint finalizes a continuous 14-day campaign with the required tester count. A client-side check-in is a self-report and is not independent Google Play Console verification.
