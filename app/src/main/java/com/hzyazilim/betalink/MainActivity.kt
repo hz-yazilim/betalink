@@ -47,6 +47,7 @@ import kotlinx.coroutines.withContext
 import com.hzyazilim.betalink.ui.auth.AuthGate
 import com.hzyazilim.betalink.core.auth.BetalinkUser
 import com.hzyazilim.betalink.core.data.CampaignRepository
+import com.hzyazilim.betalink.core.data.BetaWallet
 import com.hzyazilim.betalink.ui.campaigns.MyTestsHub
 import com.hzyazilim.betalink.ui.campaigns.CampaignBrowserScreen
 import com.hzyazilim.betalink.ui.groups.GroupsScreen
@@ -147,6 +148,15 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
 
 @Composable
 private fun HomeScreen(onExplore: () -> Unit, onMyTests: () -> Unit, onNotifications: () -> Unit) {
+    val context = LocalContext.current
+    val repository = remember(context) { CampaignRepository(context) }
+    var wallet by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<BetaWallet?>(null) }
+    var walletMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        val result = withContext(Dispatchers.IO) { repository.walletSnapshot() }
+        wallet = result.first
+        walletMessage = result.second
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -174,6 +184,24 @@ private fun HomeScreen(onExplore: () -> Unit, onMyTests: () -> Unit, onNotificat
                 "Gerçek tester toplulukları ve uygulama geliştiricileri tek platformda buluşur.",
                 color = Color(0xFFB5BED4), fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp)
             )
+        }
+        item {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF18263D))) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("BETA PUAN", color = Color(0xFF9BA8C2), fontSize = 10.sp, letterSpacing = 1.5.sp)
+                            Text((wallet?.balance ?: 0).toString() + " BP", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text((wallet?.completedSupportTests ?: 0).toString() + "/2", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Text("Tamamlanan destek testi", fontSize = 10.sp, color = Color(0xFF9BA8C2))
+                        }
+                    }
+                    Text(if ((wallet?.completedSupportTests ?: 0) >= 2) "Kampanya ve grup oluşturma hakkın açıldı. Puanlarını kullanabilirsin." else "Kampanya ve grup özelliklerini açmak için 2 uygulamanın testini tamamla. Her tamamlanan test 25 BP kazandırır.", color = Color(0xFFB9C4DA), fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    walletMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 10.sp) }
+                }
+            }
         }
         item {
             Card(
