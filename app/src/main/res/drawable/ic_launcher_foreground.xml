@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 1. BACK ORBIT RING (behind B) -->
+    <path
+        android:pathData="M24,46 C30,30 52,24 74,32 C78,34 81,36 83,38"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="24"
+                android:startY="46"
+                android:endX="83"
+                android:endY="38"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF9333EA" />
+                <item android:offset="1.0" android:color="#FFC084FC" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 2. SHADOW BEHIND "B" BODY -->
+    <path
+        android:pathData="M38,38 L45,32 C63,32 67,38 67,43 C67,48 60,50 53,50 C64,50 71,55 71,63 C71,71 64,74 56,74 L38,74 Z"
+        android:fillColor="#50000000" />
+
+    <!-- 3. MAIN "B" BODY (WHITE) -->
+    <path
+        android:pathData="M38,36 L45,30 C63,30 67,36 67,41 C67,46 60,48 53,48 C64,48 71,53 71,61 C71,69 64,72 56,72 L38,72 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="38"
+                android:startY="30"
+                android:endX="71"
+                android:endY="72"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFFFFFFF" />
+                <item android:offset="1.0" android:color="#FFF3E8FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 4. PLAY BUTTON TRIANGLE (▶) IN UPPER LOOP -->
+    <path
+        android:pathData="M46,34.5 L46,45.5 L56,40 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="46"
+                android:startY="34.5"
+                android:endX="56"
+                android:endY="45.5"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFA855F7" />
+                <item android:offset="1.0" android:color="#FFC084FC" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 5. LOWER LOOP INNER CUTOUT -->
+    <path
+        android:pathData="M46,54 L55,54 C61,54 62,59 58,64 C55,66 46,66 46,66 Z"
+        android:fillColor="#FF1D0536" />
+
+    <!-- 6. FRONT ORBIT RING (in front of B) -->
+    <path
+        android:pathData="M83,38 C86,46 76,64 58,74 C38,83 22,70 24,46"
+        android:strokeWidth="3.8"
+        android:strokeLineCap="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="83"
+                android:startY="38"
+                android:endX="24"
+                android:endY="46"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFE9D5FF" />
+                <item android:offset="0.5" android:color="#FFC084FC" />
+                <item android:offset="1.0" android:color="#FFA855F7" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
