@@ -52,6 +52,7 @@ import com.hzyazilim.betalink.ui.campaigns.CampaignBrowserScreen
 import com.hzyazilim.betalink.ui.groups.GroupsScreen
 import com.hzyazilim.betalink.ui.notifications.NotificationsDialog
 import com.hzyazilim.betalink.ui.admin.AdminScreen
+import com.hzyazilim.betalink.ui.support.SupportDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -109,6 +110,7 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
     var deleteMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var showNotifications by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showAdminPanel by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showSupport by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -135,11 +137,12 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
                 1 -> CampaignBrowserScreen(myTests = false)
                 2 -> GroupsScreen()
                 3 -> MyTestsHub()
-                else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
+                else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSupport = { showSupport = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
             }
         }
     }
     if (showNotifications) NotificationsDialog(onDismiss = { showNotifications = false })
+    if (showSupport) SupportDialog(onDismiss = { showSupport = false })
 }
 
 @Composable
@@ -248,7 +251,7 @@ private fun EmptyListScreen(eyebrow: String, title: String, message: String, act
 }
 
 @Composable
-private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMessage: String?, onAdminPanel: () -> Unit, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
+private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMessage: String?, onAdminPanel: () -> Unit, onSupport: () -> Unit, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
     val context = LocalContext.current
     val repository = remember(context) { CampaignRepository(context) }
     var reputation by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -270,6 +273,7 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
         )
         deleteMessage?.let { Text(it, color = Color(0xFFFF8A8A), fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
         Spacer(Modifier.height(18.dp))
+        Button(onClick = onSupport, modifier = Modifier.fillMaxWidth()) { Text("Destek taleplerim") }
         if (isAdmin) Button(onClick = onAdminPanel, modifier = Modifier.fillMaxWidth()) { Text("Yönetici paneli") }
         Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Güvenli çıkış yap") }
         TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
