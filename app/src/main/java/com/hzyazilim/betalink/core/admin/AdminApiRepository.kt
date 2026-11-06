@@ -19,13 +19,18 @@ data class AdminReport(
 
 data class AdminSupportTicket(val id: String, val userId: String, val subject: String, val message: String, val status: String)
 
+data class AdminUser(val id: String, val displayName: String)
+data class AdminGroup(val id: String, val name: String, val description: String, val status: String)
+
 data class AdminDashboard(
     val users: Int,
     val campaigns: Int,
     val reports: Int,
     val groups: Int,
     val pendingReports: List<AdminReport>,
-    val supportTickets: List<AdminSupportTicket>
+    val supportTickets: List<AdminSupportTicket>,
+    val usersList: List<AdminUser>,
+    val groupsList: List<AdminGroup>
 )
 
 class AdminApiRepository(context: Context) {
@@ -45,6 +50,8 @@ class AdminApiRepository(context: Context) {
         val stats = json.optJSONObject("stats") ?: JSONObject()
         val array = json.optJSONArray("pendingReports") ?: JSONArray()
         val supportArray = json.optJSONArray("supportTickets") ?: JSONArray()
+        val usersArray = json.optJSONArray("usersList") ?: JSONArray()
+        val groupsArray = json.optJSONArray("groupsList") ?: JSONArray()
         val support = (0 until supportArray.length()).map { i ->
             val row = supportArray.getJSONObject(i)
             AdminSupportTicket(row.getString("id"), row.getString("user_id"), row.optString("subject"), row.optString("message"), row.optString("status"))
@@ -58,12 +65,35 @@ class AdminApiRepository(context: Context) {
                 row.optString("reason"), row.optString("details"), row.optString("status")
             )
         }
+        val usersList = (0 until usersArray.length()).map { i -> usersArray.getJSONObject(i).let { AdminUser(it.getString("user_id"), it.optString("display_name")) } }
+        val groupsList = (0 until groupsArray.length()).map { i -> groupsArray.getJSONObject(i).let { AdminGroup(it.getString("id"), it.optString("name"), it.optString("description"), it.optString("tracking_status")) } }
         return AdminDashboard(
             stats.optInt("users"), stats.optInt("campaigns"), stats.optInt("reports"),
-            stats.optInt("groups"), reports, support
+            stats.optInt("groups"), reports, support, usersList, groupsList
         ) to null
     }
 
+
+
+    fun adjustBp(userIds: List<String>, amount: Int, reason: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val ids = JSONArray()
+        userIds.forEach { ids.put(it) }
+        val (code, body) = call("POST", token, JSONObject().put("action", "adjust_bp").put("user_ids", ids).put("amount", amount).put("reason", reason))
+        return if (code in 200..299) null else error(body)
+    }
+
+    fun createGroup(name: String, description: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val (code, body) = call("POST", token, JSONObject().put("action", "create_group").put("name", name).put("description", description))
+        return if (code in 200..299) null else error(body)
+    }
+
+    fun deleteGroup(groupId: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val (code, body) = call("POST", token, JSONObject().put("action", "delete_group").put("group_id", groupId))
+        return if (code in 200..299) null else error(body)
+    }
 
     fun resolveSupportTicket(id: String, reply: String): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
