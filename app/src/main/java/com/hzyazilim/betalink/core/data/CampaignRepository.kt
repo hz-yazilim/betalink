@@ -44,7 +44,12 @@ class CampaignRepository(context: Context) {
 
     fun createCampaign(appName: String, optInUrl: String, description: String, category: String, target: Int, minAndroid: Int?): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val developerId = JSONObject(user.second).optString("id")
+        if (developerId.isBlank()) return "Kullanıcı bilgisi alınamadı."
         val body = JSONObject()
+            .put("developer_id", developerId)
             .put("app_name", appName.trim())
             .put("play_opt_in_url", optInUrl.trim())
             .put("description", description.trim())
