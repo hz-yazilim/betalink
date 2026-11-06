@@ -9,7 +9,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-data class CampaignMember(val id: String, val testerId: String, val status: String)
+data class CampaignMember(val id: String, val testerId: String, val status: String)\ndata class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)
 
 data class Campaign(
     val id: String,
@@ -77,6 +77,57 @@ class CampaignRepository(context: Context) {
     }
 
 
+
+
+    fun tasksForCampaign(campaignId: String): Pair<List<CampaignTask>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<CampaignTask>() to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return emptyList<CampaignTask>() to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val (taskStatus, taskBody) = call(
+            "/rest/v1/campaign_tasks?select=id,title,description,position&campaign_id=eq.$campaignId&order=position.asc",
+            "GET", token
+        )
+        if (taskStatus !in 200..299) return emptyList<CampaignTask>() to message(taskBody)
+        val (doneStatus, doneBody) = call(
+            "/rest/v1/task_completions?select=task_id,status&tester_id=eq.$userId",
+            "GET", token
+        )
+        if (doneStatus !in 200..299) return emptyList<CampaignTask>() to message(doneBody)
+        val done = mutableSetOf<String>()
+        val doneArray = JSONArray(doneBody)
+        for (i in 0 until doneArray.length()) {
+            val row = doneArray.getJSONObject(i)
+            if (row.optString("status") == "approved") done += row.optString("task_id")
+        }
+        val tasks = JSONArray(taskBody)
+        return (0 until tasks.length()).map { i ->
+            val j = tasks.getJSONObject(i)
+            CampaignTask(j.getString("id"), j.getString("title"), j.optString("description"), done.contains(j.getString("id")))
+        } to null
+    }
+
+    fun submitTask(taskId: String, note: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val body = JSONObject().put("task_id", taskId).put("tester_id", userId)
+            .put("status", "submitted").put("notes", note)
+        val (status, response) = call("/rest/v1/task_completions", "POST", token, body)
+        return if (status in 200..299) null else message(response)
+    }
+
+    fun sendFeedback(campaignId: String, bodyText: String, rating: Int): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val body = JSONObject().put("campaign_id", campaignId).put("tester_id", userId)
+            .put("feedback_type", "experience").put("rating", rating).put("body", bodyText.trim())
+        val (status, response) = call("/rest/v1/feedback", "POST", token, body)
+        return if (status in 200..299) null else message(response)
+    }
 
     fun myDeveloperCampaigns(): Pair<List<Campaign>, String?> {
         val token = sessions.read()?.first ?: return emptyList<Campaign>() to "Oturum bulunamadı."
