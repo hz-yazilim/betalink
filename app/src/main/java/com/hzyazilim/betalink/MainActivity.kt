@@ -71,6 +71,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -310,6 +311,7 @@ private fun EmptyListScreen(eyebrow: String, title: String, message: String, act
 @Composable
 private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMessage: String?, onAdminPanel: () -> Unit, onSupport: () -> Unit, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val repository = remember(context) { CampaignRepository(context) }
     var reputation by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     LaunchedEffect(currentUser.id) {
@@ -331,6 +333,8 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
         deleteMessage?.let { Text(it, color = Color(0xFFFF8A8A), fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
         Spacer(Modifier.height(18.dp))
         Button(onClick = onSupport, modifier = Modifier.fillMaxWidth()) { Text("Destek taleplerim") }
+        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy") }, modifier = Modifier.fillMaxWidth()) { Text("Gizlilik politikası") }
+        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion") }, modifier = Modifier.fillMaxWidth()) { Text("Hesap ve veri silme sayfası") }
         if (isAdmin) Button(onClick = onAdminPanel, modifier = Modifier.fillMaxWidth()) { Text("Yönetici paneli") }
         Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Güvenli çıkış yap") }
         TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
