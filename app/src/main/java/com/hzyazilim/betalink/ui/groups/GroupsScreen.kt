@@ -70,7 +70,7 @@ fun GroupsScreen() {
         Spacer(Modifier.height(18.dp))
         Text("TOPLULUK", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
         Text("Tester grupları", style = MaterialTheme.typography.headlineSmall)
-        Text("Açık gruplara katıl veya özel gruplara katılım isteği gönder.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        Text("Açık tester gruplarını görüntüle ve katıl.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         WalletStatusCard()
         Text("Grup oluşturma: en az 2 tamamlanmış destek testi + 30 BP · Açık gruba katılım: 5 BP", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
@@ -84,7 +84,7 @@ fun GroupsScreen() {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Column(Modifier.padding(15.dp)) {
                         Text(group.name, style = MaterialTheme.typography.titleMedium)
-                        Text(if (group.isPrivate) "Özel grup" else "Açık grup", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                        Text("Herkese açık grup", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
                         if (group.description.isNotBlank()) Text(group.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
                         if (group.isCreator) {
                             TextButton(onClick = {
@@ -116,11 +116,11 @@ fun GroupsScreen() {
                             else -> Button(onClick = {
                                 scope.launch {
                                     val error = withContext(Dispatchers.IO) { repository.joinGroup(group) }
-                                    message = error ?: if (group.isPrivate) "Katılım isteğin gönderildi." else "Gruba katıldın."
+                                    message = error ?: "Gruba katıldın."
                                     if (error == null) refresh++
                                 }
                             }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                                Text(if (group.isPrivate) "Katılım isteği gönder" else "Gruba katıl · 5 BP")
+                                Text("Gruba katıl · 5 BP")
                             }
                         }
                     }
@@ -231,9 +231,9 @@ fun GroupsScreen() {
     if (showCreate) {
         CreateGroupDialog(
             onDismiss = { showCreate = false },
-            onCreate = { name, description, privateGroup ->
+            onCreate = { name, description, _ ->
                 scope.launch {
-                    val error = withContext(Dispatchers.IO) { repository.createGroup(name, description, privateGroup) }
+                    val error = withContext(Dispatchers.IO) { repository.createGroup(name, description, false) }
                     message = error ?: "Grubun oluşturuldu."
                     if (error == null) {
                         showCreate = false
@@ -252,7 +252,6 @@ private fun CreateGroupDialog(
 ) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var privateGroup by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Yeni tester grubu") },
@@ -260,14 +259,10 @@ private fun CreateGroupDialog(
             Column {
                 OutlinedTextField(name, { name = it }, label = { Text("Grup adı") }, singleLine = true)
                 OutlinedTextField(description, { description = it }, label = { Text("Açıklama") }, minLines = 2)
-                Row {
-                    Checkbox(checked = privateGroup, onCheckedChange = { privateGroup = it })
-                    Text("Özel grup (onay gerekir)", modifier = Modifier.padding(top = 12.dp))
-                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (name.trim().length >= 2) onCreate(name, description, privateGroup) }) { Text("Oluştur") }
+            TextButton(onClick = { if (name.trim().length >= 2) onCreate(name, description, false) }) { Text("Oluştur") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Vazgeç") } }
     )

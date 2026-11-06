@@ -57,6 +57,18 @@ class SupabaseAuthRepository(context: Context) {
         return AuthResult(user = parseUser(json.optJSONObject("user") ?: JSONObject()))
     }
 
+    fun signInWithGoogleIdToken(idToken: String): AuthResult {
+        val body = JSONObject().put("provider", "google").put("id_token", idToken)
+        val response = request("/auth/v1/token?grant_type=id_token", "POST", body)
+        if (response.first !in 200..299) return AuthResult(message = errorMessage(response.second))
+        val json = JSONObject(response.second)
+        val access = json.optString("access_token")
+        val refresh = json.optString("refresh_token")
+        if (access.isBlank() || refresh.isBlank()) return AuthResult(message = "Google oturumu Supabase tarafından doğrulanamadı.")
+        sessions.save(access, refresh)
+        return AuthResult(user = parseUser(json.optJSONObject("user") ?: JSONObject()))
+    }
+
     fun signUp(email: String, password: String, displayName: String): AuthResult {
         val metadata = JSONObject().put("display_name", displayName.trim())
         val body = JSONObject()

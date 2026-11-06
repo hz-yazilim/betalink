@@ -127,13 +127,13 @@ class CampaignRepository(context: Context) {
         return (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
             val id = row.getString("id")
-            TesterGroup(id, row.getString("name"), row.optString("description"), row.optBoolean("is_private"), statuses[id], row.optString("created_by") == userId)
+            TesterGroup(id, row.getString("name"), row.optString("description"), false, statuses[id], row.optString("created_by") == userId)
         } to null
     }
 
     fun createGroup(name: String, description: String, privateGroup: Boolean): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
-        val body = JSONObject().put("p_name", name.trim()).put("p_description", description.trim()).put("p_is_private", privateGroup)
+        val body = JSONObject().put("p_name", name.trim()).put("p_description", description.trim()).put("p_is_private", false)
         val (status, response) = call("/rest/v1/rpc/betalink_create_group", "POST", token, body)
         return if (status in 200..299) null else message(response)
     }

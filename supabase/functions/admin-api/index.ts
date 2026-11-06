@@ -44,15 +44,17 @@ Deno.serve(async (req: Request) => {
   });
 
   if (req.method === "GET") {
-    const [users, campaigns, reports, groups, pending, support] = await Promise.all([
+    const [users, campaigns, reports, groups, pending, support, userRows, groupRows] = await Promise.all([
       admin.from("profiles").select("user_id", { count: "exact", head: true }),
       admin.from("campaigns").select("id", { count: "exact", head: true }),
       admin.from("reports").select("id", { count: "exact", head: true }),
       admin.from("tester_groups").select("id", { count: "exact", head: true }),
       admin.from("reports").select("id,reporter_id,target_user_id,campaign_id,reason,details,status,created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(50),
       admin.from("support_tickets").select("id,user_id,subject,message,status,created_at").in("status", ["open","in_progress"]).order("created_at", { ascending: false }).limit(50),
+      admin.from("profiles").select("user_id,display_name").order("created_at", { ascending: false }).limit(500),
+      admin.from("tester_groups").select("id,name,description,created_by,tracking_status,created_at").order("created_at", { ascending: false }).limit(200),
     ]);
-    if (pending.error || support.error) return Response.json({ error: "Could not load moderation queue" }, { status: 500, headers: cors });
+    if (pending.error || support.error || userRows.error || groupRows.error) return Response.json({ error: "Could not load admin data" }, { status: 500, headers: cors });
     return Response.json({
       stats: {
         users: users.count ?? 0,
@@ -62,6 +64,8 @@ Deno.serve(async (req: Request) => {
       },
       pendingReports: pending.data ?? [],
       supportTickets: support.data ?? [],
+      usersList: userRows.data ?? [],
+      groupsList: groupRows.data ?? [],
     }, { headers: cors });
   }
 
@@ -69,6 +73,63 @@ Deno.serve(async (req: Request) => {
   try { payload = await req.json(); } catch { return Response.json({ error: "Invalid JSON body" }, { status: 400, headers: cors }); }
 
   const action = payload.action;
+
+  if (action === "adjust_bp") {
+    const amount = Number(payload.amount);
+    const reason = String(payload.reason ?? "").trim();
+    const userIds = Array.isArray(payload.user_ids) ? [...new Set(payload.user_ids.map(String))] : [];
+    if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 100000 || reason.length < 3 || reason.length > 240 || userIds.length < 1 || userIds.length > 500) {
+      return Response.json({ error: "Invalid BP adjustment" }, { status: 400, headers: cors });
+    }
+    const { data: targets, error: targetError } = await admin.from("profiles").select("user_id").in("user_id", userIds);
+    if (targetError || (targets ?? []).length !== userIds.length) return Response.json({ error: "One or more users were not found" }, { status: 404, headers: cors });
+    for (const target of targets ?? []) {
+      const { error: walletError } = await admin.from("betalink_wallets").upsert({ user_id: target.user_id }, { onConflict: "user_id", ignoreDuplicates: true });
+      if (walletError) return Response.json({ error: "Wallet initialization failed" }, { status: 500, headers: cors });
+      const { data: wallet, error: readError } = await admin.from("betalink_wallets").select("balance,lifetime_earned").eq("user_id", target.user_id).single();
+      if (readError || !wallet || wallet.balance + amount < 0) return Response.json({ error: "Adjustment would make a wallet negative" }, { status: 409, headers: cors });
+      const { error: updateError } = await admin.from("betalink_wallets").update({
+        balance: wallet.balance + amount,
+        lifetime_earned: wallet.lifetime_earned + Math.max(0, amount),
+        updated_at: new Date().toISOString(),
+      }).eq("user_id", target.user_id);
+      if (updateError) return Response.json({ error: "Wallet update failed" }, { status: 500, headers: cors });
+      const { error: ledgerError } = await admin.from("betalink_wallet_ledger").insert({
+        user_id: target.user_id, amount, entry_type: "admin_adjustment", description: reason,
+      });
+      if (ledgerError) return Response.json({ error: "Wallet ledger write failed" }, { status: 500, headers: cors });
+    }
+    await admin.from("admin_audit_logs").insert({
+      actor_id: userData.user.id, action: "adjust_bp", target_type: "users",
+      target_id: null, metadata: { user_ids: userIds, amount, reason },
+    });
+    return Response.json({ success: true, affected: userIds.length }, { headers: cors });
+  }
+
+  if (action === "create_group") {
+    const name = String(payload.name ?? "").trim();
+    const description = String(payload.description ?? "").trim();
+    if (name.length < 2 || name.length > 80 || description.length > 1000) return Response.json({ error: "Invalid group details" }, { status: 400, headers: cors });
+    const { data: group, error } = await admin.from("tester_groups").insert({
+      name, description, is_private: false, created_by: userData.user.id,
+    }).select("id").single();
+    if (error || !group) return Response.json({ error: "Group creation failed" }, { status: 500, headers: cors });
+    await admin.from("group_members").upsert({ group_id: group.id, user_id: userData.user.id, member_role: "leader", status: "approved" }, { onConflict: "group_id,user_id" });
+    await admin.from("admin_audit_logs").insert({ actor_id: userData.user.id, action: "create_group", target_type: "group", target_id: group.id, metadata: { name } });
+    return Response.json({ success: true, group_id: group.id }, { headers: cors });
+  }
+
+  if (action === "delete_group") {
+    const groupId = String(payload.group_id ?? "");
+    if (!groupId) return Response.json({ error: "Group id required" }, { status: 400, headers: cors });
+    const { data: group } = await admin.from("tester_groups").select("id,name").eq("id", groupId).maybeSingle();
+    if (!group) return Response.json({ error: "Group not found" }, { status: 404, headers: cors });
+    const { error } = await admin.from("tester_groups").delete().eq("id", groupId);
+    if (error) return Response.json({ error: "Group deletion failed" }, { status: 500, headers: cors });
+    await admin.from("admin_audit_logs").insert({ actor_id: userData.user.id, action: "delete_group", target_type: "group", target_id: groupId, metadata: { name: group.name } });
+    return Response.json({ success: true }, { headers: cors });
+  }
+
   if (action === "resolve_report") {
     const reportId = String(payload.report_id ?? "");
     const status = String(payload.status ?? "");

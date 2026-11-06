@@ -22,6 +22,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.hzyazilim.betalink.BuildConfig
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +75,7 @@ fun AuthGate() {
         AuthScreen(
             onSignIn = { email, password -> withContext(Dispatchers.IO) { repository.signIn(email, password) } },
             onSignUp = { name, email, password -> withContext(Dispatchers.IO) { repository.signUp(email, password, name) } },
+            onGoogleSignIn = { idToken -> withContext(Dispatchers.IO) { repository.signInWithGoogleIdToken(idToken) } },
             onAuthenticated = { user = it }
         )
     } else {
@@ -92,6 +99,7 @@ fun AuthGate() {
 private fun AuthScreen(
     onSignIn: suspend (String, String) -> com.hzyazilim.betalink.core.auth.AuthResult,
     onSignUp: suspend (String, String, String) -> com.hzyazilim.betalink.core.auth.AuthResult,
+    onGoogleSignIn: suspend (String) -> com.hzyazilim.betalink.core.auth.AuthResult,
     onAuthenticated: (BetalinkUser) -> Unit
 ) {
     var isSignUp by remember { mutableStateOf(false) }
@@ -102,6 +110,31 @@ private fun AuthScreen(
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
+    val googleClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
+    val googleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            try {
+                val account = GoogleSignIn.getSignedInAccountFromIntent(result.data).getResult(ApiException::class.java)
+                val token = account.idToken
+                if (token.isNullOrBlank()) {
+                    message = "Google kimlik jetonu alınamadı. OAuth istemci kimliğini kontrol et."
+                } else {
+                    scope.launch {
+                        busy = true
+                        message = null
+                        val authResult = onGoogleSignIn(token)
+                        busy = false
+                        if (authResult.user != null) onAuthenticated(authResult.user)
+                        else message = authResult.message ?: "Google ile giriş tamamlanamadı."
+                    }
+                }
+            } catch (error: ApiException) {
+                message = "Google girişi başarısız oldu (kod: ${error.statusCode})."
+            }
+        } else {
+            message = "Google girişi iptal edildi."
+        }
+    }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -143,6 +176,22 @@ private fun AuthScreen(
                 if (busy) CircularProgressIndicator(strokeWidth = 2.dp)
                 else Text(if (isSignUp) "Ücretsiz hesap oluştur" else "Giriş yap")
             }
+            Button(
+                onClick = {
+                    if (googleClientId.isBlank()) {
+                        message = "Google girişi henüz yapılandırılmadı. Google Web Client ID tanımlanmalı."
+                    } else {
+                        val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                            .requestEmail()
+                            .requestIdToken(googleClientId)
+                            .build()
+                        googleLauncher.launch(GoogleSignIn.getClient(context, options).signInIntent)
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) { Text("Google ile devam et") }
             TextButton(onClick = { isSignUp = !isSignUp; message = null }) {
                 Text(if (isSignUp) "Zaten hesabın var mı? Giriş yap" else "Hesabın yok mu? Kayıt ol")
             }

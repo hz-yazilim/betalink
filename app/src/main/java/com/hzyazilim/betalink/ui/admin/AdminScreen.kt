@@ -48,6 +48,10 @@ fun AdminScreen(onClose: () -> Unit) {
     var message by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
     var showAnnouncement by remember { mutableStateOf(false) }
+    var bpAmount by remember { mutableStateOf("25") }
+    var bpReason by remember { mutableStateOf("Yönetici BetaPuan ödülü") }
+    var newGroupName by remember { mutableStateOf("") }
+    var newGroupDescription by remember { mutableStateOf("") }
 
     LaunchedEffect(refresh) {
         loading = true
@@ -78,6 +82,62 @@ fun AdminScreen(onClose: () -> Unit) {
             }
             Button(onClick = { showAnnouncement = true }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
                 Text("Tüm kullanıcılara duyuru gönder")
+            }
+
+            Text("BetaPuan yönetimi", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp))
+            OutlinedTextField(bpAmount, { bpAmount = it.filter { ch -> ch == '-' || ch.isDigit() }.take(7) }, label = { Text("Puan miktarı (+/-)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(bpReason, { bpReason = it.take(240) }, label = { Text("İşlem açıklaması") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Button(onClick = {
+                val amount = bpAmount.toIntOrNull()
+                if (amount == null || amount == 0 || bpReason.trim().length < 3) message = "Puan miktarı ve açıklamayı kontrol et."
+                else scope.launch {
+                    val error = withContext(Dispatchers.IO) { repository.adjustBp(data.usersList.map { it.id }, amount, bpReason) }
+                    message = error ?: data.usersList.size.toString() + " kullanıcının BetaPuan bakiyesi güncellendi."
+                    if (error == null) refresh++
+                }
+            }, enabled = data.usersList.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Tüm kullanıcılara uygula") }
+            if (data.usersList.isEmpty()) Text("Henüz kayıtlı kullanıcı yok.")
+            else data.usersList.forEach { target ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(Modifier.weight(1f)) {
+                        Text(target.displayName.ifBlank { "Kullanıcı" }, style = MaterialTheme.typography.bodyMedium)
+                        Text(target.id.take(8) + "…", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    }
+                    TextButton(onClick = {
+                        val amount = bpAmount.toIntOrNull()
+                        if (amount == null || amount == 0 || bpReason.trim().length < 3) message = "Puan miktarı ve açıklamayı kontrol et."
+                        else scope.launch {
+                            val error = withContext(Dispatchers.IO) { repository.adjustBp(listOf(target.id), amount, bpReason) }
+                            message = error ?: target.displayName + " için puan güncellendi."
+                            if (error == null) refresh++
+                        }
+                    }) { Text("Uygula") }
+                }
+            }
+            Text("Grup yönetimi", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp))
+            OutlinedTextField(newGroupName, { newGroupName = it.take(80) }, label = { Text("Yeni grup adı") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(newGroupDescription, { newGroupDescription = it.take(1000) }, label = { Text("Açıklama") }, modifier = Modifier.fillMaxWidth())
+            Button(onClick = {
+                scope.launch {
+                    val error = withContext(Dispatchers.IO) { repository.createGroup(newGroupName, newGroupDescription) }
+                    message = error ?: "Açık tester grubu oluşturuldu."
+                    if (error == null) { newGroupName = ""; newGroupDescription = ""; refresh++ }
+                }
+            }, enabled = newGroupName.trim().length >= 2, modifier = Modifier.fillMaxWidth()) { Text("Ücretsiz açık grup oluştur") }
+            data.groupsList.forEach { group ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(Modifier.weight(1f)) {
+                        Text(group.name, style = MaterialTheme.typography.bodyMedium)
+                        Text(group.status, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    }
+                    TextButton(onClick = {
+                        scope.launch {
+                            val error = withContext(Dispatchers.IO) { repository.deleteGroup(group.id) }
+                            message = error ?: "Grup silindi."
+                            if (error == null) refresh++
+                        }
+                    }) { Text("Sil") }
+                }
             }
             Text("Bekleyen şikâyetler", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp))
             if (data.pendingReports.isEmpty()) Text("Bekleyen şikâyet yok.", color = MaterialTheme.colorScheme.onSurfaceVariant)

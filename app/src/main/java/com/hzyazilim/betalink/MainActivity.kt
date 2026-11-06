@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -134,6 +135,16 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
     var showNotificationPermissionInfo by rememberSaveable { mutableStateOf(Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED && !notificationPrefs.getBoolean("notification_prompted", false)) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> notificationPrefs.edit().putBoolean("notification_prompted", true).apply() }
 
+    BackHandler(enabled = true) {
+        when {
+            showNotifications -> showNotifications = false
+            showSupport -> showSupport = false
+            showAdminPanel -> showAdminPanel = false
+            selectedTab != 0 -> selectedTab = 0
+            else -> showExitDialog = true
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -162,6 +173,19 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
                 else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSupport = { showSupport = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
             }
         }
+    }
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Betalink'ten çıkılsın mı?") },
+            text = { Text("Uygulamadan çıkmak istediğine emin misin?") },
+            confirmButton = {
+                TextButton(onClick = { showExitDialog = false; activity?.finish() }) { Text("Çıkış yap") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) { Text("Uygulamaya dön") }
+            }
+        )
     }
     if (showNotifications) NotificationsDialog(onDismiss = { showNotifications = false })
     if (showNotificationPermissionInfo) {

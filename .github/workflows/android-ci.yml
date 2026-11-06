@@ -46,9 +46,9 @@ jobs:
             git push
           fi
       - name: Run unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: ./gradlew --no-daemon -PBETALINK_GOOGLE_WEB_CLIENT_ID="${{ vars.BETALINK_GOOGLE_WEB_CLIENT_ID }}" testDebugUnitTest
       - name: Build debug APK
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon -PBETALINK_GOOGLE_WEB_CLIENT_ID="${{ vars.BETALINK_GOOGLE_WEB_CLIENT_ID }}" assembleDebug
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
