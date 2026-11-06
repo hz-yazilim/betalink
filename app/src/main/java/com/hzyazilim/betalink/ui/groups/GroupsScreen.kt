@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hzyazilim.betalink.core.data.CampaignRepository
+import com.hzyazilim.betalink.ui.wallet.WalletStatusCard
 import com.hzyazilim.betalink.core.data.TesterGroup
 import com.hzyazilim.betalink.core.data.GroupMember
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +65,7 @@ fun GroupsScreen() {
         Text("TOPLULUK", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
         Text("Tester grupları", style = MaterialTheme.typography.headlineSmall)
         Text("Açık gruplara katıl veya özel gruplara katılım isteği gönder.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        WalletStatusCard()
         Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Text("＋ Yeni grup oluştur")
         }
