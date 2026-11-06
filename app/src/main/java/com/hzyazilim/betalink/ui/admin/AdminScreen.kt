@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.hzyazilim.betalink.core.admin.AdminApiRepository
 import com.hzyazilim.betalink.core.admin.AdminDashboard
 import com.hzyazilim.betalink.core.admin.AdminReport
+import com.hzyazilim.betalink.core.admin.AdminSupportTicket
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -102,6 +103,19 @@ fun AdminScreen(onClose: () -> Unit) {
                     )
                 }
             }
+            Text("Destek talepleri", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp))
+            if (data.supportTickets.isEmpty()) Text("Açık destek talebi yok.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
+                items(data.supportTickets, key = { it.id }) { ticket ->
+                    SupportTicketCard(ticket) { reply ->
+                        scope.launch {
+                            val error = withContext(Dispatchers.IO) { repository.resolveSupportTicket(ticket.id, reply) }
+                            message = error ?: "Destek talebi yanıtlandı."
+                            if (error == null) refresh++
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -143,6 +157,22 @@ private fun ReportCard(report: AdminReport, onResolve: (String) -> Unit, onBlock
             }
             if (report.targetUserId != null) {
                 TextButton(onClick = onBlock) { Text("Bildirilen kullanıcıyı engelle") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SupportTicketCard(ticket: AdminSupportTicket, onReply: (String) -> Unit) {
+    var reply by remember(ticket.id) { mutableStateOf("") }
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp)) {
+            Text(ticket.subject, style = MaterialTheme.typography.titleSmall)
+            Text("Kullanıcı: ${ticket.userId.take(8)}… · ${ticket.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+            Text(ticket.message, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            OutlinedTextField(reply, { reply = it }, label = { Text("Destek yanıtı") }, minLines = 2)
+            Button(onClick = { onReply(reply) }, enabled = reply.trim().length >= 2, modifier = Modifier.fillMaxWidth()) {
+                Text("Yanıtla ve kapat")
             }
         }
     }
