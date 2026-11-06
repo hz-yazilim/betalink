@@ -34,6 +34,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.hzyazilim.betalink.ui.auth.AuthGate
+import com.hzyazilim.betalink.core.auth.BetalinkUser
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -76,7 +80,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    BetalinkApp()
+                    AuthGate()
                 }
             }
         }
@@ -84,7 +88,8 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun BetalinkApp() {
+fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit) {
+    val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Scaffold(
@@ -125,7 +130,7 @@ private fun BetalinkApp() {
                     message = "Katıldığın kampanyalar, her kampanyanın 14 günlük süresi, görevleri ve yedek liste durumun burada takip edilecek.",
                     action = "Henüz katıldığın kampanya yok."
                 )
-                else -> ProfileScreen()
+                else -> ProfileScreen(currentUser) { scope.launch { onSignOut() } }
             }
         }
     }
@@ -234,18 +239,19 @@ private fun EmptyListScreen(eyebrow: String, title: String, message: String, act
 }
 
 @Composable
-private fun ProfileScreen() {
+private fun ProfileScreen(currentUser: BetalinkUser, onSignOut: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(22.dp),
         verticalArrangement = Arrangement.Center
     ) {
         Text("HESAP", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 11.sp)
-        Text("Profil ve hesap ayarları", fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+        Text(currentUser.displayName, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+        Text(currentUser.email, color = Color(0xFFB5BED4), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
         Text(
             "Tek hesapla tester ve geliştirici olarak yer alabileceksin. E-posta doğrulama, hesap silme ve veri silme seçenekleri backend entegrasyonuyla eklenecek.",
             color = Color(0xFFB5BED4), fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp)
         )
         Spacer(Modifier.height(18.dp))
-        Text("Hesap işlemleri henüz etkin değil; Supabase bağlantısı tamamlanınca açılacak.", color = Color(0xFF8996B0), fontSize = 12.sp)
+        Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Güvenli çıkış yap") }
     }
 }
