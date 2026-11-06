@@ -152,8 +152,7 @@ private fun HomeScreen(onExplore: () -> Unit, onMyTests: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Text("Uygulamalar
-birlikte gelişir.", fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold)
+            Text("Uygulamalar\nbirlikte gelişir.", fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold)
             Text(
                 "Gerçek tester toplulukları ve uygulama geliştiricileri tek platformda buluşur.",
                 color = Color(0xFFB5BED4), fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp)
