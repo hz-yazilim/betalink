@@ -35,6 +35,7 @@ import com.hzyazilim.betalink.BetalinkApp
 import com.hzyazilim.betalink.core.auth.BetalinkUser
 import com.hzyazilim.betalink.core.auth.SupabaseAuthRepository
 import com.hzyazilim.betalink.core.data.CampaignRepository
+import com.hzyazilim.betalink.core.admin.AdminApiRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -44,13 +45,17 @@ fun AuthGate() {
     val context = LocalContext.current
     val repository = remember { SupabaseAuthRepository(context) }
     var user by remember { mutableStateOf<BetalinkUser?>(null) }
+    var isAdmin by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
         user = withContext(Dispatchers.IO) { repository.restoreSession() }
         checking = false
     }
     LaunchedEffect(user?.id) {
-        if (user != null) withContext(Dispatchers.IO) { CampaignRepository(context).syncTesterDevice() }
+        if (user != null) {
+            withContext(Dispatchers.IO) { CampaignRepository(context).syncTesterDevice() }
+            isAdmin = withContext(Dispatchers.IO) { AdminApiRepository(context).isAdmin() }
+        } else isAdmin = false
     }
     if (checking) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -68,6 +73,7 @@ fun AuthGate() {
     } else {
         BetalinkApp(
             currentUser = user!!,
+            isAdmin = isAdmin,
             onSignOut = {
                 withContext(Dispatchers.IO) { repository.signOut() }
                 user = null
