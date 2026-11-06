@@ -41,6 +41,7 @@ import kotlinx.coroutines.launch
 import com.hzyazilim.betalink.ui.auth.AuthGate
 import com.hzyazilim.betalink.core.auth.BetalinkUser
 import com.hzyazilim.betalink.ui.campaigns.MyTestsHub
+import com.hzyazilim.betalink.ui.groups.GroupsScreen
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -117,12 +118,7 @@ fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit, onDele
             when (selectedTab) {
                 0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 3 })
                 1 -> CampaignBrowserScreen(myTests = false)
-                2 -> EmptyListScreen(
-                    eyebrow = "TOPLULUK",
-                    title = "Tester grupları",
-                    message = "Açık gruplara katıl, özel gruplara davetle gir ve kampanyalar için birlikte organize ol.",
-                    action = "Henüz gösterilecek grup yok."
-                )
+                2 -> GroupsScreen()
                 3 -> MyTestsHub()
                 else -> ProfileScreen(currentUser, deleteMessage = deleteMessage, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
             }
