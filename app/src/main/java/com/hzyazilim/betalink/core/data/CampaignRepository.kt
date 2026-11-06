@@ -10,6 +10,7 @@ import java.net.URL
 import java.net.URLEncoder
 
 data class CampaignMember(val id: String, val testerId: String, val status: String)
+data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?)
 data class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)
 data class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int)
 
@@ -81,6 +82,53 @@ class CampaignRepository(context: Context) {
 
 
 
+
+
+    fun listGroups(): Pair<List<TesterGroup>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<TesterGroup>() to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return emptyList<TesterGroup>() to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val groupsResponse = call("/rest/v1/tester_groups?select=id,name,description,is_private&order=created_at.desc", "GET", token)
+        if (groupsResponse.first !in 200..299) return emptyList<TesterGroup>() to message(groupsResponse.second)
+        val memberResponse = call("/rest/v1/group_members?select=group_id,status&user_id=eq.$userId", "GET", token)
+        if (memberResponse.first !in 200..299) return emptyList<TesterGroup>() to message(memberResponse.second)
+        val statuses = mutableMapOf<String, String>()
+        val memberArray = JSONArray(memberResponse.second)
+        for (i in 0 until memberArray.length()) {
+            val row = memberArray.getJSONObject(i)
+            statuses[row.optString("group_id")] = row.optString("status")
+        }
+        val array = JSONArray(groupsResponse.second)
+        return (0 until array.length()).map { i ->
+            val row = array.getJSONObject(i)
+            val id = row.getString("id")
+            TesterGroup(id, row.getString("name"), row.optString("description"), row.optBoolean("is_private"), statuses[id])
+        } to null
+    }
+
+    fun createGroup(name: String, description: String, privateGroup: Boolean): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val body = JSONObject().put("name", name.trim()).put("description", description.trim())
+            .put("is_private", privateGroup).put("created_by", userId)
+        val (status, response) = call("/rest/v1/tester_groups", "POST", token, body)
+        return if (status in 200..299) null else message(response)
+    }
+
+    fun joinGroup(group: TesterGroup): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val statusValue = if (group.isPrivate) "pending" else "approved"
+        val body = JSONObject().put("group_id", group.id).put("user_id", userId)
+            .put("member_role", "member").put("status", statusValue)
+        val (status, response) = call("/rest/v1/group_members", "POST", token, body)
+        return if (status in 200..299) null else message(response)
+    }
 
     fun trackingSnapshot(campaignId: String): Pair<CampaignTracking?, String?> {
         val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
