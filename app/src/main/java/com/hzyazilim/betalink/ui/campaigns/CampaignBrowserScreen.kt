@@ -86,8 +86,21 @@ fun CampaignBrowserScreen(myTests: Boolean) {
                         onApply = {
                             scope.launch {
                                 val error = withContext(Dispatchers.IO) { repository.applyToCampaign(campaign.id) }
-                                message = error ?: "Başvurun alındı."
+                                message = error ?: "Başvurun alındı. Kampanya sahibinin onayını bekle."
                                 if (error == null) refresh++
+                            }
+                        },
+                        onConfirmOptIn = {
+                            scope.launch {
+                                val error = withContext(Dispatchers.IO) { repository.confirmPlayOptIn(campaign.id) }
+                                message = error ?: "Play testine katıldığını beyan ettin. Bu beyan Google Play Console tarafından doğrulanmış değildir."
+                                if (error == null) refresh++
+                            }
+                        },
+                        onCheckIn = {
+                            scope.launch {
+                                val error = withContext(Dispatchers.IO) { repository.checkInToday(campaign.id) }
+                                message = error ?: "Bugünkü test onayın kaydedildi."
                             }
                         }
                     )
@@ -116,7 +129,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
 }
 
 @Composable
-private fun CampaignCard(campaign: Campaign, myTests: Boolean, onApply: () -> Unit) {
+private fun CampaignCard(campaign: Campaign, myTests: Boolean, onApply: () -> Unit, onConfirmOptIn: () -> Unit, onCheckIn: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -140,6 +153,18 @@ private fun CampaignCard(campaign: Campaign, myTests: Boolean, onApply: () -> Un
             if (!myTests) {
                 Button(onClick = onApply, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
                     Text("Test için başvur")
+                }
+            } else {
+                Text("Başvuru durumu: ${campaign.membershipStatus ?: "bilinmiyor"}", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
+                if (campaign.membershipStatus == "accepted") {
+                    Button(onClick = onConfirmOptIn, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        Text("Play testine katıldım")
+                    }
+                }
+                if (campaign.membershipStatus in listOf("opted_in", "active")) {
+                    Button(onClick = onCheckIn, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        Text("Bugünkü test onayını ver")
+                    }
                 }
             }
         }
