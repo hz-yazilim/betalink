@@ -223,7 +223,7 @@ class CampaignRepository(context: Context) {
     fun reviewTaskSubmission(id: String, approved: Boolean): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val body = JSONObject().put("status", if (approved) "approved" else "needs_changes")
-            .put("reviewed_at", java.time.Instant.now().toString())
+            .put("reviewed_at", utcNow())
         val (status, response) = call("/rest/v1/task_completions?id=eq.$id", "PATCH", token, body)
         return if (status in 200..299) null else message(response)
     }
@@ -245,7 +245,7 @@ class CampaignRepository(context: Context) {
     fun replyToFeedback(id: String, reply: String, resolved: Boolean): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val body = JSONObject().put("developer_reply", reply.trim()).put("status", if (resolved) "resolved" else "open")
-            .put("updated_at", java.time.Instant.now().toString())
+            .put("updated_at", utcNow())
         val (status, response) = call("/rest/v1/feedback?id=eq.$id", "PATCH", token, body)
         return if (status in 200..299) null else message(response)
     }
@@ -341,6 +341,8 @@ class CampaignRepository(context: Context) {
         }
         return result to null
     }
+
+    private fun utcNow(): String = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date())
 
     private fun call(path: String, method: String, token: String, body: JSONObject? = null): Pair<Int, String> {
         val connection = URL(BuildConfig.SUPABASE_URL + path).openConnection() as HttpURLConnection
