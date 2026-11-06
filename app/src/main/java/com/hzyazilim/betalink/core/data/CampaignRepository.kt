@@ -113,7 +113,7 @@ class CampaignRepository(context: Context) {
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return emptyList<TesterGroup>() to "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
-        val groupsResponse = call("/rest/v1/tester_groups?select=id,name,description,is_private,created_by&is_private=eq.false&order=created_at.desc", "GET", token)
+        val groupsResponse = call("/rest/v1/tester_groups?select=id,name,description,is_private,created_by&order=created_at.desc", "GET", token)
         if (groupsResponse.first !in 200..299) return emptyList<TesterGroup>() to message(groupsResponse.second)
         val memberResponse = call("/rest/v1/group_members?select=group_id,status&user_id=eq.$userId", "GET", token)
         if (memberResponse.first !in 200..299) return emptyList<TesterGroup>() to message(memberResponse.second)
@@ -127,13 +127,13 @@ class CampaignRepository(context: Context) {
         return (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
             val id = row.getString("id")
-            TesterGroup(id, row.getString("name"), row.optString("description"), row.optBoolean("is_private"), statuses[id], row.optString("created_by") == userId)
+            TesterGroup(id, row.getString("name"), row.optString("description"), false, statuses[id], row.optString("created_by") == userId)
         } to null
     }
 
     fun createGroup(name: String, description: String, privateGroup: Boolean): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
-        val body = JSONObject().put("p_name", name.trim()).put("p_description", description.trim()).put("p_is_private", privateGroup)
+        val body = JSONObject().put("p_name", name.trim()).put("p_description", description.trim()).put("p_is_private", false)
         val (status, response) = call("/rest/v1/rpc/betalink_create_group", "POST", token, body)
         return if (status in 200..299) null else message(response)
     }
