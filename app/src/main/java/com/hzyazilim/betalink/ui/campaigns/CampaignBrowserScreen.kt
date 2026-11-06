@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hzyazilim.betalink.core.data.Campaign
 import com.hzyazilim.betalink.core.data.CampaignRepository
+import com.hzyazilim.betalink.ui.wallet.WalletStatusCard
 import com.hzyazilim.betalink.core.data.CampaignTask
 import com.hzyazilim.betalink.core.data.CampaignTracking
 import com.hzyazilim.betalink.core.data.TaskSubmission
@@ -67,6 +68,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
         Spacer(Modifier.height(18.dp))
         Text(if (myTests) "TESTLERİM" else "KEŞFET", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
         Text(if (myTests) "Katıldığın kampanyalar" else "Açık test kampanyaları", style = MaterialTheme.typography.headlineSmall)
+        WalletStatusCard()
         if (myTests) {
             Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
                 Text("＋ Geliştirici kampanyası oluştur")
