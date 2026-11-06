@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hzyazilim.betalink.core.data.CampaignRepository
 import com.hzyazilim.betalink.core.data.TesterGroup
+import com.hzyazilim.betalink.core.data.GroupMember
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,6 +48,8 @@ fun GroupsScreen() {
     var message by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
+    var selectedGroup by remember { mutableStateOf<TesterGroup?>(null) }
+    var members by remember { mutableStateOf<List<GroupMember>>(emptyList()) }
 
     LaunchedEffect(refresh) {
         loading = true
@@ -74,6 +77,16 @@ fun GroupsScreen() {
                         Text(group.name, style = MaterialTheme.typography.titleMedium)
                         Text(if (group.isPrivate) "Özel grup" else "Açık grup", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
                         if (group.description.isNotBlank()) Text(group.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
+                        if (group.isCreator) {
+                            TextButton(onClick = {
+                                scope.launch {
+                                    val result = withContext(Dispatchers.IO) { repository.groupMembers(group.id) }
+                                    members = result.first
+                                    message = result.second
+                                    selectedGroup = group
+                                }
+                            }) { Text("Üye isteklerini yönet") }
+                        }
                         when (group.membershipStatus) {
                             "approved" -> Text("Grup üyesisin", color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 8.dp))
                             "pending" -> Text("Katılım isteğin bekliyor", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
@@ -91,6 +104,43 @@ fun GroupsScreen() {
                 }
             }
         }
+    }
+
+    selectedGroup?.let { group ->
+        AlertDialog(
+            onDismissRequest = { selectedGroup = null },
+            title = { Text("${group.name} · Üyeler") },
+            text = {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (members.isEmpty()) item { Text("Henüz üye isteği yok.") }
+                    items(members, key = { it.id }) { member ->
+                        Column {
+                            Text("Üye: ${member.userId.take(8)}…")
+                            Text("Durum: ${member.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            if (member.status == "pending") {
+                                Row {
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            val error = withContext(Dispatchers.IO) { repository.reviewGroupMember(member.id, true) }
+                                            message = error ?: "Üyelik onaylandı."
+                                            if (error == null) members = withContext(Dispatchers.IO) { repository.groupMembers(group.id) }.first
+                                        }
+                                    }) { Text("Onayla") }
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            val error = withContext(Dispatchers.IO) { repository.reviewGroupMember(member.id, false) }
+                                            message = error ?: "İstek reddedildi."
+                                            if (error == null) members = withContext(Dispatchers.IO) { repository.groupMembers(group.id) }.first
+                                        }
+                                    }) { Text("Reddet") }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { selectedGroup = null }) { Text("Kapat") } }
+        )
     }
 
     if (showCreate) {
