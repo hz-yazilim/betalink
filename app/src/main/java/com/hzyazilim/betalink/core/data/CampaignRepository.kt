@@ -9,7 +9,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-data class CampaignMember(val id: String, val testerId: String, val status: String)\ndata class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)\ndata class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int)
+data class CampaignMember(val id: String, val testerId: String, val status: String)
+data class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)
+data class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int)
 
 data class Campaign(
     val id: String,
