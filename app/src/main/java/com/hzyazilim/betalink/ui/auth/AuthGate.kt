@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.hzyazilim.betalink.BetalinkApp
 import com.hzyazilim.betalink.core.auth.BetalinkUser
 import com.hzyazilim.betalink.core.auth.SupabaseAuthRepository
+import com.hzyazilim.betalink.core.data.CampaignRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,6 +48,9 @@ fun AuthGate() {
     LaunchedEffect(Unit) {
         user = withContext(Dispatchers.IO) { repository.restoreSession() }
         checking = false
+    }
+    LaunchedEffect(user?.id) {
+        if (user != null) withContext(Dispatchers.IO) { CampaignRepository(context).syncTesterDevice() }
     }
     if (checking) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
