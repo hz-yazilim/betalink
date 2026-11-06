@@ -119,6 +119,8 @@ class SupabaseAuthRepository(context: Context) {
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val responseText = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
             status to responseText
+        } catch (e: Exception) {
+            0 to (e.message ?: "Sunucuya bağlanılamadı.")
         } finally {
             connection.disconnect()
         }
