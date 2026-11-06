@@ -12,7 +12,7 @@ import java.net.URLEncoder
 
 data class CampaignMember(val id: String, val testerId: String, val status: String)
 data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?, val isCreator: Boolean)
-data class GroupMember(val id: String, val userId: String, val status: String)\ndata class GroupTestEmail(val displayName: String, val email: String)\ndata class GroupSnapshot(val status: String, val approvedMembers: Int, val requiredMembers: Int, val elapsedDays: Int, val requiredDays: Int, val startedAt: String?, val myEmailShared: Boolean, val emails: List<GroupTestEmail>)
+data class GroupMember(val id: String, val userId: String, val status: String)\ndata class GroupTestEmail(val displayName: String, val email: String)\ndata class GroupSnapshot(val status: String, val approvedMembers: Int, val requiredMembers: Int, val elapsedDays: Int, val requiredDays: Int, val startedAt: String?, val myEmailShared: Boolean, val myPlayTestEmail: String, val emails: List<GroupTestEmail>)
 data class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)
 data class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int)
 data class TaskSubmission(val id: String, val taskTitle: String, val testerId: String, val status: String, val notes: String)
@@ -163,11 +163,11 @@ class CampaignRepository(context: Context) {
         return if (status in 200..299) null else message(response)
     }
 
-    fun setGroupEmailConsent(groupId: String, consent: Boolean): String? {
+    fun setGroupEmailConsent(groupId: String, consent: Boolean, playTestEmail: String): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val (status, response) = call(
             "/rest/v1/rpc/betalink_set_group_email_consent", "POST", token,
-            JSONObject().put("p_group_id", groupId).put("p_consent", consent)
+            JSONObject().put("p_group_id", groupId).put("p_consent", consent).put("p_play_test_email", playTestEmail)
         )
         return if (status in 200..299) null else message(response)
     }
