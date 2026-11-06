@@ -1,6 +1,7 @@
 package com.hzyazilim.betalink.core.data
 
 import android.content.Context
+import android.os.Build
 import com.hzyazilim.betalink.BuildConfig
 import com.hzyazilim.betalink.core.auth.SecureSessionStore
 import org.json.JSONArray
@@ -51,7 +52,26 @@ class CampaignRepository(context: Context) {
                 j.optInt("target_testers", 12), j.optString("status"),
                 if (j.isNull("minimum_android_version")) null else j.optInt("minimum_android_version")
             )
-        } to null
+        }.filter { it.minimumAndroid == null || it.minimumAndroid <= Build.VERSION.SDK_INT } to null
+    }
+
+    fun syncTesterDevice(): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val body = JSONObject()
+            .put("user_id", userId)
+            .put("device_model", Build.MANUFACTURER + " " + Build.MODEL)
+            .put("android_version", Build.VERSION.SDK_INT)
+            .put("available_for_testing", true)
+            .put("updated_at", utcNow())
+        val existing = call("/rest/v1/tester_profiles?select=user_id&user_id=eq.$userId", "GET", token)
+        if (existing.first !in 200..299) return message(existing.second)
+        val exists = JSONArray(existing.second).length() > 0
+        val path = if (exists) "/rest/v1/tester_profiles?user_id=eq.$userId" else "/rest/v1/tester_profiles"
+        val (status, response) = call(path, if (exists) "PATCH" else "POST", token, body)
+        return if (status in 200..299) null else message(response)
     }
 
     fun createCampaign(appName: String, optInUrl: String, description: String, category: String, target: Int, minAndroid: Int?): String? {
