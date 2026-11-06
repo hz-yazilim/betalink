@@ -49,6 +49,29 @@ create table if not exists public.campaigns (
   constraint campaign_opt_in_https check (play_opt_in_url ~* '^https://')
 );
 
+-- This table is server-managed. It records the actual start/finish of the
+-- independent campaign clock; a client cannot mark a campaign as completed.
+create table if not exists public.campaign_tracking (
+  campaign_id uuid primary key references public.campaigns(id) on delete cascade,
+  minimum_active_testers integer not null default 12 check (minimum_active_testers between 1 and 1000),
+  required_days integer not null default 14 check (required_days between 1 and 90),
+  tracking_status text not null default 'not_started' check (tracking_status in ('not_started','running','eligible_for_review','completed','paused')),
+  started_at timestamptz,
+  completed_at timestamptz,
+  updated_at timestamptz not null default now(),
+  check ((tracking_status = 'not_started' and started_at is null) or (tracking_status <> 'not_started' and started_at is not null))
+);
+
+create table if not exists public.campaign_daily_checkins (
+  id uuid primary key default gen_random_uuid(),
+  campaign_id uuid not null references public.campaigns(id) on delete cascade,
+  tester_id uuid not null references public.profiles(user_id) on delete cascade,
+  checkin_date date not null default (now() at time zone 'utc')::date,
+  confirmed_at timestamptz not null default now(),
+  note text not null default '',
+  unique (campaign_id, tester_id, checkin_date)
+);
+
 create table if not exists public.campaign_members (
   id uuid primary key default gen_random_uuid(),
   campaign_id uuid not null references public.campaigns(id) on delete cascade,
@@ -156,6 +179,7 @@ create table if not exists public.reputation_events (
 create index if not exists campaigns_status_created_idx on public.campaigns(status, created_at desc);
 create index if not exists campaigns_developer_idx on public.campaigns(developer_id);
 create index if not exists campaign_members_tester_idx on public.campaign_members(tester_id, joined_at desc);
+create index if not exists campaign_daily_checkins_campaign_date_idx on public.campaign_daily_checkins(campaign_id, checkin_date);
 create index if not exists campaign_members_campaign_status_idx on public.campaign_members(campaign_id, status);
 create index if not exists campaign_tasks_campaign_idx on public.campaign_tasks(campaign_id, position);
 create index if not exists feedback_campaign_idx on public.feedback(campaign_id, created_at desc);
@@ -165,6 +189,8 @@ alter table public.profiles enable row level security;
 alter table public.tester_profiles enable row level security;
 alter table public.developer_profiles enable row level security;
 alter table public.campaigns enable row level security;
+alter table public.campaign_tracking enable row level security;
+alter table public.campaign_daily_checkins enable row level security;
 alter table public.campaign_members enable row level security;
 alter table public.campaign_tasks enable row level security;
 alter table public.task_completions enable row level security;
@@ -204,10 +230,26 @@ using (
 );
 create policy "members_apply_self" on public.campaign_members for insert to authenticated
 with check (
-  tester_id = (select auth.uid()) and exists (
-    select 1 from public.campaigns c where c.id = campaign_id and c.status = 'open'
+  tester_id = (select auth.uid())
+  and status = 'applied'
+  and is_backup = false
+  and opted_in_at is null
+  and exists (select 1 from public.campaigns c where c.id = campaign_id and c.status = 'open')
+);
+create policy "campaign_checkins_read_self_or_owner" on public.campaign_daily_checkins for select to authenticated
+using (
+  tester_id = (select auth.uid()) or exists (
+    select 1 from public.campaigns c where c.id = campaign_id and c.developer_id = (select auth.uid())
   )
 );
+create policy "campaign_checkins_insert_self" on public.campaign_daily_checkins for insert to authenticated
+with check (
+  tester_id = (select auth.uid()) and exists (
+    select 1 from public.campaign_members m
+    where m.campaign_id = campaign_id and m.tester_id = (select auth.uid()) and m.status in ('accepted','opted_in','active')
+  )
+);
+
 create policy "members_update_campaign_owner" on public.campaign_members for update to authenticated
 using (exists (select 1 from public.campaigns c where c.id = campaign_id and c.developer_id = (select auth.uid())))
 with check (exists (select 1 from public.campaigns c where c.id = campaign_id and c.developer_id = (select auth.uid())));
@@ -296,12 +338,17 @@ grant select, insert, update, delete on public.tester_profiles to authenticated;
 grant select, insert, update, delete on public.developer_profiles to authenticated;
 grant select, insert, update, delete on public.campaigns to authenticated;
 grant select, insert, update, delete on public.campaign_members to authenticated;
+grant select, insert on public.campaign_daily_checkins to authenticated;
 grant select, insert, update, delete on public.campaign_tasks to authenticated;
 grant select, insert, update, delete on public.task_completions to authenticated;
-grant select, insert, update, delete on public.feedback to authenticated;
+revoke update on public.feedback from authenticated;
+grant select, insert on public.feedback to authenticated;
+grant update (developer_reply, status) on public.feedback to authenticated;
 grant select, insert, update, delete on public.tester_groups to authenticated;
 grant select, insert, update, delete on public.group_members to authenticated;
 grant select, update on public.notifications to authenticated;
 grant select, insert on public.reports to authenticated;
 grant select, insert, delete on public.blocked_users to authenticated;
 grant select on public.reputation_events to authenticated;
+-- campaign_tracking intentionally has no authenticated grants or policies.
+
