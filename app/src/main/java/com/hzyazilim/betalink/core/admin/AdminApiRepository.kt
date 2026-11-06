@@ -17,12 +17,15 @@ data class AdminReport(
     val status: String
 )
 
+data class AdminSupportTicket(val id: String, val userId: String, val subject: String, val message: String, val status: String)
+
 data class AdminDashboard(
     val users: Int,
     val campaigns: Int,
     val reports: Int,
     val groups: Int,
-    val pendingReports: List<AdminReport>
+    val pendingReports: List<AdminReport>,
+    val supportTickets: List<AdminSupportTicket>
 )
 
 class AdminApiRepository(context: Context) {
@@ -41,6 +44,11 @@ class AdminApiRepository(context: Context) {
         val json = JSONObject(body)
         val stats = json.optJSONObject("stats") ?: JSONObject()
         val array = json.optJSONArray("pendingReports") ?: JSONArray()
+        val supportArray = json.optJSONArray("supportTickets") ?: JSONArray()
+        val support = (0 until supportArray.length()).map { i ->
+            val row = supportArray.getJSONObject(i)
+            AdminSupportTicket(row.getString("id"), row.getString("user_id"), row.optString("subject"), row.optString("message"), row.optString("status"))
+        }
         val reports = (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
             AdminReport(
@@ -52,8 +60,16 @@ class AdminApiRepository(context: Context) {
         }
         return AdminDashboard(
             stats.optInt("users"), stats.optInt("campaigns"), stats.optInt("reports"),
-            stats.optInt("groups"), reports
+            stats.optInt("groups"), reports, support
         ) to null
+    }
+
+
+    fun resolveSupportTicket(id: String, reply: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val (code, body) = call("POST", token, JSONObject()
+            .put("action", "resolve_support_ticket").put("ticket_id", id).put("reply", reply))
+        return if (code in 200..299) null else error(body)
     }
 
     fun resolveReport(id: String, status: String): String? {
