@@ -32,7 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hzyazilim.betalink.core.data.Campaign
-import com.hzyazilim.betalink.core.data.CampaignRepository
+import com.hzyazilim.betalink.core.data.CampaignRepository\nimport com.hzyazilim.betalink.core.data.CampaignTask
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,7 +45,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
     var campaigns by remember { mutableStateOf<List<Campaign>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
-    var showCreate by remember { mutableStateOf(false) }
+    var showCreate by remember { mutableStateOf(false) }\n    var selectedTaskCampaign by remember { mutableStateOf<Campaign?>(null) }
     var refresh by remember { mutableStateOf(0) }
 
     LaunchedEffect(myTests, refresh) {
@@ -109,7 +109,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
         }
     }
 
-    if (showCreate) {
+    selectedTaskCampaign?.let { campaign ->\n        CampaignTaskDialog(campaign, repository, onDismiss = { selectedTaskCampaign = null }, onMessage = { message = it })\n    }\n\n    if (showCreate) {
         CreateCampaignDialog(
             onDismiss = { showCreate = false },
             onCreate = { name, url, description, category, target, minAndroid ->
@@ -129,7 +129,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
 }
 
 @Composable
-private fun CampaignCard(campaign: Campaign, myTests: Boolean, onApply: () -> Unit, onConfirmOptIn: () -> Unit, onCheckIn: () -> Unit) {
+private fun CampaignCard(campaign: Campaign, myTests: Boolean, onApply: () -> Unit, onConfirmOptIn: () -> Unit, onCheckIn: () -> Unit, onOpenTasks: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -161,7 +161,7 @@ private fun CampaignCard(campaign: Campaign, myTests: Boolean, onApply: () -> Un
                         Text("Play testine katıldım")
                     }
                 }
-                if (campaign.membershipStatus in listOf("opted_in", "active")) {
+                if (campaign.membershipStatus in listOf("opted_in", "active", "completed")) {\n                    TextButton(onClick = onOpenTasks, modifier = Modifier.fillMaxWidth()) { Text("Görevler ve geri bildirim") }
                     Button(onClick = onCheckIn, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                         Text("Bugünkü test onayını ver")
                     }
