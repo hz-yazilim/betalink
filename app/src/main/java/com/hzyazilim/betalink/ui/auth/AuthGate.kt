@@ -69,6 +69,7 @@ fun AuthGate() {
         AuthScreen(
             onSignIn = { email, password -> withContext(Dispatchers.IO) { repository.signIn(email, password) } },
             onSignUp = { name, email, password -> withContext(Dispatchers.IO) { repository.signUp(email, password, name) } },
+            onGoogleSignIn = { idToken -> withContext(Dispatchers.IO) { repository.signInWithGoogleIdToken(idToken) } },
             onAuthenticated = { user = it }
         )
     } else {
@@ -143,6 +144,22 @@ private fun AuthScreen(
                 if (busy) CircularProgressIndicator(strokeWidth = 2.dp)
                 else Text(if (isSignUp) "Ücretsiz hesap oluştur" else "Giriş yap")
             }
+            Button(
+                onClick = {
+                    if (googleClientId.isBlank()) {
+                        message = "Google girişi henüz yapılandırılmadı. Google Web Client ID tanımlanmalı."
+                    } else {
+                        val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                            .requestEmail()
+                            .requestIdToken(googleClientId)
+                            .build()
+                        googleLauncher.launch(GoogleSignIn.getClient(context, options).signInIntent)
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) { Text("Google ile devam et") }
             TextButton(onClick = { isSignUp = !isSignUp; message = null }) {
                 Text(if (isSignUp) "Zaten hesabın var mı? Giriş yap" else "Hesabın yok mu? Kayıt ol")
             }
