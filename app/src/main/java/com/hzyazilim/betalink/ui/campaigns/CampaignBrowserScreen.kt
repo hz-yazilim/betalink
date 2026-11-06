@@ -214,3 +214,116 @@ private fun CreateCampaignDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Vazgeç") } }
     )
 }
+
+@Composable
+fun MyTestsHub() {
+    var developerMode by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            TextButton(onClick = { developerMode = false }, modifier = Modifier.weight(1f)) {
+                Text("Testçi olarak")
+            }
+            TextButton(onClick = { developerMode = true }, modifier = Modifier.weight(1f)) {
+                Text("Geliştirici olarak")
+            }
+        }
+        if (developerMode) DeveloperCampaignsScreen() else CampaignBrowserScreen(myTests = true)
+    }
+}
+
+@Composable
+private fun DeveloperCampaignsScreen() {
+    val context = LocalContext.current
+    val repository = remember { CampaignRepository(context) }
+    val scope = rememberCoroutineScope()
+    var campaigns by remember { mutableStateOf<List<Campaign>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var message by remember { mutableStateOf<String?>(null) }
+    var refresh by remember { mutableStateOf(0) }
+    var selectedCampaign by remember { mutableStateOf<Campaign?>(null) }
+    var applicants by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.CampaignMember>>(emptyList()) }
+
+    LaunchedEffect(refresh) {
+        loading = true
+        val result = withContext(Dispatchers.IO) { repository.myDeveloperCampaigns() }
+        campaigns = result.first
+        message = result.second
+        loading = false
+    }
+
+    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
+        Text("GELİŞTİRİCİ PANELİ", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+        Text("Oluşturduğun kampanyalar", style = MaterialTheme.typography.headlineSmall)
+        message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (loading) CircularProgressIndicator(Modifier.padding(20.dp))
+        else if (campaigns.isEmpty()) Text("Henüz kampanya oluşturmadın. Kampanya oluşturmak için Testlerim ekranındaki butonu kullan.", modifier = Modifier.padding(top = 16.dp))
+        else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 12.dp)) {
+            items(campaigns, key = { it.id }) { campaign ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Column(Modifier.padding(15.dp)) {
+                        Text(campaign.appName, style = MaterialTheme.typography.titleMedium)
+                        Text("Durum: ${campaign.status} · Hedef: ${campaign.targetTesters} tester", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        Button(onClick = {
+                            scope.launch {
+                                val result = withContext(Dispatchers.IO) { repository.applicants(campaign.id) }
+                                applicants = result.first
+                                message = result.second
+                                selectedCampaign = campaign
+                            }
+                        }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Başvuruları yönet") }
+                    }
+                }
+            }
+        }
+    }
+
+    selectedCampaign?.let { campaign ->
+        AlertDialog(
+            onDismissRequest = { selectedCampaign = null },
+            title = { Text("${campaign.appName} · Başvurular") },
+            text = {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (applicants.isEmpty()) item { Text("Henüz başvuru yok.") }
+                    items(applicants, key = { it.id }) { applicant ->
+                        Column {
+                            Text("Tester: ${applicant.testerId.take(8)}…")
+                            Text("Durum: ${applicant.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            if (applicant.status == "applied") {
+                                Row {
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            val error = withContext(Dispatchers.IO) { repository.reviewApplicant(applicant.id, "accepted") }
+                                            message = error ?: "Başvuru kabul edildi."
+                                            if (error == null) {
+                                                applicants = withContext(Dispatchers.IO) { repository.applicants(campaign.id) }.first
+                                                refresh++
+                                            }
+                                        }
+                                    }) { Text("Kabul et") }
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            val error = withContext(Dispatchers.IO) { repository.reviewApplicant(applicant.id, "waitlisted") }
+                                            message = error ?: "Yedek listeye alındı."
+                                            if (error == null) applicants = withContext(Dispatchers.IO) { repository.applicants(campaign.id) }.first
+                                        }
+                                    }) { Text("Yedek") }
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            val error = withContext(Dispatchers.IO) { repository.reviewApplicant(applicant.id, "rejected") }
+                                            message = error ?: "Başvuru reddedildi."
+                                            if (error == null) applicants = withContext(Dispatchers.IO) { repository.applicants(campaign.id) }.first
+                                        }
+                                    }) { Text("Reddet") }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { selectedCampaign = null }) { Text("Kapat") } }
+        )
+    }
+}
