@@ -90,10 +90,12 @@ Deno.serve(async (req: Request) => {
     if (!targetId || targetId === userData.user.id) {
       return Response.json({ error: "Invalid target user" }, { status: 400, headers: cors });
     }
+    const { error: banError } = await admin.auth.admin.updateUserById(targetId, { ban_duration: "876000h" });
+    if (banError) return Response.json({ error: "Account suspension failed" }, { status: 500, headers: cors });
     const { error } = await admin.from("blocked_users").upsert({
       blocker_id: userData.user.id, blocked_id: targetId,
     }, { onConflict: "blocker_id,blocked_id" });
-    if (error) return Response.json({ error: "User block failed" }, { status: 500, headers: cors });
+    if (error) return Response.json({ error: "User block record failed" }, { status: 500, headers: cors });
     await admin.from("admin_audit_logs").insert({
       actor_id: userData.user.id, action: "block_user", target_type: "user",
       target_id: targetId, metadata: {},
