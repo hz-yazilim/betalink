@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,6 +33,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -88,7 +90,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit) {
+fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit, onDeleteAccount: suspend () -> String?) {
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
@@ -130,7 +132,7 @@ fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit) {
                     message = "Katıldığın kampanyalar, her kampanyanın 14 günlük süresi, görevleri ve yedek liste durumun burada takip edilecek.",
                     action = "Henüz katıldığın kampanya yok."
                 )
-                else -> ProfileScreen(currentUser) { scope.launch { onSignOut() } }
+                else -> ProfileScreen(currentUser, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { onDeleteAccount() } })
             }
         }
     }
@@ -239,7 +241,8 @@ private fun EmptyListScreen(eyebrow: String, title: String, message: String, act
 }
 
 @Composable
-private fun ProfileScreen(currentUser: BetalinkUser, onSignOut: () -> Unit) {
+private fun ProfileScreen(currentUser: BetalinkUser, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
+    var confirmDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxSize().padding(22.dp),
         verticalArrangement = Arrangement.Center
@@ -253,5 +256,23 @@ private fun ProfileScreen(currentUser: BetalinkUser, onSignOut: () -> Unit) {
         )
         Spacer(Modifier.height(18.dp))
         Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Güvenli çıkış yap") }
+        TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
+            Text("Hesabımı ve verilerimi sil", color = Color(0xFFFF8A8A))
+        }
+    }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Hesap kalıcı olarak silinsin mi?") },
+            text = { Text("Profilin, kampanya kayıtların ve hesabına bağlı kişisel verilerin silinir. Bu işlem geri alınamaz.") },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = false; onDeleteAccount() }) {
+                    Text("Kalıcı olarak sil", color = Color(0xFFFF8A8A))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text("Vazgeç") }
+            }
+        )
     }
 }
