@@ -38,10 +38,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.hzyazilim.betalink.ui.auth.AuthGate
 import com.hzyazilim.betalink.core.auth.BetalinkUser
+import com.hzyazilim.betalink.core.data.CampaignRepository
 import com.hzyazilim.betalink.ui.campaigns.MyTestsHub
 import com.hzyazilim.betalink.ui.campaigns.CampaignBrowserScreen
 import com.hzyazilim.betalink.ui.groups.GroupsScreen
@@ -52,6 +57,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -239,6 +245,12 @@ private fun EmptyListScreen(eyebrow: String, title: String, message: String, act
 
 @Composable
 private fun ProfileScreen(currentUser: BetalinkUser, deleteMessage: String?, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
+    val context = LocalContext.current
+    val repository = remember(context) { CampaignRepository(context) }
+    var reputation by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    LaunchedEffect(currentUser.id) {
+        reputation = withContext(Dispatchers.IO) { repository.myReputationScore().first }
+    }
     var confirmDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxSize().padding(22.dp),
@@ -247,6 +259,7 @@ private fun ProfileScreen(currentUser: BetalinkUser, deleteMessage: String?, onS
         Text("HESAP", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 11.sp)
         Text(currentUser.displayName, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
         Text(currentUser.email, color = Color(0xFFB5BED4), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        Text("İtibar puanın: $reputation", color = MaterialTheme.colorScheme.secondary, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
         Text(
             "Tek hesapla tester ve geliştirici olarak yer alabilirsin. Hesabını silersen profilin ve ilişkili kişisel kayıtların veritabanından kaldırılır.",
             color = Color(0xFFB5BED4), fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp)
