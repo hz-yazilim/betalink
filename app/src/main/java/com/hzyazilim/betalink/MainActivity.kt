@@ -1,6 +1,15 @@
 package com.hzyazilim.betalink
 
-import android.os.Bundle\nimport android.Manifest\nimport android.app.NotificationChannel\nimport android.app.NotificationManager\nimport android.content.Context\nimport android.content.pm.PackageManager\nimport android.os.Build\nimport androidx.activity.compose.rememberLauncherForActivityResult\nimport androidx.activity.result.contract.ActivityResultContracts\nimport androidx.core.content.ContextCompat
+import android.os.Bundle
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -91,6 +100,12 @@ private val tabs = listOf(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel("betalink_updates", "Betalink bildirimleri", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Test davetleri, grup durumu ve görev bildirimleri"
+            }
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        }
         setContent {
             MaterialTheme(colorScheme = BetalinkColors) {
                 Surface(
@@ -111,7 +126,11 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
     var deleteMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var showNotifications by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showAdminPanel by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var showSupport by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }\n    val context = LocalContext.current\n    val notificationPrefs = remember(context) { context.getSharedPreferences("betalink_preferences", Context.MODE_PRIVATE) }\n    var showNotificationPermissionInfo by rememberSaveable { mutableStateOf(Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED && !notificationPrefs.getBoolean("notification_prompted", false)) }\n    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> notificationPrefs.edit().putBoolean("notification_prompted", true).apply() }
+    var showSupport by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val context = LocalContext.current
+    val notificationPrefs = remember(context) { context.getSharedPreferences("betalink_preferences", Context.MODE_PRIVATE) }
+    var showNotificationPermissionInfo by rememberSaveable { mutableStateOf(Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED && !notificationPrefs.getBoolean("notification_prompted", false)) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> notificationPrefs.edit().putBoolean("notification_prompted", true).apply() }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -142,7 +161,16 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
             }
         }
     }
-    if (showNotifications) NotificationsDialog(onDismiss = { showNotifications = false })\n    if (showNotificationPermissionInfo) {\n        AlertDialog(\n            onDismissRequest = { showNotificationPermissionInfo = false; notificationPrefs.edit().putBoolean("notification_prompted", true).apply() },\n            title = { Text("Betalink bildirimleri") },\n            text = { Text("Test davetlerini, grup başlangıç ve tamamlanma durumlarını, görevleri ve önemli hesap uyarılarını zamanında görebilmek için bildirim izni verebilirsin.") },\n            confirmButton = { TextButton(onClick = { showNotificationPermissionInfo = false; notificationPrefs.edit().putBoolean("notification_prompted", true).apply(); if (Build.VERSION.SDK_INT >= 33) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }) { Text("İzin ver") } },\n            dismissButton = { TextButton(onClick = { showNotificationPermissionInfo = false; notificationPrefs.edit().putBoolean("notification_prompted", true).apply() }) { Text("Şimdi değil") } }\n        )\n    }
+    if (showNotifications) NotificationsDialog(onDismiss = { showNotifications = false })
+    if (showNotificationPermissionInfo) {
+        AlertDialog(
+            onDismissRequest = { showNotificationPermissionInfo = false; notificationPrefs.edit().putBoolean("notification_prompted", true).apply() },
+            title = { Text("Betalink bildirimleri") },
+            text = { Text("Test davetlerini, grup başlangıç ve tamamlanma durumlarını, görevleri ve önemli hesap uyarılarını zamanında görebilmek için bildirim izni verebilirsin.") },
+            confirmButton = { TextButton(onClick = { showNotificationPermissionInfo = false; notificationPrefs.edit().putBoolean("notification_prompted", true).apply(); if (Build.VERSION.SDK_INT >= 33) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }) { Text("İzin ver") } },
+            dismissButton = { TextButton(onClick = { showNotificationPermissionInfo = false; notificationPrefs.edit().putBoolean("notification_prompted", true).apply() }) { Text("Şimdi değil") } }
+        )
+    }
     if (showSupport) SupportDialog(onDismiss = { showSupport = false })
 }
 
