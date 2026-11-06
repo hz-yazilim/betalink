@@ -208,17 +208,9 @@ with check (
     select 1 from public.campaigns c where c.id = campaign_id and c.status = 'open'
   )
 );
-create policy "members_update_self_or_owner" on public.campaign_members for update to authenticated
-using (
-  tester_id = (select auth.uid()) or exists (
-    select 1 from public.campaigns c where c.id = campaign_id and c.developer_id = (select auth.uid())
-  )
-)
-with check (
-  tester_id = (select auth.uid()) or exists (
-    select 1 from public.campaigns c where c.id = campaign_id and c.developer_id = (select auth.uid())
-  )
-);
+create policy "members_update_campaign_owner" on public.campaign_members for update to authenticated
+using (exists (select 1 from public.campaigns c where c.id = campaign_id and c.developer_id = (select auth.uid())))
+with check (exists (select 1 from public.campaigns c where c.id = campaign_id and c.developer_id = (select auth.uid())));
 
 create policy "tasks_read_campaign_participants_or_owner" on public.campaign_tasks for select to authenticated
 using (
@@ -243,19 +235,15 @@ with check (
     where t.id = task_id and m.tester_id = (select auth.uid()) and m.status in ('accepted','opted_in','active')
   )
 );
-create policy "task_completions_update_owner_or_self" on public.task_completions for update to authenticated
-using (
-  tester_id = (select auth.uid()) or exists (
-    select 1 from public.campaign_tasks t join public.campaigns c on c.id = t.campaign_id
-    where t.id = task_id and c.developer_id = (select auth.uid())
-  )
-)
-with check (
-  tester_id = (select auth.uid()) or exists (
-    select 1 from public.campaign_tasks t join public.campaigns c on c.id = t.campaign_id
-    where t.id = task_id and c.developer_id = (select auth.uid())
-  )
-);
+create policy "task_completions_update_campaign_owner" on public.task_completions for update to authenticated
+using (exists (
+  select 1 from public.campaign_tasks t join public.campaigns c on c.id = t.campaign_id
+  where t.id = task_id and c.developer_id = (select auth.uid())
+))
+with check (exists (
+  select 1 from public.campaign_tasks t join public.campaigns c on c.id = t.campaign_id
+  where t.id = task_id and c.developer_id = (select auth.uid())
+));
 
 create policy "feedback_read_author_or_owner" on public.feedback for select to authenticated
 using (
@@ -274,7 +262,7 @@ using (exists (select 1 from public.campaigns c where c.id = campaign_id and c.d
 with check (exists (select 1 from public.campaigns c where c.id = campaign_id and c.developer_id = (select auth.uid())));
 
 -- Public groups can be discovered by signed-in users; private groups remain invitation-based.
-create policy "groups_read_public_or_creator" on public.tester_groups for select to authenticated
+create policy "groups_read_public_or_creator_or_member" on public.tester_groups for select to authenticated
 using (not is_private or created_by = (select auth.uid()) or exists (
   select 1 from public.group_members gm where gm.group_id = id and gm.user_id = (select auth.uid()) and gm.status = 'approved'
 ));
@@ -282,19 +270,18 @@ create policy "groups_create_self" on public.tester_groups for insert to authent
 with check (created_by = (select auth.uid()));
 create policy "groups_update_creator" on public.tester_groups for update to authenticated
 using (created_by = (select auth.uid())) with check (created_by = (select auth.uid()));
-create policy "group_members_read_self_or_leader" on public.group_members for select to authenticated
-using (
-  user_id = (select auth.uid()) or exists (
-    select 1 from public.tester_groups g where g.id = group_id and g.created_by = (select auth.uid())
-  ) or exists (
-    select 1 from public.group_members leader where leader.group_id = group_id and leader.user_id = (select auth.uid()) and leader.member_role = 'leader' and leader.status = 'approved'
+create policy "group_members_read_self" on public.group_members for select to authenticated
+using (user_id = (select auth.uid()));
+create policy "group_members_join_self" on public.group_members for insert to authenticated
+with check (
+  user_id = (select auth.uid())
+  and member_role = 'member'
+  and exists (
+    select 1 from public.tester_groups g
+    where g.id = group_id
+      and ((g.is_private and status = 'pending') or (not g.is_private and status = 'approved'))
   )
 );
-create policy "group_members_join_self" on public.group_members for insert to authenticated
-with check (user_id = (select auth.uid()));
-create policy "group_members_update_self_or_creator" on public.group_members for update to authenticated
-using (user_id = (select auth.uid()) or exists (select 1 from public.tester_groups g where g.id = group_id and g.created_by = (select auth.uid())))
-with check (user_id = (select auth.uid()) or exists (select 1 from public.tester_groups g where g.id = group_id and g.created_by = (select auth.uid())));
 
 create policy "notifications_read_self" on public.notifications for select to authenticated using (recipient_id = (select auth.uid()));
 create policy "notifications_update_self" on public.notifications for update to authenticated using (recipient_id = (select auth.uid())) with check (recipient_id = (select auth.uid()));
