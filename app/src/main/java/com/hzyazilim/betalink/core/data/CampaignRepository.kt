@@ -9,7 +9,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-data class CampaignMember(val id: String, val testerId: String, val status: String)\ndata class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)
+data class CampaignMember(val id: String, val testerId: String, val status: String)\ndata class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)\ndata class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int)
 
 data class Campaign(
     val id: String,
@@ -79,6 +79,26 @@ class CampaignRepository(context: Context) {
 
 
 
+
+    fun trackingSnapshot(campaignId: String): Pair<CampaignTracking?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/rpc/get_betalink_campaign_tracking", "POST", token,
+            JSONObject().put("p_campaign_id", campaignId)
+        )
+        if (status !in 200..299) return null to message(body)
+        val array = JSONArray(body)
+        if (array.length() == 0) return null to "Takip kaydı bulunamadı."
+        val row = array.getJSONObject(0)
+        return CampaignTracking(
+            row.optString("tracking_status"),
+            row.optInt("elapsed_days"),
+            row.optInt("required_days", 14),
+            row.optInt("active_testers"),
+            row.optInt("required_testers", 12)
+        ) to null
+    }
+
     fun tasksForCampaign(campaignId: String): Pair<List<CampaignTask>, String?> {
         val token = sessions.read()?.first ?: return emptyList<CampaignTask>() to "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
@@ -98,7 +118,7 @@ class CampaignRepository(context: Context) {
         val doneArray = JSONArray(doneBody)
         for (i in 0 until doneArray.length()) {
             val row = doneArray.getJSONObject(i)
-            if (row.optString("status") == "approved") done += row.optString("task_id")
+            if (row.optString("status") in listOf("approved", "submitted")) done += row.optString("task_id")
         }
         val tasks = JSONArray(taskBody)
         return (0 until tasks.length()).map { i ->
