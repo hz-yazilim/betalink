@@ -498,7 +498,7 @@ private fun DeveloperCampaignsScreen() {
                         Column {
                             Text("Tester: ${applicant.testerId.take(8)}…")
                             Text("Durum: ${applicant.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                            if (applicant.status == "applied") {
+                            if (applicant.status == "applied" || applicant.status == "waitlisted") {
                                 Row {
                                     TextButton(onClick = {
                                         scope.launch {
