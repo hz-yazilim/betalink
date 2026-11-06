@@ -47,14 +47,15 @@ Deno.serve(async (req: Request) => {
   }
 
   if (req.method === "GET") {
-    const [users, campaigns, reports, groups, pending] = await Promise.all([
+    const [users, campaigns, reports, groups, pending, support] = await Promise.all([
       admin.from("profiles").select("user_id", { count: "exact", head: true }),
       admin.from("campaigns").select("id", { count: "exact", head: true }),
       admin.from("reports").select("id", { count: "exact", head: true }),
       admin.from("tester_groups").select("id", { count: "exact", head: true }),
       admin.from("reports").select("id,reporter_id,target_user_id,campaign_id,reason,details,status,created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(50),
+      admin.from("support_tickets").select("id,user_id,subject,message,status,created_at").in("status", ["open","in_progress"]).order("created_at", { ascending: false }).limit(50),
     ]);
-    if (pending.error) return Response.json({ error: "Could not load moderation queue" }, { status: 500, headers: cors });
+    if (pending.error || support.error) return Response.json({ error: "Could not load moderation queue" }, { status: 500, headers: cors });
     return Response.json({
       stats: {
         users: users.count ?? 0,
@@ -63,6 +64,7 @@ Deno.serve(async (req: Request) => {
         groups: groups.count ?? 0,
       },
       pendingReports: pending.data ?? [],
+      supportTickets: support.data ?? [],
     }, { headers: cors });
   }
 
@@ -99,6 +101,23 @@ Deno.serve(async (req: Request) => {
     await admin.from("admin_audit_logs").insert({
       actor_id: userData.user.id, action: "block_user", target_type: "user",
       target_id: targetId, metadata: {},
+    });
+    return Response.json({ success: true }, { headers: cors });
+  }
+
+  if (action === "resolve_support_ticket") {
+    const ticketId = String(payload.ticket_id ?? "");
+    const reply = String(payload.reply ?? "").trim();
+    if (!ticketId || reply.length < 2 || reply.length > 5000) {
+      return Response.json({ error: "Invalid support response" }, { status: 400, headers: cors });
+    }
+    const { error } = await admin.from("support_tickets")
+      .update({ status: "resolved", admin_reply: reply, updated_at: new Date().toISOString() })
+      .eq("id", ticketId);
+    if (error) return Response.json({ error: "Support ticket update failed" }, { status: 500, headers: cors });
+    await admin.from("admin_audit_logs").insert({
+      actor_id: userData.user.id, action: "resolve_support_ticket", target_type: "support_ticket",
+      target_id: ticketId, metadata: {},
     });
     return Response.json({ success: true }, { headers: cors });
   }
