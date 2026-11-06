@@ -20,7 +20,7 @@ Betalink is a native Android community platform connecting app developers who ne
 - Independent campaign progress display and 12 active-tester threshold.
 - Starter tasks, task submission, developer approval/change requests, and tester resubmission.
 - Tester feedback, developer replies, and report/block actions.
-- Public/private tester groups, joining, and owner approval of private-group requests.\n- Group testing starts only when 15 approved members are present; a shared 14-day clock is recorded server-side. If the approved count falls below 15 before completion, the clock pauses and restarts when the group is full again.\n- Group participants can explicitly opt in to sharing their Play test email; only approved members can view addresses of members who consented.
+- Public/private tester groups, joining, and owner approval of private-group requests.\n- Group testing starts only when 15 approved tester members are present; a shared 14-day clock is recorded server-side. If the approved count falls below 15 before completion, the clock pauses and restarts when the group is full again.\n- Group participants can explicitly opt in to sharing their Play test email; only approved members can view addresses of members who consented.
 - In-app notifications for applications, group requests, task reviews, feedback replies, and group test start/pause/completion.\n- Android 13+ notification permission explanation and runtime request, with a notification channel.
 - Reputation points from reviewed tasks and dropouts.
 - Profile reputation score.
@@ -71,7 +71,7 @@ Never commit Supabase service-role keys. The Android client contains only the pr
 
 - Currency: BetaPuan (BP), virtual and non-transferable; it has no cash value.
 - A user must complete at least two distinct 14-day campaign tests before creating campaigns, creating tester groups, or joining groups.
-- A completed campaign test awards 25 BP once per user/campaign.
+- A completed campaign test awards 25 BP once per user/campaign.\n- A completed 15-tester group test awards 25 BP once to each approved tester in that group; the group creator/leader is not counted as one of the 15 testers.
 - Creating a developer campaign costs 50 BP.
 - Creating a tester group costs 30 BP.
 - Joining a public tester group costs 5 BP. Private-group join requests are free after the two-test eligibility gate.
