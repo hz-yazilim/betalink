@@ -75,6 +75,16 @@ class SupabaseAuthRepository(context: Context) {
         return AuthResult(message = "Kayıt oluşturuldu. E-posta doğrulama bağlantısını kontrol et; doğruladıktan sonra giriş yap.")
     }
 
+    fun deleteAccount(): String? {
+        val saved = sessions.read() ?: return "Oturum bulunamadı. Yeniden giriş yap."
+        val response = request("/functions/v1/delete-account", "POST", JSONObject(), saved.first)
+        if (response.first in 200..299) {
+            sessions.clear()
+            return null
+        }
+        return errorMessage(response.second)
+    }
+
     fun signOut() {
         val saved = sessions.read()
         if (saved != null) request("/auth/v1/logout", "POST", token = saved.first)
