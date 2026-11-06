@@ -33,18 +33,15 @@ Deno.serve(async (req: Request) => {
     return Response.json({ error: "Invalid session" }, { status: 401, headers: cors });
   }
 
+  // Betalink's sole initial administrator is pinned server-side to this exact verified account.
+  // The Android client cannot grant itself admin privileges or override this allowlist.
+  if ((userData.user.email ?? "").trim().toLowerCase() !== "hz.yazilimm@gmail.com") {
+    return Response.json({ error: "Administrator access required" }, { status: 403, headers: cors });
+  }
+
   const admin = createClient(url, service, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: grant, error: grantError } = await admin
-    .from("platform_admins")
-    .select("user_id")
-    .eq("user_id", userData.user.id)
-    .maybeSingle();
-
-  if (grantError || !grant) {
-    return Response.json({ error: "Administrator access required" }, { status: 403, headers: cors });
-  }
 
   if (req.method === "GET") {
     const [users, campaigns, reports, groups, pending, support] = await Promise.all([
