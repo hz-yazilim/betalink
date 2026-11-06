@@ -12,7 +12,7 @@ import java.net.URLEncoder
 
 data class CampaignMember(val id: String, val testerId: String, val status: String)
 data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?, val isCreator: Boolean)
-data class GroupMember(val id: String, val userId: String, val status: String)\ndata class GroupTestEmail(val displayName: String, val email: String)\ndata class GroupSnapshot(val status: String, val approvedMembers: Int, val requiredMembers: Int, val elapsedDays: Int, val requiredDays: Int, val startedAt: String?, val emails: List<GroupTestEmail>)
+data class GroupMember(val id: String, val userId: String, val status: String)\ndata class GroupTestEmail(val displayName: String, val email: String)\ndata class GroupSnapshot(val status: String, val approvedMembers: Int, val requiredMembers: Int, val elapsedDays: Int, val requiredDays: Int, val startedAt: String?, val myEmailShared: Boolean, val emails: List<GroupTestEmail>)
 data class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)
 data class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int)
 data class TaskSubmission(val id: String, val taskTitle: String, val testerId: String, val status: String, val notes: String)
