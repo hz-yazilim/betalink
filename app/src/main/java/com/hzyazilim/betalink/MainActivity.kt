@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -30,6 +31,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,6 +45,7 @@ import com.hzyazilim.betalink.core.auth.BetalinkUser
 import com.hzyazilim.betalink.ui.campaigns.MyTestsHub
 import com.hzyazilim.betalink.ui.campaigns.CampaignBrowserScreen
 import com.hzyazilim.betalink.ui.groups.GroupsScreen
+import com.hzyazilim.betalink.ui.notifications.NotificationsDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -97,6 +100,7 @@ fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit, onDele
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var deleteMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    var showNotifications by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -117,7 +121,7 @@ fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit, onDele
             modifier = Modifier.fillMaxSize().padding(innerPadding)
         ) {
             when (selectedTab) {
-                0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 3 })
+                0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 3 }, onNotifications = { showNotifications = true })
                 1 -> CampaignBrowserScreen(myTests = false)
                 2 -> GroupsScreen()
                 3 -> MyTestsHub()
@@ -126,9 +130,10 @@ fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit, onDele
         }
     }
 }
+    if (showNotifications) NotificationsDialog(onDismiss = { showNotifications = false })
 
 @Composable
-private fun HomeScreen(onExplore: () -> Unit, onMyTests: () -> Unit) {
+private fun HomeScreen(onExplore: () -> Unit, onMyTests: () -> Unit, onNotifications: () -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -142,9 +147,12 @@ private fun HomeScreen(onExplore: () -> Unit, onMyTests: () -> Unit) {
                 ) {
                     Text("B", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, fontSize = 23.sp)
                 }
-                Column(Modifier.padding(start = 11.dp)) {
+                Column(Modifier.weight(1f).padding(start = 11.dp)) {
                     Text("BETALINK", fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 14.sp)
                     Text("Test et. Geri bildirim ver. Geliştir.", color = Color(0xFF9BA8C2), fontSize = 11.sp)
+                }
+                IconButton(onClick = onNotifications) {
+                    androidx.compose.material3.Icon(Icons.Filled.Notifications, contentDescription = "Bildirimler", tint = MaterialTheme.colorScheme.primary)
                 }
             }
             Spacer(Modifier.height(12.dp))
