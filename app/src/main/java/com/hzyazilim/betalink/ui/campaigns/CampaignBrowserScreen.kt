@@ -32,7 +32,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hzyazilim.betalink.core.data.Campaign
-import com.hzyazilim.betalink.core.data.CampaignRepository\nimport com.hzyazilim.betalink.core.data.CampaignTask\nimport com.hzyazilim.betalink.core.data.CampaignTracking
+import com.hzyazilim.betalink.core.data.CampaignRepository
+import com.hzyazilim.betalink.core.data.CampaignTask
+import com.hzyazilim.betalink.core.data.CampaignTracking
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,7 +47,8 @@ fun CampaignBrowserScreen(myTests: Boolean) {
     var campaigns by remember { mutableStateOf<List<Campaign>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
-    var showCreate by remember { mutableStateOf(false) }\n    var selectedTaskCampaign by remember { mutableStateOf<Campaign?>(null) }
+    var showCreate by remember { mutableStateOf(false) }
+    var selectedTaskCampaign by remember { mutableStateOf<Campaign?>(null) }
     var refresh by remember { mutableStateOf(0) }
 
     LaunchedEffect(myTests, refresh) {
@@ -97,6 +100,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
                                 if (error == null) refresh++
                             }
                         },
+                        onOpenTasks = { selectedTaskCampaign = campaign },
                         onCheckIn = {
                             scope.launch {
                                 val error = withContext(Dispatchers.IO) { repository.checkInToday(campaign.id) }
@@ -109,7 +113,11 @@ fun CampaignBrowserScreen(myTests: Boolean) {
         }
     }
 
-    selectedTaskCampaign?.let { campaign ->\n        CampaignTaskDialog(campaign, repository, onDismiss = { selectedTaskCampaign = null }, onMessage = { message = it })\n    }\n\n    if (showCreate) {
+    selectedTaskCampaign?.let { campaign ->
+        CampaignTaskDialog(campaign, repository, onDismiss = { selectedTaskCampaign = null }, onMessage = { message = it })
+    }
+
+    if (showCreate) {
         CreateCampaignDialog(
             onDismiss = { showCreate = false },
             onCreate = { name, url, description, category, target, minAndroid ->
@@ -161,7 +169,8 @@ private fun CampaignCard(campaign: Campaign, myTests: Boolean, onApply: () -> Un
                         Text("Play testine katıldım")
                     }
                 }
-                if (campaign.membershipStatus in listOf("opted_in", "active", "completed")) {\n                    TextButton(onClick = onOpenTasks, modifier = Modifier.fillMaxWidth()) { Text("Görevler ve geri bildirim") }
+                if (campaign.membershipStatus in listOf("opted_in", "active", "completed")) {
+                    TextButton(onClick = onOpenTasks, modifier = Modifier.fillMaxWidth()) { Text("Görevler ve geri bildirim") }
                     Button(onClick = onCheckIn, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                         Text("Bugünkü test onayını ver")
                     }
@@ -169,6 +178,84 @@ private fun CampaignCard(campaign: Campaign, myTests: Boolean, onApply: () -> Un
             }
         }
     }
+}
+
+@Composable
+private fun CampaignTaskDialog(
+    campaign: Campaign,
+    repository: CampaignRepository,
+    onDismiss: () -> Unit,
+    onMessage: (String) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var tasks by remember { mutableStateOf<List<CampaignTask>>(emptyList()) }
+    var tracking by remember { mutableStateOf<CampaignTracking?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var feedback by remember { mutableStateOf("") }
+    var rating by remember { mutableStateOf(5) }
+    LaunchedEffect(campaign.id) {
+        val result = withContext(Dispatchers.IO) { repository.tasksForCampaign(campaign.id) }
+        tasks = result.first
+        result.second?.let(onMessage)
+        val clock = withContext(Dispatchers.IO) { repository.trackingSnapshot(campaign.id) }
+        tracking = clock.first
+        clock.second?.let(onMessage)
+        loading = false
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${campaign.appName} · Test görevleri") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                tracking?.let { snapshot ->
+                    Text("14 günlük takip: ${snapshot.elapsedDays}/${snapshot.requiredDays} gün · Aktif tester: ${snapshot.activeTesters}/${snapshot.requiredTesters}", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp)
+                    Text("Durum: ${snapshot.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                }
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (loading) item { CircularProgressIndicator() }
+                    items(tasks, key = { it.id }) { task ->
+                        Column {
+                            Text(task.title, style = MaterialTheme.typography.titleSmall)
+                            Text(task.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                            if (task.completed) Text("Görev gönderildi / onaylandı", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                            else TextButton(onClick = {
+                                scope.launch {
+                                    val error = withContext(Dispatchers.IO) { repository.submitTask(task.id, "Görev tamamlandı.") }
+                                    onMessage(error ?: "Görev tamamlanması geliştirici onayına gönderildi.")
+                                    if (error == null) {
+                                        val updated = withContext(Dispatchers.IO) { repository.tasksForCampaign(campaign.id) }
+                                        tasks = updated.first
+                                    }
+                                }
+                            }) { Text("Tamamlandı olarak gönder") }
+                        }
+                    }
+                    item {
+                        Text("Genel geri bildirimin", style = MaterialTheme.typography.titleSmall)
+                        OutlinedTextField(feedback, { feedback = it }, label = { Text("Deneyimini ve sorunları yaz") }, minLines = 3)
+                        Text("Puan: $rating / 5")
+                        Row {
+                            (1..5).forEach { score ->
+                                TextButton(onClick = { rating = score }) { Text(if (score == rating) "[$score]" else "$score") }
+                            }
+                        }
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    val error = withContext(Dispatchers.IO) { repository.sendFeedback(campaign.id, feedback, rating) }
+                                    onMessage(error ?: "Geri bildirimin geliştiriciye iletildi.")
+                                    if (error == null) feedback = ""
+                                }
+                            },
+                            enabled = feedback.trim().length >= 5,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Geri bildirimi gönder") }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Kapat") } }
+    )
 }
 
 @Composable
