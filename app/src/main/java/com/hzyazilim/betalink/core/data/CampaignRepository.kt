@@ -15,6 +15,7 @@ data class CampaignTask(val id: String, val title: String, val description: Stri
 data class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int)
 data class TaskSubmission(val id: String, val taskTitle: String, val testerId: String, val status: String, val notes: String)
 data class FeedbackItem(val id: String, val testerId: String, val rating: Int?, val body: String, val status: String, val reply: String?)
+data class BetalinkNotification(val id: String, val title: String, val body: String, val read: Boolean, val createdAt: String)
 
 data class Campaign(
     val id: String,
@@ -204,6 +205,28 @@ class CampaignRepository(context: Context) {
         return if (status in 200..299) null else message(response)
     }
 
+
+
+    fun listNotifications(): Pair<List<BetalinkNotification>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<BetalinkNotification>() to "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/notifications?select=id,title,body,read_at,created_at&order=created_at.desc&limit=50",
+            "GET", token
+        )
+        if (status !in 200..299) return emptyList<BetalinkNotification>() to message(body)
+        val array = JSONArray(body)
+        return (0 until array.length()).map { i ->
+            val row = array.getJSONObject(i)
+            BetalinkNotification(row.getString("id"), row.optString("title"), row.optString("body"), !row.isNull("read_at"), row.optString("created_at"))
+        } to null
+    }
+
+    fun markNotificationRead(id: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val body = JSONObject().put("read_at", utcNow())
+        val (status, response) = call("/rest/v1/notifications?id=eq.$id", "PATCH", token, body)
+        return if (status in 200..299) null else message(response)
+    }
 
     fun taskSubmissions(campaignId: String): Pair<List<TaskSubmission>, String?> {
         val token = sessions.read()?.first ?: return emptyList<TaskSubmission>() to "Oturum bulunamadı."
