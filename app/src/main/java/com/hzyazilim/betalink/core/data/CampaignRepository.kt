@@ -12,7 +12,7 @@ import java.net.URLEncoder
 
 data class CampaignMember(val id: String, val testerId: String, val status: String)
 data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?, val isCreator: Boolean)
-data class GroupMember(val id: String, val userId: String, val status: String)
+data class GroupMember(val id: String, val userId: String, val status: String)\ndata class GroupTestEmail(val displayName: String, val email: String)\ndata class GroupSnapshot(val status: String, val approvedMembers: Int, val requiredMembers: Int, val elapsedDays: Int, val requiredDays: Int, val startedAt: String?, val emails: List<GroupTestEmail>)
 data class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)
 data class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int)
 data class TaskSubmission(val id: String, val taskTitle: String, val testerId: String, val status: String, val notes: String)
@@ -161,6 +161,40 @@ class CampaignRepository(context: Context) {
         val body = JSONObject().put("status", if (approved) "approved" else "removed")
         val (status, response) = call("/rest/v1/group_members?id=eq.$memberId", "PATCH", token, body)
         return if (status in 200..299) null else message(response)
+    }
+
+    fun setGroupEmailConsent(groupId: String, consent: Boolean): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val (status, response) = call(
+            "/rest/v1/rpc/betalink_set_group_email_consent", "POST", token,
+            JSONObject().put("p_group_id", groupId).put("p_consent", consent)
+        )
+        return if (status in 200..299) null else message(response)
+    }
+
+    fun groupSnapshot(groupId: String): Pair<GroupSnapshot?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/rpc/betalink_group_snapshot", "POST", token,
+            JSONObject().put("p_group_id", groupId)
+        )
+        if (status !in 200..299) return null to message(body)
+        val row = try { JSONObject(body) } catch (_: Exception) { null }
+            ?: return null to "Grup test durumu okunamadı."
+        val emailArray = row.optJSONArray("test_emails") ?: JSONArray()
+        val emails = (0 until emailArray.length()).map { i ->
+            val item = emailArray.getJSONObject(i)
+            GroupTestEmail(item.optString("display_name"), item.optString("email"))
+        }
+        return GroupSnapshot(
+            row.optString("tracking_status"),
+            row.optInt("approved_members"),
+            row.optInt("required_members", 15),
+            row.optInt("elapsed_days"),
+            row.optInt("required_days", 14),
+            row.optString("started_at").takeIf { it.isNotBlank() && it != "null" },
+            emails
+        ) to null
     }
 
     fun trackingSnapshot(campaignId: String): Pair<CampaignTracking?, String?> {
