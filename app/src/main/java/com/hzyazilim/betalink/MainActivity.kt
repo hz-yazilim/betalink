@@ -51,6 +51,7 @@ import com.hzyazilim.betalink.ui.campaigns.MyTestsHub
 import com.hzyazilim.betalink.ui.campaigns.CampaignBrowserScreen
 import com.hzyazilim.betalink.ui.groups.GroupsScreen
 import com.hzyazilim.betalink.ui.notifications.NotificationsDialog
+import com.hzyazilim.betalink.ui.admin.AdminScreen
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -102,11 +103,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit, onDeleteAccount: suspend () -> String?) {
+fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend () -> Unit, onDeleteAccount: suspend () -> String?) {
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var deleteMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var showNotifications by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showAdminPanel by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -126,12 +128,14 @@ fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit, onDele
         Column(
             modifier = Modifier.fillMaxSize().padding(innerPadding)
         ) {
-            when (selectedTab) {
+            if (showAdminPanel) {
+                AdminScreen(onClose = { showAdminPanel = false })
+            } else when (selectedTab) {
                 0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 3 }, onNotifications = { showNotifications = true })
                 1 -> CampaignBrowserScreen(myTests = false)
                 2 -> GroupsScreen()
                 3 -> MyTestsHub()
-                else -> ProfileScreen(currentUser, deleteMessage = deleteMessage, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
+                else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
             }
         }
     }
@@ -244,7 +248,7 @@ private fun EmptyListScreen(eyebrow: String, title: String, message: String, act
 }
 
 @Composable
-private fun ProfileScreen(currentUser: BetalinkUser, deleteMessage: String?, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
+private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMessage: String?, onAdminPanel: () -> Unit, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
     val context = LocalContext.current
     val repository = remember(context) { CampaignRepository(context) }
     var reputation by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -266,6 +270,7 @@ private fun ProfileScreen(currentUser: BetalinkUser, deleteMessage: String?, onS
         )
         deleteMessage?.let { Text(it, color = Color(0xFFFF8A8A), fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
         Spacer(Modifier.height(18.dp))
+        if (isAdmin) Button(onClick = onAdminPanel, modifier = Modifier.fillMaxWidth()) { Text("Yönetici paneli") }
         Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Güvenli çıkış yap") }
         TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
             Text("Hesabımı ve verilerimi sil", color = Color(0xFFFF8A8A))
