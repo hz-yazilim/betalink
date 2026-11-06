@@ -1,41 +1,67 @@
 # Betalink
 
-Betalink is an Android-first community platform that connects app developers who need closed-test participants with testers who want to participate in genuine app testing campaigns.
+Betalink is a native Android community platform connecting app developers who need closed-test participants with testers who want to participate in genuine app testing campaigns.
 
 ## Product direction
 - Native Android application (Kotlin + Jetpack Compose); no WebView wrapper.
-- Supabase for authentication, PostgreSQL data, and file storage.
-- Firebase Cloud Messaging for push notifications (planned).
-- Turkish-first launch, with an architecture ready for localization.
-- Tester and developer capabilities can coexist on one account.
-- Each campaign tracks its own tester participation and independent 14-day period.
+- Supabase Auth, PostgreSQL, row-level security, and Edge Functions.
+- Turkish-first launch.
+- One account can act as both tester and developer.
+- Each campaign has its own tester threshold and independent 14-day clock.
+- Campaigns are filtered by the tester's Android release version.
+
+## Implemented Android flows
+- Email/password sign-up, sign-in, session restoration, and sign-out.
+- Encrypted session storage using Android Keystore.
+- Automatic tester device/Android version profile sync.
+- Campaign discovery and application.
+- Developer campaign creation and applicant approval/rejection/waitlist promotion.
+- Tester Play opt-in self-attestation and daily check-ins.
+- Independent campaign progress display and 12 active-tester threshold.
+- Starter tasks, task submission, developer approval/change requests, and tester resubmission.
+- Tester feedback, developer replies, and report/block actions.
+- Public/private tester groups, joining, and owner approval of private-group requests.
+- In-app notifications for applications, group requests, task reviews, and feedback replies.
+- Reputation points from reviewed tasks and dropouts.
+- Profile reputation score.
+- Account deletion from inside the app.
+- Hidden administrator panel, visible only after server-side admin authorization.
 
 ## Google Play testing integrity
-Betalink helps users organize and document genuine testing participation. It does not access Google Play Console private data and cannot guarantee that Google will approve production access. Users must join tests with their own Google accounts, install and genuinely use the apps, and provide honest feedback. Never request Google passwords or Play Console credentials.
+Betalink helps users organize and document genuine testing participation. It does not access Google Play Console private data and cannot guarantee production access approval. Users must join tests with their own Google accounts, install and genuinely use the apps, and provide honest feedback. Never request Google passwords or Play Console credentials.
 
-A tester's in-app daily confirmation is a self-report, not proof of Google Play opt-in status. The campaign clock and completion decision must be controlled by trusted backend logic. A campaign must not be marked complete merely because 14 calendar days elapsed; the required tester threshold must be maintained and the developer must still follow Google Play Console requirements.
-
-## MVP modules
-Authentication and profiles, tester/developer roles, developer campaigns, tester discovery and matching, tester groups, campaign membership and waitlists, task checklists, feedback and replies, notifications, reputation, reports/blocking, support, admin moderation, and account/data deletion.
+An in-app Play opt-in confirmation is a self-report, not proof of Google Play Console enrollment. The campaign clock starts only after the required number of testers have been accepted and self-attested. The server pauses the clock if the active tester threshold falls below 12. The progress endpoint reports eligibility after 14 days only while the threshold remains satisfied. Developers must still verify actual participation in Play Console.
 
 ## Android project
-Open this repository in Android Studio. The native app lives in `app/`.
+Open this repository in Android Studio. The native application is in app/.
 
-### Build
-The GitHub Actions workflow builds a debug APK on every push to `main`. When a build succeeds, download the `betalink-debug-apk` artifact from the workflow run:
-[GitHub Actions](https://github.com/hz-yazilim/betalink/actions)
+### Build and tests
+GitHub Actions runs unit tests and builds a debug APK on pushes to main. A successful run uploads the betalink-debug-apk artifact:
+https://github.com/hz-yazilim/betalink/actions
 
-## Backend setup
-The initial schema is in `supabase/migrations/202611060001_initial_schema.sql`. Apply it only after a dedicated Betalink Supabase project is provisioned and the migration has been reviewed. Do not reuse Tivarto or Kalpkalp credentials or databases.
+The debug APK is for installation/testing. A signed release build, device-level QA, privacy-policy URL, Play Console data-deletion URL, and store listing are still required before publication.
 
-Never commit Supabase service-role keys. The Android client may use only the project's publishable/anon key. Privileged tasks (account deletion, moderation, membership approvals, campaign clock control, reputation updates, and notification dispatch) must run server-side.
+## Backend
+Betalink uses its own Supabase project. Do not reuse Tivarto or any other project's credentials or database.
 
-## Account and data deletion
-Deleting an account must be performed by trusted server-side code using the authenticated user identity. The database uses cascading foreign keys so profile-owned data is removed with the account, while references that must remain for moderation/audit are designed separately. The production deletion flow must also revoke sessions and handle stored files before release.
+Database migrations are stored in supabase/migrations/. They define the initial schema, RLS policies, profile creation, per-campaign tracking, task workflows, group moderation, notifications, reputation, and policy/index hardening.
 
-## Current status
-- Native Android UI shell and five-tab navigation are in place.
-- Initial PostgreSQL schema and row-level security policies are drafted.
-- CI workflow is configured to build and upload a debug APK.
-- Supabase project creation is currently blocked by the free-plan limit of two active projects in the selected organization.
-- Authentication, live data screens, server-side workflows, push notifications, and end-to-end tests are not yet connected.
+Deployed Edge Functions:
+- delete-account: deletes the authenticated user's account server-side.
+- admin-api: admin-only dashboard, report moderation, account suspension, and announcements. It checks the platform_admins table server-side.
+
+Never commit Supabase service-role keys. The Android client contains only the project's publishable key. Privileged actions must remain server-side.
+
+## Security notes
+- All public tables have RLS enabled.
+- Admin tables and the raw campaign-tracking table intentionally have no direct client policies; access is through trusted server-side functions.
+- Private privileged RPC implementations live in a non-exposed database schema.
+- Security advisor warnings for the admin audit table, platform-admin table, and raw tracking table are intentional server-only restrictions.
+- Account deletion cascades through profile-owned data. Final release QA must verify deletion, session revocation, and any future uploaded-file cleanup.
+
+## Current limitations before public release
+- The initial administrator account must be explicitly provisioned in platform_admins; no public self-claim is allowed.
+- Push notifications (FCM) are not configured; current notifications are in-app.
+- End-to-end tests with real tester/developer accounts and real Play Console campaigns remain necessary.
+- Admin identity, support contact, privacy policy, and external account-deletion URL must be finalized with the owner before Play Store submission.
+- The app has not yet completed real-device QA or a signed release build.
