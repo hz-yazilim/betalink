@@ -70,8 +70,9 @@ Never commit Supabase service-role keys. The Android client contains only the pr
 ## BetaPuan economy
 
 - Currency: BetaPuan (BP), virtual and non-transferable; it has no cash value.
-- A user must complete at least two distinct 14-day campaign tests before creating campaigns, creating tester groups, or joining groups.
-- A completed campaign test awards 25 BP once per user/campaign.\n- A completed 15-tester group test awards 25 BP once to each approved tester in that group; the group creator/leader is not counted as one of the 15 testers.
+- A user must complete at least two distinct 14-day support tests (campaign or group tests) before creating campaigns, creating tester groups, or joining groups.
+- A completed campaign test awards 25 BP once per user/campaign.
+- A completed 15-tester group test awards 25 BP once to each approved tester in that group; the group creator/leader is not counted as one of the 15 testers.
 - Creating a developer campaign costs 50 BP.
 - Creating a tester group costs 30 BP.
 - Joining a public tester group costs 5 BP. Private-group join requests are free after the two-test eligibility gate.
