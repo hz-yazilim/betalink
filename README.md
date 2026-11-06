@@ -7,7 +7,7 @@ Betalink is a native Android community platform connecting app developers who ne
 - Supabase Auth, PostgreSQL, row-level security, and Edge Functions.
 - Turkish-first launch.
 - One account can act as both tester and developer.
-- Each campaign has its own tester threshold and independent 14-day clock.
+- Each campaign has its own tester threshold and independent 14-day clock.\n- Each tester group has a separate 15-member threshold and independent 14-day clock.
 - Campaigns are filtered by the tester's Android release version.
 
 ## Implemented Android flows
@@ -20,12 +20,12 @@ Betalink is a native Android community platform connecting app developers who ne
 - Independent campaign progress display and 12 active-tester threshold.
 - Starter tasks, task submission, developer approval/change requests, and tester resubmission.
 - Tester feedback, developer replies, and report/block actions.
-- Public/private tester groups, joining, and owner approval of private-group requests.
-- In-app notifications for applications, group requests, task reviews, and feedback replies.
+- Public/private tester groups, joining, and owner approval of private-group requests.\n- Group testing starts only when 15 approved members are present; a shared 14-day clock is recorded server-side. If the approved count falls below 15 before completion, the clock pauses and restarts when the group is full again.\n- Group participants can explicitly opt in to sharing their Play test email; only approved members can view addresses of members who consented.
+- In-app notifications for applications, group requests, task reviews, feedback replies, and group test start/pause/completion.\n- Android 13+ notification permission explanation and runtime request, with a notification channel.
 - Reputation points from reviewed tasks and dropouts.
 - Profile reputation score.
 - Account deletion from inside the app.
-- Hidden administrator panel, visible only after server-side admin authorization.
+- Hidden administrator panel, visible only when the verified `hz.yazilimm@gmail.com` account passes server-side email allowlisting.
 
 ## Google Play testing integrity
 Betalink helps users organize and document genuine testing participation. It does not access Google Play Console private data and cannot guarantee production access approval. Users must join tests with their own Google accounts, install and genuinely use the apps, and provide honest feedback. Never request Google passwords or Play Console credentials.
@@ -60,8 +60,8 @@ Never commit Supabase service-role keys. The Android client contains only the pr
 - Account deletion cascades through profile-owned data. Final release QA must verify deletion, session revocation, and any future uploaded-file cleanup.
 
 ## Current limitations before public release
-- The initial administrator account must be explicitly provisioned in platform_admins; no public self-claim is allowed.
-- Push notifications (FCM) are not configured; current notifications are in-app.
+- The administrator allowlist is pinned server-side to `hz.yazilimm@gmail.com`; that exact email must register/sign in to see the admin panel.
+- Remote push delivery (FCM) is not configured yet. The Android permission prompt and notification channel are implemented, but Firebase project configuration and server credentials are still required for notifications while the app is closed.
 - End-to-end tests with real tester/developer accounts and real Play Console campaigns remain necessary.
 - Admin identity, support contact, privacy policy, and external account-deletion URL must be finalized with the owner before Play Store submission.
 - The app has not yet completed real-device QA or a signed release build.
