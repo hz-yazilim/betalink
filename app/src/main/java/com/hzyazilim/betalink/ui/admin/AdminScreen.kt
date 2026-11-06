@@ -63,7 +63,7 @@ fun AdminScreen(onClose: () -> Unit) {
 
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 18.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 18.dp, bottom = 36.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-        Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
                 Text("BETALINK", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
