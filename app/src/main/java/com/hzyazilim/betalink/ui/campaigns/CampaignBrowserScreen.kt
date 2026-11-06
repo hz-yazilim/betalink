@@ -70,8 +70,9 @@ fun CampaignBrowserScreen(myTests: Boolean) {
         Text(if (myTests) "Katıldığın kampanyalar" else "Açık test kampanyaları", style = MaterialTheme.typography.headlineSmall)
         WalletStatusCard()
         if (myTests) {
-            Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                Text("＋ Geliştirici kampanyası oluştur")
+            Text("Kampanya açma: en az 2 tamamlanmış destek testi + 50 BP", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                Text("＋ Kampanya oluştur · 50 BP")
             }
         }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 10.dp)) }
