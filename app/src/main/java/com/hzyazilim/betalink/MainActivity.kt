@@ -93,6 +93,7 @@ class MainActivity : ComponentActivity() {
 fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit, onDeleteAccount: suspend () -> String?) {
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var deleteMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -132,7 +133,7 @@ fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit, onDele
                     message = "Katıldığın kampanyalar, her kampanyanın 14 günlük süresi, görevleri ve yedek liste durumun burada takip edilecek.",
                     action = "Henüz katıldığın kampanya yok."
                 )
-                else -> ProfileScreen(currentUser, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { onDeleteAccount() } })
+                else -> ProfileScreen(currentUser, deleteMessage = deleteMessage, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
             }
         }
     }
@@ -241,7 +242,7 @@ private fun EmptyListScreen(eyebrow: String, title: String, message: String, act
 }
 
 @Composable
-private fun ProfileScreen(currentUser: BetalinkUser, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
+private fun ProfileScreen(currentUser: BetalinkUser, deleteMessage: String?, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
     var confirmDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxSize().padding(22.dp),
@@ -251,9 +252,10 @@ private fun ProfileScreen(currentUser: BetalinkUser, onSignOut: () -> Unit, onDe
         Text(currentUser.displayName, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
         Text(currentUser.email, color = Color(0xFFB5BED4), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
         Text(
-            "Tek hesapla tester ve geliştirici olarak yer alabileceksin. E-posta doğrulama, hesap silme ve veri silme seçenekleri backend entegrasyonuyla eklenecek.",
+            "Tek hesapla tester ve geliştirici olarak yer alabilirsin. Hesabını silersen profilin ve ilişkili kişisel kayıtların veritabanından kaldırılır.",
             color = Color(0xFFB5BED4), fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp)
         )
+        deleteMessage?.let { Text(it, color = Color(0xFFFF8A8A), fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
         Spacer(Modifier.height(18.dp))
         Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Güvenli çıkış yap") }
         TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
