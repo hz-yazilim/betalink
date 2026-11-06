@@ -184,10 +184,10 @@ fun GroupsScreen() {
                             else -> "15 tester bekleniyor"
                         }
                         Text(statusText, color = MaterialTheme.colorScheme.secondary)
-                        Text("${snapshot.approvedMembers}/${snapshot.requiredMembers} onaylı üye")
+                        Text("${snapshot.approvedMembers}/${snapshot.requiredMembers} onaylı tester")
                         Text("${snapshot.elapsedDays}/${snapshot.requiredDays} gün tamamlandı")
                         if (snapshot.status == "waiting" || snapshot.status == "paused") {
-                            Text("15 kişi onaylandığında 14 günlük sayaç başlayacak. Üye sayısı 15'in altına düşerse sayaç durur ve 15 kişi yeniden tamamlandığında 14 gün baştan başlar.", fontSize = 11.sp)
+                            Text("15 tester onaylandığında 14 günlük sayaç başlayacak. Üye sayısı 15'in altına düşerse sayaç durur ve 15 tester yeniden tamamlandığında 14 gün baştan başlar.", fontSize = 11.sp)
                         } else {
                             Text("Testte kullanılacak e-posta adresleri (yalnızca paylaşım izni veren üyeler):", fontSize = 12.sp)
                             if (snapshot.emails.isEmpty()) Text("Henüz paylaşım izni veren üye yok.", fontSize = 11.sp)
