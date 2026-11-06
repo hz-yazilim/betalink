@@ -251,6 +251,38 @@ class CampaignRepository(context: Context) {
 
 
 
+
+    fun reportUser(targetUserId: String, campaignId: String, reason: String, details: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val reporterId = JSONObject(user.second).optString("id")
+        val body = JSONObject().put("reporter_id", reporterId)
+            .put("target_user_id", targetUserId).put("campaign_id", campaignId)
+            .put("reason", reason).put("details", details)
+        val (status, response) = call("/rest/v1/reports", "POST", token, body)
+        return if (status in 200..299) null else message(response)
+    }
+
+    fun blockUser(targetUserId: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val blockerId = JSONObject(user.second).optString("id")
+        val body = JSONObject().put("blocker_id", blockerId).put("blocked_id", targetUserId)
+        val (status, response) = call("/rest/v1/blocked_users", "POST", token, body)
+        return if (status in 200..299) null else message(response)
+    }
+
+    fun unblockUser(targetUserId: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val blockerId = JSONObject(user.second).optString("id")
+        val (status, response) = call("/rest/v1/blocked_users?blocker_id=eq.$blockerId&blocked_id=eq.$targetUserId", "DELETE", token)
+        return if (status in 200..299) null else message(response)
+    }
+
     fun myReputationScore(): Pair<Int, String?> {
         val token = sessions.read()?.first ?: return 0 to "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
