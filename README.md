@@ -78,3 +78,13 @@ Never commit Supabase service-role keys. The Android client contains only the pr
 - Joining a public tester group costs 5 BP. Private-group join requests are free after the two-test eligibility gate.
 - Wallet balance and spending are enforced by private-schema database functions; the Android client cannot directly change balances.
 - Campaign rewards are issued when the campaign tracking endpoint finalizes a continuous 14-day campaign with the required tester count. A client-side check-in is a self-report and is not independent Google Play Console verification.
+
+
+## Privacy policy and account deletion
+
+Public legal pages are served by the `legal-pages` Supabase Edge Function (public GET only; it does not expose database credentials):
+
+- Privacy policy: https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy
+- External account/data deletion request: https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion
+
+The same documents are maintained in `docs/legal/`; the public pages are linked from the Android Profile screen. Users can delete their account inside the app or submit an external deletion request by email. External requests are identity-checked and handled without undue delay, no later than 30 days for KVKK requests. Keep these pages and the Play Console Data safety answers synchronized whenever data collection or SDKs change.
