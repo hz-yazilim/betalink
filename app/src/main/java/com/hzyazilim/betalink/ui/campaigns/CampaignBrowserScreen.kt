@@ -35,6 +35,8 @@ import com.hzyazilim.betalink.core.data.Campaign
 import com.hzyazilim.betalink.core.data.CampaignRepository
 import com.hzyazilim.betalink.core.data.CampaignTask
 import com.hzyazilim.betalink.core.data.CampaignTracking
+import com.hzyazilim.betalink.core.data.TaskSubmission
+import com.hzyazilim.betalink.core.data.FeedbackItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -319,6 +321,87 @@ fun MyTestsHub() {
 }
 
 @Composable
+private fun DeveloperReviewDialog(
+    campaign: Campaign,
+    repository: CampaignRepository,
+    onDismiss: () -> Unit,
+    onMessage: (String) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var submissions by remember { mutableStateOf<List<TaskSubmission>>(emptyList()) }
+    var feedbackItems by remember { mutableStateOf<List<FeedbackItem>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    LaunchedEffect(campaign.id) {
+        val tasks = withContext(Dispatchers.IO) { repository.taskSubmissions(campaign.id) }
+        submissions = tasks.first
+        tasks.second?.let(onMessage)
+        val feedback = withContext(Dispatchers.IO) { repository.feedbackForCampaign(campaign.id) }
+        feedbackItems = feedback.first
+        feedback.second?.let(onMessage)
+        loading = false
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${campaign.appName} · İnceleme") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (loading) CircularProgressIndicator()
+                Text("Görev teslimleri", style = MaterialTheme.typography.titleSmall)
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (submissions.isEmpty()) item { Text("Henüz görev teslimi yok.") }
+                    items(submissions, key = { it.id }) { submission ->
+                        Column {
+                            Text(submission.taskTitle, style = MaterialTheme.typography.bodyMedium)
+                            Text("Tester ${submission.testerId.take(8)}… · ${submission.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            if (submission.status == "submitted") {
+                                Row {
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            val error = withContext(Dispatchers.IO) { repository.reviewTaskSubmission(submission.id, true) }
+                                            onMessage(error ?: "Görev onaylandı.")
+                                            if (error == null) submissions = withContext(Dispatchers.IO) { repository.taskSubmissions(campaign.id) }.first
+                                        }
+                                    }) { Text("Onayla") }
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            val error = withContext(Dispatchers.IO) { repository.reviewTaskSubmission(submission.id, false) }
+                                            onMessage(error ?: "Düzeltme istendi.")
+                                            if (error == null) submissions = withContext(Dispatchers.IO) { repository.taskSubmissions(campaign.id) }.first
+                                        }
+                                    }) { Text("Düzeltme iste") }
+                                }
+                            }
+                        }
+                    }
+                    item { Text("Tester geri bildirimleri", style = MaterialTheme.typography.titleSmall) }
+                    if (feedbackItems.isEmpty()) item { Text("Henüz geri bildirim yok.") }
+                    items(feedbackItems, key = { it.id }) { item ->
+                        var reply by remember(item.id) { mutableStateOf(item.reply.orEmpty()) }
+                        Column {
+                            Text("${item.rating ?: "—"}/5 · ${item.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                            Text(item.body, fontSize = 13.sp)
+                            OutlinedTextField(reply, { reply = it }, label = { Text("Geliştirici yanıtı") }, minLines = 2)
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        val error = withContext(Dispatchers.IO) { repository.replyToFeedback(item.id, reply, true) }
+                                        onMessage(error ?: "Yanıt kaydedildi ve geri bildirim çözüldü.")
+                                        if (error == null) feedbackItems = withContext(Dispatchers.IO) { repository.feedbackForCampaign(campaign.id) }.first
+                                    }
+                                },
+                                enabled = reply.trim().isNotEmpty(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Yanıtla ve çözüldü işaretle") }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Kapat") } }
+    )
+}
+
+@Composable
 private fun DeveloperCampaignsScreen() {
     val context = LocalContext.current
     val repository = remember { CampaignRepository(context) }
@@ -328,6 +411,7 @@ private fun DeveloperCampaignsScreen() {
     var message by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
     var selectedCampaign by remember { mutableStateOf<Campaign?>(null) }
+    var selectedReviewCampaign by remember { mutableStateOf<Campaign?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var applicants by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.CampaignMember>>(emptyList()) }
 
@@ -363,6 +447,7 @@ private fun DeveloperCampaignsScreen() {
                                 selectedCampaign = campaign
                             }
                         }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Başvuruları yönet") }
+                        TextButton(onClick = { selectedReviewCampaign = campaign }, modifier = Modifier.fillMaxWidth()) { Text("Görev ve geri bildirimleri yönet") }
                     }
                 }
             }
@@ -380,6 +465,10 @@ private fun DeveloperCampaignsScreen() {
                 }
             }
         )
+    }
+
+    selectedReviewCampaign?.let { campaign ->
+        DeveloperReviewDialog(campaign, repository, onDismiss = { selectedReviewCampaign = null }, onMessage = { message = it })
     }
 
     selectedCampaign?.let { campaign ->
