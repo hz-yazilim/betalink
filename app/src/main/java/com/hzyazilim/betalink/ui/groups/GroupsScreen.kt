@@ -34,7 +34,8 @@ import androidx.compose.ui.unit.sp
 import com.hzyazilim.betalink.core.data.CampaignRepository
 import com.hzyazilim.betalink.ui.wallet.WalletStatusCard
 import com.hzyazilim.betalink.core.data.TesterGroup
-import com.hzyazilim.betalink.core.data.GroupMember\nimport com.hzyazilim.betalink.core.data.GroupSnapshot
+import com.hzyazilim.betalink.core.data.GroupMember
+import com.hzyazilim.betalink.core.data.GroupSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -103,7 +104,8 @@ fun GroupsScreen() {
                                         snapshotLoading = true
                                         val result = withContext(Dispatchers.IO) { repository.groupSnapshot(group.id) }
                                         groupSnapshot = result.first
-                                        shareEmail = result.first?.myEmailShared ?: false\n                                        playTestEmail = result.first?.myPlayTestEmail ?: ""
+                                        shareEmail = result.first?.myEmailShared ?: false
+                                        playTestEmail = result.first?.myPlayTestEmail ?: ""
                                         message = result.second
                                         testGroup = if (result.first != null) group else null
                                         snapshotLoading = false
