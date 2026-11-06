@@ -52,7 +52,7 @@ class CampaignRepository(context: Context) {
                 j.optInt("target_testers", 12), j.optString("status"),
                 if (j.isNull("minimum_android_version")) null else j.optInt("minimum_android_version")
             )
-        }.filter { it.minimumAndroid == null || it.minimumAndroid <= Build.VERSION.SDK_INT } to null
+        }.filter { it.minimumAndroid == null || it.minimumAndroid <= (Build.VERSION.RELEASE.substringBefore(".").toIntOrNull() ?: Build.VERSION.SDK_INT) } to null
     }
 
     fun syncTesterDevice(): String? {
@@ -63,7 +63,7 @@ class CampaignRepository(context: Context) {
         val body = JSONObject()
             .put("user_id", userId)
             .put("device_model", Build.MANUFACTURER + " " + Build.MODEL)
-            .put("android_version", Build.VERSION.SDK_INT)
+            .put("android_version", Build.VERSION.RELEASE.substringBefore(".").toIntOrNull() ?: Build.VERSION.SDK_INT)
             .put("available_for_testing", true)
             .put("updated_at", utcNow())
         val existing = call("/rest/v1/tester_profiles?select=user_id&user_id=eq.$userId", "GET", token)
