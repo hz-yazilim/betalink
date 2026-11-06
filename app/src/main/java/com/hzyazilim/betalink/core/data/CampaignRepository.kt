@@ -13,6 +13,8 @@ data class CampaignMember(val id: String, val testerId: String, val status: Stri
 data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?)
 data class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)
 data class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int)
+data class TaskSubmission(val id: String, val taskTitle: String, val testerId: String, val status: String, val notes: String)
+data class FeedbackItem(val id: String, val testerId: String, val rating: Int?, val body: String, val status: String, val reply: String?)
 
 data class Campaign(
     val id: String,
@@ -199,6 +201,52 @@ class CampaignRepository(context: Context) {
         val body = JSONObject().put("campaign_id", campaignId).put("tester_id", userId)
             .put("feedback_type", "experience").put("rating", rating).put("body", bodyText.trim())
         val (status, response) = call("/rest/v1/feedback", "POST", token, body)
+        return if (status in 200..299) null else message(response)
+    }
+
+
+    fun taskSubmissions(campaignId: String): Pair<List<TaskSubmission>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<TaskSubmission>() to "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/task_completions?select=id,tester_id,status,notes,campaign_tasks!inner(title,campaign_id)&campaign_tasks.campaign_id=eq.$campaignId&order=submitted_at.desc",
+            "GET", token
+        )
+        if (status !in 200..299) return emptyList<TaskSubmission>() to message(body)
+        val array = JSONArray(body)
+        return (0 until array.length()).map { i ->
+            val row = array.getJSONObject(i)
+            val task = row.optJSONObject("campaign_tasks") ?: JSONObject()
+            TaskSubmission(row.getString("id"), task.optString("title"), row.getString("tester_id"), row.optString("status"), row.optString("notes"))
+        } to null
+    }
+
+    fun reviewTaskSubmission(id: String, approved: Boolean): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val body = JSONObject().put("status", if (approved) "approved" else "needs_changes")
+            .put("reviewed_at", java.time.Instant.now().toString())
+        val (status, response) = call("/rest/v1/task_completions?id=eq.$id", "PATCH", token, body)
+        return if (status in 200..299) null else message(response)
+    }
+
+    fun feedbackForCampaign(campaignId: String): Pair<List<FeedbackItem>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<FeedbackItem>() to "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/feedback?select=id,tester_id,rating,body,status,developer_reply&campaign_id=eq.$campaignId&order=created_at.desc",
+            "GET", token
+        )
+        if (status !in 200..299) return emptyList<FeedbackItem>() to message(body)
+        val array = JSONArray(body)
+        return (0 until array.length()).map { i ->
+            val row = array.getJSONObject(i)
+            FeedbackItem(row.getString("id"), row.getString("tester_id"), if (row.isNull("rating")) null else row.optInt("rating"), row.optString("body"), row.optString("status"), row.optString("developer_reply").takeIf { it.isNotBlank() })
+        } to null
+    }
+
+    fun replyToFeedback(id: String, reply: String, resolved: Boolean): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val body = JSONObject().put("developer_reply", reply.trim()).put("status", if (resolved) "resolved" else "open")
+            .put("updated_at", java.time.Instant.now().toString())
+        val (status, response) = call("/rest/v1/feedback?id=eq.$id", "PATCH", token, body)
         return if (status in 200..299) null else message(response)
     }
 
