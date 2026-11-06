@@ -166,6 +166,24 @@ create table if not exists public.blocked_users (
   check (blocker_id <> blocked_id)
 );
 
+-- Server-managed authorization and audit records. Never expose these tables
+-- through the Android client.
+create table if not exists public.platform_admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  granted_at timestamptz not null default now(),
+  granted_by uuid references auth.users(id) on delete set null
+);
+
+create table if not exists public.admin_audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  actor_id uuid references auth.users(id) on delete set null,
+  action text not null,
+  target_type text,
+  target_id text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.reputation_events (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(user_id) on delete cascade,
@@ -201,6 +219,8 @@ alter table public.notifications enable row level security;
 alter table public.reports enable row level security;
 alter table public.blocked_users enable row level security;
 alter table public.reputation_events enable row level security;
+alter table public.platform_admins enable row level security;
+alter table public.admin_audit_logs enable row level security;
 
 -- User-owned profile data.
 create policy "profiles_read_authenticated" on public.profiles for select to authenticated using (true);
@@ -352,5 +372,8 @@ grant select, update on public.notifications to authenticated;
 grant select, insert on public.reports to authenticated;
 grant select, insert, delete on public.blocked_users to authenticated;
 grant select on public.reputation_events to authenticated;
--- campaign_tracking intentionally has no authenticated grants or policies.
+-- Server-managed tables are not accessible to anon/authenticated clients.
+revoke all on public.campaign_tracking from anon, authenticated;
+revoke all on public.platform_admins from anon, authenticated;
+revoke all on public.admin_audit_logs from anon, authenticated;
 
