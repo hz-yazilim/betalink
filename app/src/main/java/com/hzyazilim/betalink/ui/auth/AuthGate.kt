@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import com.hzyazilim.betalink.BetalinkApp
 import com.hzyazilim.betalink.core.auth.BetalinkUser
 import com.hzyazilim.betalink.core.auth.SupabaseAuthRepository
@@ -100,6 +101,7 @@ private fun AuthScreen(
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val uriHandler = LocalUriHandler.current
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -144,6 +146,8 @@ private fun AuthScreen(
             TextButton(onClick = { isSignUp = !isSignUp; message = null }) {
                 Text(if (isSignUp) "Zaten hesabın var mı? Giriş yap" else "Hesabın yok mu? Kayıt ol")
             }
+            TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy") }) { Text("Gizlilik politikası") }
+            TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion") }) { Text("Hesap ve veri silme") }
             Text("Devam ederek gerçek uygulama testlerine katılmayı ve dürüst geri bildirim vermeyi kabul edersin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, modifier = Modifier.padding(top = 10.dp))
         }
     }
