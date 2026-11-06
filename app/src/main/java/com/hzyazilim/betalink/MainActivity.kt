@@ -129,8 +129,8 @@ fun BetalinkApp(currentUser: BetalinkUser, onSignOut: suspend () -> Unit, onDele
             }
         }
     }
-}
     if (showNotifications) NotificationsDialog(onDismiss = { showNotifications = false })
+}
 
 @Composable
 private fun HomeScreen(onExplore: () -> Unit, onMyTests: () -> Unit, onNotifications: () -> Unit) {
