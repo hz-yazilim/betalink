@@ -18,6 +18,7 @@ data class CampaignTracking(val status: String, val elapsedDays: Int, val requir
 data class TaskSubmission(val id: String, val taskTitle: String, val testerId: String, val status: String, val notes: String)
 data class FeedbackItem(val id: String, val testerId: String, val rating: Int?, val body: String, val status: String, val reply: String?)
 data class BetalinkNotification(val id: String, val title: String, val body: String, val read: Boolean, val createdAt: String)
+data class BetaWallet(val balance: Int, val lifetimeEarned: Int, val completedSupportTests: Int)
 
 data class Campaign(
     val id: String,
@@ -77,20 +78,14 @@ class CampaignRepository(context: Context) {
 
     fun createCampaign(appName: String, optInUrl: String, description: String, category: String, target: Int, minAndroid: Int?): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
-        val user = call("/auth/v1/user", "GET", token)
-        if (user.first !in 200..299) return "Oturum doğrulanamadı."
-        val developerId = JSONObject(user.second).optString("id")
-        if (developerId.isBlank()) return "Kullanıcı bilgisi alınamadı."
         val body = JSONObject()
-            .put("developer_id", developerId)
-            .put("app_name", appName.trim())
-            .put("play_opt_in_url", optInUrl.trim())
-            .put("description", description.trim())
-            .put("category", category)
-            .put("target_testers", target)
-            .put("status", "open")
-        if (minAndroid != null) body.put("minimum_android_version", minAndroid)
-        val (status, response) = call("/rest/v1/campaigns", "POST", token, body)
+            .put("p_app_name", appName.trim())
+            .put("p_play_opt_in_url", optInUrl.trim())
+            .put("p_description", description.trim())
+            .put("p_category", category)
+            .put("p_target_testers", target)
+        if (minAndroid != null) body.put("p_minimum_android_version", minAndroid)
+        val (status, response) = call("/rest/v1/rpc/betalink_create_campaign", "POST", token, body)
         return if (status in 200..299) null else message(response)
     }
 
@@ -136,27 +131,16 @@ class CampaignRepository(context: Context) {
 
     fun createGroup(name: String, description: String, privateGroup: Boolean): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
-        val user = call("/auth/v1/user", "GET", token)
-        if (user.first !in 200..299) return "Oturum doğrulanamadı."
-        val userId = JSONObject(user.second).optString("id")
-        val body = JSONObject().put("name", name.trim()).put("description", description.trim())
-            .put("is_private", privateGroup).put("created_by", userId)
-        val (status, response) = call("/rest/v1/tester_groups", "POST", token, body)
+        val body = JSONObject().put("p_name", name.trim()).put("p_description", description.trim()).put("p_is_private", privateGroup)
+        val (status, response) = call("/rest/v1/rpc/betalink_create_group", "POST", token, body)
         return if (status in 200..299) null else message(response)
     }
 
     fun joinGroup(group: TesterGroup): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
-        val user = call("/auth/v1/user", "GET", token)
-        if (user.first !in 200..299) return "Oturum doğrulanamadı."
-        val userId = JSONObject(user.second).optString("id")
-        val statusValue = if (group.isPrivate) "pending" else "approved"
-        val body = JSONObject().put("group_id", group.id).put("user_id", userId)
-            .put("member_role", "member").put("status", statusValue)
-        val (status, response) = call("/rest/v1/group_members", "POST", token, body)
+        val (status, response) = call("/rest/v1/rpc/betalink_join_group", "POST", token, JSONObject().put("p_group_id", group.id))
         return if (status in 200..299) null else message(response)
     }
-
 
     fun groupMembers(groupId: String): Pair<List<GroupMember>, String?> {
         val token = sessions.read()?.first ?: return emptyList<GroupMember>() to "Oturum bulunamadı."
@@ -303,6 +287,16 @@ class CampaignRepository(context: Context) {
         var total = 0
         for (i in 0 until array.length()) total += array.getJSONObject(i).optInt("points")
         return total to null
+    }
+
+
+    fun walletSnapshot(): Pair<BetaWallet?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val (status, body) = call("/rest/v1/rpc/betalink_wallet_snapshot", "POST", token, JSONObject())
+        if (status !in 200..299) return null to message(body)
+        val row = try { JSONArray(body).optJSONObject(0) } catch (_: Exception) { null }
+            ?: return null to "BetaPuan bakiyesi okunamadı."
+        return BetaWallet(row.optInt("balance"), row.optInt("lifetime_earned"), row.optInt("completed_support_tests")) to null
     }
 
     fun listNotifications(): Pair<List<BetalinkNotification>, String?> {
