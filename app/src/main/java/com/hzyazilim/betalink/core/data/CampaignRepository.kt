@@ -231,9 +231,18 @@ class CampaignRepository(context: Context) {
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
-        val body = JSONObject().put("task_id", taskId).put("tester_id", userId)
-            .put("status", "submitted").put("notes", note)
-        val (status, response) = call("/rest/v1/task_completions", "POST", token, body)
+        val existing = call("/rest/v1/task_completions?select=id&task_id=eq.$taskId&tester_id=eq.$userId", "GET", token)
+        if (existing.first !in 200..299) return message(existing.second)
+        val rows = JSONArray(existing.second)
+        val body = JSONObject().put("status", "submitted").put("notes", note)
+            .put("submitted_at", utcNow()).put("reviewed_at", JSONObject.NULL)
+        val (status, response) = if (rows.length() > 0) {
+            val id = rows.getJSONObject(0).getString("id")
+            call("/rest/v1/task_completions?id=eq.$id", "PATCH", token, body)
+        } else {
+            body.put("task_id", taskId).put("tester_id", userId)
+            call("/rest/v1/task_completions", "POST", token, body)
+        }
         return if (status in 200..299) null else message(response)
     }
 
