@@ -90,7 +90,9 @@ fun CampaignBrowserScreen(myTests: Boolean) {
                 items(campaigns, key = { it.id }) { campaign ->
                     CampaignCard(
                         campaign = campaign,
+                        repository = repository,
                         myTests = myTests,
+                        refreshKey = refresh,
                         onApply = {
                             scope.launch {
                                 val error = withContext(Dispatchers.IO) { repository.applyToCampaign(campaign.id) }
@@ -142,7 +144,18 @@ fun CampaignBrowserScreen(myTests: Boolean) {
 }
 
 @Composable
-private fun CampaignCard(campaign: Campaign, myTests: Boolean, onApply: () -> Unit, onConfirmOptIn: () -> Unit, onCheckIn: () -> Unit, onOpenTasks: () -> Unit) {
+private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myTests: Boolean, refreshKey: Int, onApply: () -> Unit, onConfirmOptIn: () -> Unit, onCheckIn: () -> Unit, onOpenTasks: () -> Unit) {
+    var tracking by remember(campaign.id) { mutableStateOf<CampaignTracking?>(null) }
+    var checkinDates by remember(campaign.id) { mutableStateOf<Set<String>>(emptySet()) }
+    LaunchedEffect(campaign.id, refreshKey, myTests) {
+        if (myTests && campaign.membershipStatus in listOf("opted_in", "active", "completed")) {
+            tracking = withContext(Dispatchers.IO) { repository.trackingSnapshot(campaign.id) }.first
+            checkinDates = withContext(Dispatchers.IO) { repository.campaignCheckinDates(campaign.id) }.first
+        }
+    }
+    val todayUtc = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date())
+    val checkedToday = todayUtc in checkinDates
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -175,9 +188,25 @@ private fun CampaignCard(campaign: Campaign, myTests: Boolean, onApply: () -> Un
                     }
                 }
                 if (campaign.membershipStatus in listOf("opted_in", "active", "completed")) {
+                    tracking?.let { progress ->
+                        val startDate = progress.startedAt?.substringBefore("T") ?: campaign.joinedAt?.substringBefore("T")
+                        val endDate = startDate?.let { plusDaysForDisplay(it, progress.requiredDays - 1) }
+                        Text("Test durumu: ${progress.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                        Text("İlerleme: ${progress.elapsedDays.coerceAtMost(progress.requiredDays)}/${progress.requiredDays} gün · Tester: ${progress.activeTesters}/${progress.requiredTesters}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Başlangıç: ${startDate ?: "Henüz başlamadı"} · Bitiş: ${endDate ?: "Bekleniyor"}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            when (progress.status) {
+                                "completed" -> "25 BP ödülü tamamlandı"
+                                "running", "paused" -> "Bekleyen ödül: 25 BP"
+                                else -> "Ödül, test koşulları tamamlandığında verilir"
+                            },
+                            color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp
+                        )
+                    }
+                    Text("Günlük bildirim: ${checkinDates.size} gün", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = onOpenTasks, modifier = Modifier.fillMaxWidth()) { Text("Görevler ve geri bildirim") }
-                    Button(onClick = onCheckIn, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        Text("Bugünkü test onayını ver")
+                    Button(onClick = onCheckIn, enabled = !checkedToday, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        Text(if (checkedToday) "Bugünkü test bildirimi gönderildi" else "Bugün test yaptığımı bildir")
                     }
                 }
             }
@@ -310,17 +339,130 @@ private fun CreateCampaignDialog(
 @Composable
 fun MyTestsHub() {
     var developerMode by remember { mutableStateOf(false) }
+    var groupMode by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            TextButton(onClick = { developerMode = false }, modifier = Modifier.weight(1f)) {
-                Text("Testçi olarak")
+        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp)) {
+            TextButton(onClick = { developerMode = false; groupMode = false }, modifier = Modifier.weight(1f)) {
+                Text("Kampanyalar")
+            }
+            TextButton(onClick = { developerMode = false; groupMode = true }, modifier = Modifier.weight(1f)) {
+                Text("Gruplar")
             }
             TextButton(onClick = { developerMode = true }, modifier = Modifier.weight(1f)) {
-                Text("Geliştirici olarak")
+                Text("Geliştirici")
             }
         }
-        if (developerMode) DeveloperCampaignsScreen() else CampaignBrowserScreen(myTests = true)
+        when {
+            developerMode -> DeveloperCampaignsScreen()
+            groupMode -> MyGroupTestsScreen()
+            else -> CampaignBrowserScreen(myTests = true)
+        }
     }
+}
+
+private data class MyGroupProgress(
+    val group: com.hzyazilim.betalink.core.data.TesterGroup,
+    val snapshot: com.hzyazilim.betalink.core.data.GroupSnapshot,
+    val checkinDates: Set<String>
+)
+
+@Composable
+private fun MyGroupTestsScreen() {
+    val context = LocalContext.current
+    val repository = remember(context) { CampaignRepository(context) }
+    val scope = rememberCoroutineScope()
+    var progress by remember { mutableStateOf<List<MyGroupProgress>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var message by remember { mutableStateOf<String?>(null) }
+    var refresh by remember { mutableStateOf(0) }
+
+    LaunchedEffect(refresh) {
+        loading = true
+        val groupsResult = withContext(Dispatchers.IO) { repository.listGroups() }
+        message = groupsResult.second
+        val approved = groupsResult.first.filter { it.membershipStatus == "approved" && !it.isCreator }
+        val rows = mutableListOf<MyGroupProgress>()
+        for (group in approved) {
+            val snapshotResult = withContext(Dispatchers.IO) { repository.groupSnapshot(group.id) }
+            val snapshot = snapshotResult.first
+            if (snapshot != null) {
+                val checkins = withContext(Dispatchers.IO) { repository.groupCheckinDates(group.id) }
+                rows += MyGroupProgress(group, snapshot, checkins.first)
+            } else if (snapshotResult.second != null) {
+                message = snapshotResult.second
+            }
+        }
+        progress = rows
+        loading = false
+    }
+
+    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
+        Spacer(Modifier.height(12.dp))
+        Text("TESTÇİ OLARAK KATILDIĞIN GRUPLAR", color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp)
+        Text("Grup test takibin", style = MaterialTheme.typography.headlineSmall)
+        WalletStatusCard()
+        Text("Günlük bildirimin ve 14 günlük grup sürecin burada takip edilir. Günlük bildirim kendi beyanındır; otomatik görev teslimleri ayrıca kaydedilir.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 11.sp) }
+        if (loading) CircularProgressIndicator(Modifier.padding(24.dp))
+        else if (progress.isEmpty()) Text("Henüz onaylanmış bir tester grubuna katılmadın.", modifier = Modifier.padding(top = 18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 12.dp)) {
+            items(progress, key = { it.group.id }) { item ->
+                val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                    .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date())
+                val checkedToday = today in item.checkinDates
+                val start = item.snapshot.startedAt?.substringBefore("T")
+                val end = start?.let { plusDaysForDisplay(it, item.snapshot.requiredDays - 1) }
+                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                    Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(item.group.name, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            when (item.snapshot.status) {
+                                "running" -> "Test devam ediyor"
+                                "completed" -> "14 günlük test tamamlandı"
+                                "paused" -> "Test duraklatıldı"
+                                else -> "15 tester bekleniyor"
+                            },
+                            color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp
+                        )
+                        Text("İlerleme: ${item.snapshot.elapsedDays.coerceAtMost(item.snapshot.requiredDays)}/${item.snapshot.requiredDays} gün · ${item.snapshot.approvedMembers}/${item.snapshot.requiredMembers} tester", fontSize = 11.sp)
+                        Text("Başlangıç: ${start ?: "Henüz başlamadı"} · Bitiş: ${end ?: "Bekleniyor"}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Günlük bildirim: ${item.checkinDates.size} gün", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            when (item.snapshot.status) {
+                                "completed" -> "25 BP grup ödülü tamamlandı"
+                                "running", "paused" -> "Bekleyen ödül: 25 BP"
+                                else -> "Ödül, 15 onaylı tester ve 14 günlük süreç tamamlandığında verilir"
+                            },
+                            color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp
+                        )
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    val result = withContext(Dispatchers.IO) { repository.checkInGroupToday(item.group.id) }
+                                    message = result.second ?: if (result.first == true) "Bugünkü grup test bildirimin kaydedildi." else "Bugünkü bildirimin zaten kayıtlı."
+                                    if (result.second == null) refresh++
+                                }
+                            },
+                            enabled = !checkedToday && item.snapshot.status in listOf("running", "paused"),
+                            modifier = Modifier.fillMaxWidth().padding(top = 5.dp)
+                        ) { Text(if (checkedToday) "Bugünkü bildirim gönderildi" else "Bugün test yaptığımı bildir") }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun plusDaysForDisplay(isoDate: String, days: Int): String {
+    return try {
+        val parser = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        parser.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        val date = parser.parse(isoDate) ?: return isoDate
+        val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        calendar.time = date
+        calendar.add(java.util.Calendar.DAY_OF_YEAR, days.coerceAtLeast(0))
+        parser.format(calendar.time)
+    } catch (_: Exception) { isoDate }
 }
 
 @Composable
