@@ -103,3 +103,4 @@ Kaynaklar: AndroidBetaTesting, TestCircle, Testers Community ve beta test platfo
 - https://support.google.com/googleplay/android-developer/answer/14151465
 - https://support.google.com/googleplay/android-developer/answer/13327111
 - https://support.google.com/googleplay/android-developer/answer/11926878
+- https://support.google.com/googleplay/android-developer/answer/9876937
