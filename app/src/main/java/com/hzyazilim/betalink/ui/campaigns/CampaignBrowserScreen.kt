@@ -190,11 +190,12 @@ private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myT
                 }
                 if (campaign.membershipStatus in listOf("opted_in", "active", "completed")) {
                     tracking?.let { progress ->
-                        val startDate = progress.startedAt?.substringBefore("T") ?: campaign.joinedAt?.substringBefore("T")
-                        val endDate = startDate?.let { plusDaysForDisplay(it, progress.requiredDays - 1) }
+                        val startDate = progress.startedAt?.substringBefore("T")
+                        val endDate = startDate?.let { plusDaysForDisplay(it, progress.requiredDays) }
                         Text("Test durumu: ${progress.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                         Text("İlerleme: ${progress.elapsedDays.coerceAtMost(progress.requiredDays)}/${progress.requiredDays} gün · Tester: ${progress.activeTesters}/${progress.requiredTesters}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("Başlangıç: ${startDate ?: "Henüz başlamadı"} · Bitiş: ${endDate ?: "Bekleniyor"}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Teste başlangıç: ${startDate ?: "Henüz başlamadı"} · Bitiş: ${endDate ?: "Bekleniyor"}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        campaign.joinedAt?.substringBefore("T")?.let { Text("Katılım tarihi: $it", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         Text(
                             when (progress.status) {
                                 "completed" -> "25 BP ödülü tamamlandı"
