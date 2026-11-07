@@ -16,12 +16,6 @@ android {
         versionName = "0.2.0"
         buildConfigField("String", "SUPABASE_URL", "\"https://lwloymjcnmzobjmgvlnp.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_iafVZ3uELvqqUKYaMfYwgA_kEu5LACD\"")
-        // Resolve the public Google Web OAuth client ID for Android Studio and CI builds.
-        // Keep local.properties uncommitted; GitHub Actions supplies the Gradle property with -P.
-        val localProperties = Properties().apply {
-            val localFile = rootProject.file("local.properties")
-            if (localFile.isFile) localFile.inputStream().use { load(it) }
-        }
         // Public Google Web OAuth client ID used as the audience for native Google ID tokens.
         // Keep this fixed so local.properties or CI settings cannot silently override it.
         val googleWebClientId = "202417827129-84f6j6in9e7m98n9m840n68b1o54l5l2.apps.googleusercontent.com"
