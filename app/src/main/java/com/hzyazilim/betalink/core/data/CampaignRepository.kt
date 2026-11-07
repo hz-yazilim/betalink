@@ -52,7 +52,8 @@ class CampaignRepository(context: Context) {
         if (status !in 200..299) return null to message(body)
         val rows = JSONArray(body)
         if (rows.length() == 0) return false to null
-        return rows.getJSONObject(0).optString("terms_version") == CURRENT_TERMS_VERSION to null
+        val accepted = rows.getJSONObject(0).optString("terms_version") == CURRENT_TERMS_VERSION
+        return accepted to null
     }
 
     fun acceptCurrentTerms(): String? {
