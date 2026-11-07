@@ -59,7 +59,7 @@ fun SupportDialog(onDismiss: () -> Unit) {
         text = {
             Column {
                 message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
-                Button(onClick = { showNewTicket = true }, modifier = Modifier.fillMaxWidth()) { Text("Yeni destek talebi") }
+                Button(onClick = { showNewTicket = true }, modifier = Modifier.fillMaxWidth()) { Text("Yeni destek talebi / şikayet") }
                 if (loading) CircularProgressIndicator()
                 else if (tickets.isEmpty()) Text("Henüz destek talebin yok.", modifier = Modifier.padding(top = 10.dp))
                 else LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -84,9 +84,9 @@ fun SupportDialog(onDismiss: () -> Unit) {
     if (showNewTicket) {
         NewSupportTicketDialog(
             onDismiss = { showNewTicket = false },
-            onSubmit = { subject, body ->
+            onSubmit = { subject, body, ticketType ->
                 scope.launch {
-                    val error = withContext(Dispatchers.IO) { repository.createTicket(subject, body) }
+                    val error = withContext(Dispatchers.IO) { repository.createTicket(subject, body, ticketType) }
                     message = error ?: "Destek talebin oluşturuldu."
                     if (error == null) {
                         showNewTicket = false
@@ -99,21 +99,26 @@ fun SupportDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun NewSupportTicketDialog(onDismiss: () -> Unit, onSubmit: (String, String) -> Unit) {
+private fun NewSupportTicketDialog(onDismiss: () -> Unit, onSubmit: (String, String, String) -> Unit) {
     var subject by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
+    var ticketType by remember { mutableStateOf("support") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Yeni destek talebi") },
+        title = { Text(if (ticketType == "complaint") "Yeni şikayet" else "Yeni destek talebi") },
         text = {
             Column {
+                androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { ticketType = "support" }) { Text(if (ticketType == "support") "✓ Destek" else "Destek") }
+                    TextButton(onClick = { ticketType = "complaint" }) { Text(if (ticketType == "complaint") "✓ Şikayet" else "Şikayet") }
+                }
                 OutlinedTextField(subject, { subject = it }, label = { Text("Konu") }, singleLine = true)
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(body, { body = it }, label = { Text("Mesajın") }, minLines = 3)
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (subject.trim().length >= 3 && body.trim().length >= 5) onSubmit(subject, body) }) { Text("Gönder") }
+            TextButton(onClick = { if (subject.trim().length >= 3 && body.trim().length >= 5) onSubmit(subject, body, ticketType) }) { Text("Gönder") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Vazgeç") } }
     )
