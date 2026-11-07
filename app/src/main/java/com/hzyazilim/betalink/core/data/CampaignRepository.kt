@@ -38,6 +38,35 @@ data class Campaign(
 class CampaignRepository(context: Context) {
     private val sessions = SecureSessionStore(context.applicationContext)
 
+    companion object {
+        const val CURRENT_TERMS_VERSION = "2026-11-08"
+        const val TERMS_URL = "https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/terms"
+    }
+
+    fun currentTermsAccepted(): Pair<Boolean?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return null to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val (status, body) = call("/rest/v1/profiles?select=terms_version&user_id=eq.$userId", "GET", token)
+        if (status !in 200..299) return null to message(body)
+        val rows = JSONArray(body)
+        if (rows.length() == 0) return false to null
+        return rows.getJSONObject(0).optString("terms_version") == CURRENT_TERMS_VERSION to null
+    }
+
+    fun acceptCurrentTerms(): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val body = JSONObject()
+            .put("terms_version", CURRENT_TERMS_VERSION)
+            .put("terms_accepted_at", utcNow())
+        val (status, response) = call("/rest/v1/profiles?user_id=eq.$userId", "PATCH", token, body)
+        return if (status in 200..299) null else message(response)
+    }
+
     fun listOpenCampaigns(): Pair<List<Campaign>, String?> {
         val token = sessions.read()?.first ?: return emptyList<Campaign>() to "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
