@@ -130,7 +130,9 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
     var showNotifications by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showAdminPanel by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showSupport by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val activity = context as? ComponentActivity
     val notificationPrefs = remember(context) { context.getSharedPreferences("betalink_preferences", Context.MODE_PRIVATE) }
     var showNotificationPermissionInfo by rememberSaveable { mutableStateOf(Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED && !notificationPrefs.getBoolean("notification_prompted", false)) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> notificationPrefs.edit().putBoolean("notification_prompted", true).apply() }
