@@ -27,6 +27,7 @@ android {
         val googleWebClientId = providers.gradleProperty("BETALINK_GOOGLE_WEB_CLIENT_ID")
             .orElse(providers.environmentVariable("BETALINK_GOOGLE_WEB_CLIENT_ID"))
             .orElse(localProperties.getProperty("BETALINK_GOOGLE_WEB_CLIENT_ID").orEmpty())
+            .orElse("202417827129-84f6j6in9e7m98n9m840n68b1o54l5l2.apps.googleusercontent.com")
             .get()
         val escapedGoogleWebClientId = googleWebClientId.replace("\\", "\\\\").replace("\"", "\\\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$escapedGoogleWebClientId\"")
