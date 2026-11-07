@@ -188,8 +188,9 @@ fun AdminScreen(onClose: () -> Unit) {
             onDismiss = { showAnnouncement = false },
             onSend = { title, body ->
                 scope.launch {
-                    val error = withContext(Dispatchers.IO) { repository.announce(title, body) }
-                    message = error ?: "Duyuru tüm kullanıcılara gönderildi."
+                    val result = withContext(Dispatchers.IO) { repository.announce(title, body) }
+                    val error = result.second
+                    message = error ?: "Duyuru bildirim kutusuna ${result.first ?: 0} kullanıcı için eklendi."
                     if (error == null) showAnnouncement = false
                 }
             }
@@ -231,7 +232,7 @@ private fun SupportTicketCard(ticket: AdminSupportTicket, onReply: (String) -> U
     var reply by remember(ticket.id) { mutableStateOf("") }
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp)) {
-            Text(ticket.subject, style = MaterialTheme.typography.titleSmall)
+            Text(if (ticket.ticketType == "complaint") "ŞİKAYET · ${ticket.subject}" else "DESTEK · ${ticket.subject}", style = MaterialTheme.typography.titleSmall, color = if (ticket.ticketType == "complaint") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
             Text("Kullanıcı: ${ticket.userId.take(8)}… · ${ticket.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
             Text(ticket.message, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
             OutlinedTextField(reply, { reply = it }, label = { Text("Destek yanıtı") }, minLines = 2)
