@@ -24,11 +24,13 @@ android {
             val localFile = rootProject.file("local.properties")
             if (localFile.isFile) localFile.inputStream().use { load(it) }
         }
-        val googleWebClientId = providers.gradleProperty("BETALINK_GOOGLE_WEB_CLIENT_ID")
-            .orElse(providers.environmentVariable("BETALINK_GOOGLE_WEB_CLIENT_ID"))
-            .orElse(localProperties.getProperty("BETALINK_GOOGLE_WEB_CLIENT_ID").orEmpty())
-            .orElse("202417827129-84f6j6in9e7m98n9m840n68b1o54l5l2.apps.googleusercontent.com")
-            .get()
+        // Empty Gradle/environment/local properties must not shadow the known Web OAuth client ID.
+        // This is a public OAuth client ID (not a secret), so Android Studio builds work without extra setup.
+        val googleWebClientId =
+            providers.gradleProperty("BETALINK_GOOGLE_WEB_CLIENT_ID").orNull?.takeIf { it.isNotBlank() }
+                ?: providers.environmentVariable("BETALINK_GOOGLE_WEB_CLIENT_ID").orNull?.takeIf { it.isNotBlank() }
+                ?: localProperties.getProperty("BETALINK_GOOGLE_WEB_CLIENT_ID")?.takeIf { it.isNotBlank() }
+                ?: "202417827129-84f6j6in9e7m98n9m840n68b1o54l5l2.apps.googleusercontent.com"
         val escapedGoogleWebClientId = googleWebClientId.replace("\\", "\\\\").replace("\"", "\\\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$escapedGoogleWebClientId\"")
     }
