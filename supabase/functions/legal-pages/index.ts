@@ -28,7 +28,7 @@ const privacy = `
 <p>Bu politika, Betalink hizmetini sunan Hz Yazılım'ın kişisel verileri nasıl işlediğini açıklar. Betalink; uygulama geliştiricileri ile gerçek kapalı test katılımcılarını buluşturan bir topluluk platformudur.</p>
 <h2>1. İşlenen veriler</h2>
 <ul>
-<li><b>Hesap ve kimlik:</b> kayıt e-posta adresi, kimlik doğrulama kayıtları, görünen ad ve hesap oluşturma bilgileri.</li>
+<li><b>Hesap ve kimlik:</b> kayıt e-posta adresi, kimlik doğrulama kayıtları, görünen ad, hesap oluşturma bilgileri ve kabul edilen kullanım koşullarının sürüm/zaman damgası.</li>
 <li><b>Profil ve cihaz:</b> kullanıcının eklediği profil fotoğrafı bağlantısı, ülke, cihaz modeli, Android sürümü, Google Play ülkesi ve isteğe bağlı biyografi/uygunluk bilgisi.</li>
 <li><b>Kampanya ve grup etkinliği:</b> oluşturulan kampanyalar, başvurular, grup üyelikleri, test katılım durumları, kullanıcının girdiği günlük onaylar, görev gönderimleri ve zaman damgaları.</li>
 <li><b>İletişim ve güvenlik:</b> uygulama içi geri bildirimler, geliştirici yanıtları, destek talepleri, şikâyetler, engelleme kayıtları, bildirimlerin okunma durumu ve kötüye kullanım incelemesi için gerekli kayıtlar.</li>
