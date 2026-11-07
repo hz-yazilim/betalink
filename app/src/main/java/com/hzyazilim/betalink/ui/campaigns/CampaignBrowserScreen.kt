@@ -57,7 +57,12 @@ fun CampaignBrowserScreen(myTests: Boolean) {
     LaunchedEffect(myTests, refresh) {
         loading = true
         val result = withContext(Dispatchers.IO) {
-            if (myTests) repository.myCampaigns() else repository.listOpenCampaigns()
+            if (myTests) repository.myCampaigns()
+            else {
+                val open = repository.listOpenCampaigns()
+                val joined = repository.myCampaigns()
+                (joined.first + open.first).distinctBy { it.id } to (open.second ?: joined.second)
+            }
         }
         campaigns = result.first
         message = result.second
@@ -91,7 +96,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
                     CampaignCard(
                         campaign = campaign,
                         repository = repository,
-                        myTests = myTests,
+                        myTests = campaign.membershipStatus != null,
                         refreshKey = refresh,
                         onApply = {
                             scope.launch {
@@ -340,25 +345,13 @@ private fun CreateCampaignDialog(
 
 @Composable
 fun MyTestsHub() {
-    var developerMode by remember { mutableStateOf(false) }
-    var groupMode by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp)) {
-            TextButton(onClick = { developerMode = false; groupMode = false }, modifier = Modifier.weight(1f)) {
-                Text("Kampanyalar")
-            }
-            TextButton(onClick = { developerMode = false; groupMode = true }, modifier = Modifier.weight(1f)) {
-                Text("Gruplar")
-            }
-            TextButton(onClick = { developerMode = true }, modifier = Modifier.weight(1f)) {
-                Text("Geliştirici")
-            }
+        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp)) {
+            Text("TESTLERİM", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+            Text("Geliştirici paneli", style = MaterialTheme.typography.headlineSmall)
+            Text("Oluşturduğun kampanyaları ve tester başvurularını buradan yönet.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
-        when {
-            developerMode -> DeveloperCampaignsScreen()
-            groupMode -> MyGroupTestsScreen()
-            else -> CampaignBrowserScreen(myTests = true)
-        }
+        DeveloperCampaignsScreen()
     }
 }
 
