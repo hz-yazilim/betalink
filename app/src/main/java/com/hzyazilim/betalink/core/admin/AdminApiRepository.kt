@@ -17,7 +17,7 @@ data class AdminReport(
     val status: String
 )
 
-data class AdminSupportTicket(val id: String, val userId: String, val subject: String, val message: String, val status: String)
+data class AdminSupportTicket(val id: String, val userId: String, val subject: String, val message: String, val status: String, val ticketType: String)
 
 data class AdminUser(val id: String, val displayName: String)
 data class AdminGroup(val id: String, val name: String, val description: String, val status: String)
@@ -54,7 +54,7 @@ class AdminApiRepository(context: Context) {
         val groupsArray = json.optJSONArray("groupsList") ?: JSONArray()
         val support = (0 until supportArray.length()).map { i ->
             val row = supportArray.getJSONObject(i)
-            AdminSupportTicket(row.getString("id"), row.getString("user_id"), row.optString("subject"), row.optString("message"), row.optString("status"))
+            AdminSupportTicket(row.getString("id"), row.getString("user_id"), row.optString("subject"), row.optString("message"), row.optString("status"), row.optString("ticket_type", "support"))
         }
         val reports = (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
@@ -115,10 +115,12 @@ class AdminApiRepository(context: Context) {
         return if (code in 200..299) null else error(body)
     }
 
-    fun announce(title: String, bodyText: String): String? {
-        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+    fun announce(title: String, bodyText: String): Pair<Int?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
         val (code, body) = call("POST", token, JSONObject().put("action", "announce").put("title", title).put("body", bodyText))
-        return if (code in 200..299) null else error(body)
+        if (code !in 200..299) return null to error(body)
+        val count = runCatching { JSONObject(body).optInt("recipient_count") }.getOrDefault(0)
+        return count to null
     }
 
     private fun call(method: String, token: String, body: JSONObject? = null): Pair<Int, String> {
