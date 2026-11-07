@@ -8,7 +8,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class SupportTicket(val id: String, val subject: String, val message: String, val status: String, val adminReply: String?)
+data class SupportTicket(val id: String, val subject: String, val message: String, val status: String, val adminReply: String?, val ticketType: String)
 
 class SupportRepository(context: Context) {
     private val sessions = SecureSessionStore(context.applicationContext)
@@ -19,23 +19,23 @@ class SupportRepository(context: Context) {
         if (user.first !in 200..299) return emptyList<SupportTicket>() to "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
         val (status, body) = call(
-            "/rest/v1/support_tickets?select=id,subject,message,status,admin_reply&user_id=eq.$userId&order=created_at.desc",
+            "/rest/v1/support_tickets?select=id,subject,message,status,admin_reply,ticket_type&user_id=eq.$userId&order=created_at.desc",
             "GET", token
         )
         if (status !in 200..299) return emptyList<SupportTicket>() to error(body)
         val array = JSONArray(body)
         return (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
-            SupportTicket(row.getString("id"), row.optString("subject"), row.optString("message"), row.optString("status"), row.optString("admin_reply").takeIf { it.isNotBlank() })
+            SupportTicket(row.getString("id"), row.optString("subject"), row.optString("message"), row.optString("status"), row.optString("admin_reply").takeIf { it.isNotBlank() }, row.optString("ticket_type", "support"))
         } to null
     }
 
-    fun createTicket(subject: String, message: String): String? {
+    fun createTicket(subject: String, message: String, ticketType: String): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
-        val body = JSONObject().put("user_id", userId).put("subject", subject.trim()).put("message", message.trim())
+        val body = JSONObject().put("user_id", userId).put("subject", subject.trim()).put("message", message.trim()).put("ticket_type", if (ticketType == "complaint") "complaint" else "support")
         val (status, response) = call("/rest/v1/support_tickets", "POST", token, body)
         return if (status in 200..299) null else error(response)
     }
