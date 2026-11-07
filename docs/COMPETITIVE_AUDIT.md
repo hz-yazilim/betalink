@@ -42,6 +42,7 @@ Kaynaklar: AndroidBetaTesting, TestCircle, Testers Community ve beta test platfo
 4. **Grup check-in RPC erişimi sıkılaştırıldı.** Anonim rolün çalıştırma izni kaldırıldı; yalnızca giriş yapmış kullanıcıya verildi. Fonksiyon, onaylı grup üyeliğini sunucu tarafında kontrol etmeye devam ediyor.
 5. **Grup check-in sorgusu için eksik kullanıcı indeksi eklendi.**
 6. **Google Play Android 16 hedef API şartına geçildi.** Proje compileSdk/targetSdk 36'ya yükseltildi; CI Android 36 platformu ve build-tools ile güncellendi.
+7. **Kullanım koşulları ve topluluk kuralları eklendi.** Yeni kullanıcı, uygulama ekranlarına geçmeden önce koşulları okuyup onaylamak zorunda; kabul edilen sürüm profilde zaman damgasıyla saklanıyor. Koşullar profil ekranından tekrar açılabiliyor ve herkese açık web sayfası da yayınlandı.
 
 ## Hâlâ geliştirilmesi gereken ürün işleri
 
@@ -78,7 +79,8 @@ Kaynaklar: AndroidBetaTesting, TestCircle, Testers Community ve beta test platfo
 - [x] Play testine katılımın uygulama içi beyan olduğu, Console doğrulaması olmadığı açıklanıyor.
 - [x] Android 16 / API 36 hedef SDK'ya geçildi.
 - [ ] Play Console Veri Güvenliği ve hesap silme beyanları, gerçek SDK/veri akışına göre doldurulmalı.
-- [ ] UGC/topluluk kuralları ve kullanıcı sözleşmesi görünür biçimde onaylatılmalı; moderasyon ve şikâyet akışı gerçek hesaplarla test edilmeli.
+- [x] UGC/topluluk kuralları uygulama içinde zorunlu olarak onaylatılıyor; profil ekranından yeniden açılabiliyor.
+- [ ] Moderasyon, raporlama ve engelleme akışı gerçek hesaplarla uçtan uca test edilmeli.
 - [ ] İçerik derecelendirmesi, hedef kitle, reklam beyanı, uygulama erişim bilgileri ve gizlilik URL'si Play Console'da tamamlanmalı.
 - [ ] Mağaza simgesi, telefon ekran görüntüleri, kısa/tam açıklama ve gerekiyorsa özellik grafiği tamamlanmalı.
 - [ ] İmzalı release AAB oluşturulmalı; debug APK Play Store yüklemesi değildir.
