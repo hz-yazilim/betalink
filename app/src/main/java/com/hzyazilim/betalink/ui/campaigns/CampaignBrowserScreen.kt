@@ -53,6 +53,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
     var showCreate by remember { mutableStateOf(false) }
     var selectedTaskCampaign by remember { mutableStateOf<Campaign?>(null) }
     var refresh by remember { mutableStateOf(0) }
+    var searchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(myTests, refresh) {
         loading = true
@@ -74,6 +75,14 @@ fun CampaignBrowserScreen(myTests: Boolean) {
         Text(if (myTests) "TESTLERİM" else "KEŞFET", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
         Text(if (myTests) "Katıldığın kampanyalar" else "Açık test kampanyaları", style = MaterialTheme.typography.headlineSmall)
         WalletStatusCard()
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            label = { Text("Test kampanyası ara") },
+            placeholder = { Text("Uygulama, açıklama veya kategori") },
+            singleLine = true
+        )
         if (myTests) {
             Text("Kampanya oluşturma ücreti 50 BP · Bakiyen 50 BP veya üzerindeyse oluşturabilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
@@ -91,8 +100,15 @@ fun CampaignBrowserScreen(myTests: Boolean) {
                 modifier = Modifier.padding(top = 20.dp)
             )
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 14.dp)) {
-                items(campaigns, key = { it.id }) { campaign ->
+            val filteredCampaigns = campaigns.filter {
+                it.appName.contains(searchQuery, ignoreCase = true) ||
+                    it.description.contains(searchQuery, ignoreCase = true) ||
+                    it.category.contains(searchQuery, ignoreCase = true)
+            }
+            if (filteredCampaigns.isEmpty()) {
+                Text("Aramana uygun kampanya bulunamadı.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 20.dp))
+            } else LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 14.dp)) {
+                items(filteredCampaigns, key = { it.id }) { campaign ->
                     CampaignCard(
                         campaign = campaign,
                         repository = repository,
