@@ -72,7 +72,7 @@ fun GroupsScreen() {
         Text("Tester grupları", style = MaterialTheme.typography.headlineSmall)
         Text("Açık tester gruplarını görüntüle ve katıl.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         WalletStatusCard()
-        Text("Grup oluşturma: en az 2 tamamlanmış destek testi + 30 BP · Açık gruba katılım: 5 BP", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+        Text("Grup oluşturma: 30 BP · Açık gruba katılım: 5 BP. İşlemler için yalnızca yeterli BP bakiyesi gerekir.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
             Text("＋ Yeni grup oluştur · 30 BP")
         }
