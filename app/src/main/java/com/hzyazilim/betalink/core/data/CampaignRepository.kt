@@ -16,7 +16,7 @@ data class GroupMember(val id: String, val userId: String, val status: String)
 data class GroupTestEmail(val displayName: String, val email: String)
 data class GroupSnapshot(val status: String, val approvedMembers: Int, val requiredMembers: Int, val elapsedDays: Int, val requiredDays: Int, val startedAt: String?, val myEmailShared: Boolean, val myPlayTestEmail: String, val emails: List<GroupTestEmail>)
 data class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)
-data class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int)
+data class CampaignTracking(val status: String, val elapsedDays: Int, val requiredDays: Int, val activeTesters: Int, val requiredTesters: Int, val startedAt: String? = null)
 data class TaskSubmission(val id: String, val taskTitle: String, val testerId: String, val status: String, val notes: String)
 data class FeedbackItem(val id: String, val testerId: String, val rating: Int?, val body: String, val status: String, val reply: String?)
 data class BetalinkNotification(val id: String, val title: String, val body: String, val read: Boolean, val createdAt: String)
@@ -31,7 +31,8 @@ data class Campaign(
     val targetTesters: Int,
     val status: String,
     val minimumAndroid: Int?,
-    val membershipStatus: String? = null
+    val membershipStatus: String? = null,
+    val joinedAt: String? = null
 )
 
 class CampaignRepository(context: Context) {
@@ -216,7 +217,8 @@ class CampaignRepository(context: Context) {
             row.optInt("elapsed_days"),
             row.optInt("required_days", 14),
             row.optInt("active_testers"),
-            row.optInt("required_testers", 12)
+            row.optInt("required_testers", 12),
+            row.optString("started_at").takeIf { it.isNotBlank() && it != "null" }
         ) to null
     }
 
@@ -459,16 +461,53 @@ class CampaignRepository(context: Context) {
         return if (status in 200..299) null else message(response)
     }
 
+    fun campaignCheckinDates(campaignId: String): Pair<Set<String>, String?> {
+        val token = sessions.read()?.first ?: return emptySet<String>() to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return emptySet<String>() to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val (status, body) = call("/rest/v1/campaign_daily_checkins?select=checkin_date&campaign_id=eq.$campaignId&tester_id=eq.$userId&order=checkin_date.desc", "GET", token)
+        if (status !in 200..299) return emptySet<String>() to message(body)
+        val array = JSONArray(body)
+        return (0 until array.length()).map { array.getJSONObject(it).optString("checkin_date") }.toSet() to null
+    }
+
     fun checkInToday(campaignId: String): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
+        val today = utcToday()
+        val existing = call("/rest/v1/campaign_daily_checkins?select=id&campaign_id=eq.$campaignId&tester_id=eq.$userId&checkin_date=eq.$today", "GET", token)
+        if (existing.first !in 200..299) return message(existing.second)
+        if (JSONArray(existing.second).length() > 0) return "Bugünkü test bildirimin zaten kayıtlı."
         val body = JSONObject().put("campaign_id", campaignId).put("tester_id", userId)
             .put("note", "Uygulama içi günlük test onayı")
         val (status, response) = call("/rest/v1/campaign_daily_checkins", "POST", token, body)
         return if (status in 200..299) null else message(response)
     }
+
+    fun groupCheckinDates(groupId: String): Pair<Set<String>, String?> {
+        val token = sessions.read()?.first ?: return emptySet<String>() to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return emptySet<String>() to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val (status, body) = call("/rest/v1/group_daily_checkins?select=checkin_date&group_id=eq.$groupId&user_id=eq.$userId&order=checkin_date.desc", "GET", token)
+        if (status !in 200..299) return emptySet<String>() to message(body)
+        val array = JSONArray(body)
+        return (0 until array.length()).map { array.getJSONObject(it).optString("checkin_date") }.toSet() to null
+    }
+
+    fun checkInGroupToday(groupId: String): Pair<Boolean?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val (status, body) = call("/rest/v1/rpc/betalink_group_daily_check_in", "POST", token,
+            JSONObject().put("p_group_id", groupId).put("p_note", "Uygulama içi günlük grup testi bildirimi"))
+        if (status !in 200..299) return null to message(body)
+        return body.trim().equals("true", ignoreCase = true) to null
+    }
+
+    private fun utcToday(): String = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date())
 
     fun myCampaigns(): Pair<List<Campaign>, String?> {
         val token = sessions.read()?.first ?: return emptyList<Campaign>() to "Oturum bulunamadı."
@@ -476,7 +515,7 @@ class CampaignRepository(context: Context) {
         if (user.first !in 200..299) return emptyList<Campaign>() to "Oturum doğrulanamadı."
         val id = JSONObject(user.second).optString("id")
         val (status, body) = call(
-            "/rest/v1/campaign_members?select=status,campaigns(id,app_name,description,category,play_opt_in_url,target_testers,status,minimum_android_version)&tester_id=eq.$id&order=joined_at.desc",
+            "/rest/v1/campaign_members?select=status,joined_at,campaigns(id,app_name,description,category,play_opt_in_url,target_testers,status,minimum_android_version)&tester_id=eq.$id&order=joined_at.desc",
             "GET", token
         )
         if (status !in 200..299) return emptyList<Campaign>() to message(body)
@@ -489,7 +528,8 @@ class CampaignRepository(context: Context) {
                 campaign.optString("category"), campaign.getString("play_opt_in_url"),
                 campaign.optInt("target_testers", 12), campaign.optString("status"),
                 if (campaign.isNull("minimum_android_version")) null else campaign.optInt("minimum_android_version"),
-                array.getJSONObject(i).optString("status")
+                array.getJSONObject(i).optString("status"),
+                array.getJSONObject(i).optString("joined_at").takeIf { it.isNotBlank() && it != "null" }
             )
         }
         return result to null
