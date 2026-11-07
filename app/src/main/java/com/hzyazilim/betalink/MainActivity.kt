@@ -131,7 +131,7 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
     var showAdminPanel by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showSupport by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
-    var termsAccepted by rememberSaveable(currentUser.id) { mutableStateOf<Boolean?>(null) }
+    var termsAccepted by remember(currentUser.id) { mutableStateOf<Boolean?>(null) }
     var termsError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val termsRepository = remember(context) { CampaignRepository(context) }
