@@ -1,0 +1,14 @@
+# Android Studio / local machine configuration
+local.properties
+*.iml
+.idea/
+.DS_Store
+
+# Gradle and Android build outputs
+.gradle/
+build/
+app/build/
+
+# Signing material
+*.jks
+*.keystore

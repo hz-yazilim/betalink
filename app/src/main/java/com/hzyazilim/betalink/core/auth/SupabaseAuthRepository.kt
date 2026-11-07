@@ -25,7 +25,9 @@ class SupabaseAuthRepository(context: Context) {
         val saved = sessions.read() ?: return null
         val response = request("/auth/v1/user", "GET", token = saved.first)
         if (response.first in 200..299) return parseUser(JSONObject(response.second))
-        if (response.first != 401) return null
+        // Supabase may report an expired access token as either 401 or 403.
+        // Keep the encrypted refresh token and renew the session before showing login.
+        if (response.first !in setOf(401, 403)) return null
 
         val refreshBody = JSONObject().put("refresh_token", saved.second)
         val refreshed = request("/auth/v1/token?grant_type=refresh_token", "POST", refreshBody)

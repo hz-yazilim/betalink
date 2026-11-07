@@ -61,7 +61,9 @@ fun AdminScreen(onClose: () -> Unit) {
         loading = false
     }
 
-    Column(Modifier.fillMaxSize().padding(18.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 18.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 18.dp, bottom = 36.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
                 Text("BETALINK", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
@@ -141,8 +143,8 @@ fun AdminScreen(onClose: () -> Unit) {
             }
             Text("Bekleyen şikâyetler", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp))
             if (data.pendingReports.isEmpty()) Text("Bekleyen şikâyet yok.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
-                items(data.pendingReports, key = { it.id }) { report ->
+            else Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
+                data.pendingReports.forEach { report ->
                     ReportCard(
                         report = report,
                         onResolve = { status ->
@@ -165,8 +167,8 @@ fun AdminScreen(onClose: () -> Unit) {
             }
             Text("Destek talepleri", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp))
             if (data.supportTickets.isEmpty()) Text("Açık destek talebi yok.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
-                items(data.supportTickets, key = { it.id }) { ticket ->
+            else Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
+                data.supportTickets.forEach { ticket ->
                     SupportTicketCard(ticket) { reply ->
                         scope.launch {
                             val error = withContext(Dispatchers.IO) { repository.resolveSupportTicket(ticket.id, reply) }
@@ -176,6 +178,8 @@ fun AdminScreen(onClose: () -> Unit) {
                     }
                 }
             }
+        }
+        }
         }
     }
 
