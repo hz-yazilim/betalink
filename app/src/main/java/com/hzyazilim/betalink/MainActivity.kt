@@ -150,16 +150,17 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (!showAdminPanel) {
-                NavigationBar(containerColor = Color(0xFF11192B)) {
-                    tabs.forEachIndexed { index, tab ->
-                        NavigationBarItem(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            icon = { androidx.compose.material3.Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label, fontSize = 10.sp) }
-                        )
-                    }
+            NavigationBar(containerColor = Color(0xFF11192B)) {
+                tabs.forEachIndexed { index, tab ->
+                    NavigationBarItem(
+                        selected = selectedTab == index && !showAdminPanel,
+                        onClick = {
+                            selectedTab = index
+                            showAdminPanel = false
+                        },
+                        icon = { androidx.compose.material3.Icon(tab.icon, contentDescription = tab.label) },
+                        label = { Text(tab.label, fontSize = 10.sp) }
+                    )
                 }
             }
         }
