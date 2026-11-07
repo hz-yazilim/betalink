@@ -8,7 +8,7 @@ Betalink, uygulama geliştiricileri ile gerçek kapalı test katılımcıların�
 
 ## 1. İşlenen veriler
 
-- **Hesap ve kimlik:** kayıt e-posta adresi, kimlik doğrulama kayıtları, görünen ad ve hesap oluşturma bilgileri.
+- **Hesap ve kimlik:** kayıt e-posta adresi, kimlik doğrulama kayıtları, görünen ad, hesap oluşturma bilgileri ve kabul edilen kullanım koşullarının sürüm/zaman damgası.
 - **Profil ve cihaz:** kullanıcının eklediği profil fotoğrafı bağlantısı, ülke, cihaz modeli, Android sürümü, Google Play ülkesi ve isteğe bağlı biyografi/uygunluk bilgisi.
 - **Kampanya ve grup etkinliği:** oluşturulan kampanyalar, başvurular, grup üyelikleri, test katılım durumları, kullanıcının girdiği günlük onaylar, görev gönderimleri ve zaman damgaları.
 - **İletişim ve güvenlik:** uygulama içi geri bildirimler, geliştirici yanıtları, destek talepleri, şikâyetler, engelleme kayıtları, bildirimlerin okunma durumu ve kötüye kullanım incelemesi için gerekli kayıtlar.
