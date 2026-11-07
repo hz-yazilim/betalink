@@ -112,6 +112,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
                             scope.launch {
                                 val error = withContext(Dispatchers.IO) { repository.checkInToday(campaign.id) }
                                 message = error ?: "Bugünkü test onayın kaydedildi."
+                                if (error == null) refresh++
                             }
                         }
                     )
