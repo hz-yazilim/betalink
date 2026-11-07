@@ -253,11 +253,11 @@ private fun HomeScreen(onExplore: () -> Unit, onMyTests: () -> Unit, onNotificat
                             Text((wallet?.balance ?: 0).toString() + " BP", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text((wallet?.completedSupportTests ?: 0).toString() + "/2", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Text((wallet?.completedSupportTests ?: 0).toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
                             Text("Tamamlanan destek testi", fontSize = 10.sp, color = Color(0xFF9BA8C2))
                         }
                     }
-                    Text(if ((wallet?.completedSupportTests ?: 0) >= 2) "Kampanya ve grup oluşturma hakkın açıldı. Puanlarını kullanabilirsin." else "Kampanya ve grup özelliklerini açmak için 2 uygulamanın testini tamamla. Her tamamlanan test 25 BP kazandırır.", color = Color(0xFFB9C4DA), fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    Text("Kampanya oluşturma 50 BP, tester grubu oluşturma 30 BP, açık gruba katılım 5 BP. Ek test şartı yok; yalnızca yeterli BP bakiyesi aranır. Her tamamlanan test 25 BP kazandırır.", color = Color(0xFFB9C4DA), fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                     walletMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 10.sp) }
                 }
             }
