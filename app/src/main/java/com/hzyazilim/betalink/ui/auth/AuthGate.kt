@@ -109,15 +109,16 @@ private fun AuthScreen(
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val googleClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
     val googleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
+        if (result.data != null) {
             try {
                 val account = GoogleSignIn.getSignedInAccountFromIntent(result.data).getResult(ApiException::class.java)
                 val token = account.idToken
                 if (token.isNullOrBlank()) {
-                    message = "Google kimlik jetonu alınamadı. OAuth istemci kimliğini kontrol et."
+                    message = "Google kimlik jetonu alınamadı. OAuth Web Client ID'yi kontrol et."
                 } else {
                     scope.launch {
                         busy = true
@@ -129,7 +130,12 @@ private fun AuthScreen(
                     }
                 }
             } catch (error: ApiException) {
-                message = "Google girişi başarısız oldu (kod: ${error.statusCode})."
+                message = when (error.statusCode) {
+                    10 -> "Google girişi yapılandırma hatası (Kod 10: DEVELOPER_ERROR).\nKullanılan Web Client ID: $googleClientId\n\nKontrol adımları:\n1. Uygulamayı Android Studio'dan çalıştırıyorsanız DEBUG SHA-1 (63:8A:2F...) eklenmiş olmalı.\n2. SHA-1 anahtarının tam olarak bu Web Client ID'nin bulunduğu Google Cloud / Firebase projesinde tanımlı olduğunu doğrulayın."
+                    12500 -> "Google hesabıyla oturum açılamadı (Kod 12500). Lütfen cihazdaki Google Play Hizmetlerini ve aktif hesabı kontrol edin."
+                    12501 -> "Google giriş penceresi kapatıldı veya iptal edildi."
+                    else -> "Google girişi başarısız oldu (kod: ${error.statusCode})."
+                }
             }
         } else {
             message = "Google girişi iptal edildi."

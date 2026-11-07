@@ -130,7 +130,7 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
     var showNotifications by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showAdminPanel by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showSupport by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var showExitDialog by remember { mutableStateOf(false) }
+    var showExitDialog by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val activity = context as? ComponentActivity
     val notificationPrefs = remember(context) { context.getSharedPreferences("betalink_preferences", Context.MODE_PRIVATE) }
@@ -150,16 +150,14 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            if (!showAdminPanel) {
-                NavigationBar(containerColor = Color(0xFF11192B)) {
-                    tabs.forEachIndexed { index, tab ->
-                        NavigationBarItem(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            icon = { androidx.compose.material3.Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label, fontSize = 10.sp) }
-                        )
-                    }
+            NavigationBar(containerColor = Color(0xFF11192B)) {
+                tabs.forEachIndexed { index, tab ->
+                    NavigationBarItem(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        icon = { androidx.compose.material3.Icon(tab.icon, contentDescription = tab.label) },
+                        label = { Text(tab.label, fontSize = 10.sp) }
+                    )
                 }
             }
         }
