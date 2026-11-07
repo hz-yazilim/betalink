@@ -131,7 +131,17 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
     var showAdminPanel by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showSupport by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
+    var termsAccepted by rememberSaveable(currentUser.id) { mutableStateOf<Boolean?>(null) }
+    var termsError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val termsRepository = remember(context) { CampaignRepository(context) }
+    val uriHandler = LocalUriHandler.current
+    LaunchedEffect(currentUser.id) {
+        termsAccepted = null
+        val result = withContext(Dispatchers.IO) { termsRepository.currentTermsAccepted() }
+        termsAccepted = result.first ?: false
+        termsError = result.second
+    }
     val activity = context as? ComponentActivity
     val notificationPrefs = remember(context) { context.getSharedPreferences("betalink_preferences", Context.MODE_PRIVATE) }
     var showNotificationPermissionInfo by rememberSaveable { mutableStateOf(Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED && !notificationPrefs.getBoolean("notification_prompted", false)) }
@@ -168,16 +178,36 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
         Column(
             modifier = Modifier.fillMaxSize().padding(innerPadding)
         ) {
-            if (showAdminPanel) {
-                AdminScreen(onClose = { showAdminPanel = false })
-            } else when (selectedTab) {
-                0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 3 }, onNotifications = { showNotifications = true })
-                1 -> CampaignBrowserScreen(myTests = false)
-                2 -> GroupsScreen()
-                3 -> MyTestsHub()
-                else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSupport = { showSupport = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
+            when (termsAccepted) {
+                null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                false -> Unit
+                true -> {
+                    if (showAdminPanel) {
+                        AdminScreen(onClose = { showAdminPanel = false })
+                    } else when (selectedTab) {
+                        0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 3 }, onNotifications = { showNotifications = true })
+                        1 -> CampaignBrowserScreen(myTests = false)
+                        2 -> GroupsScreen()
+                        3 -> MyTestsHub()
+                        else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSupport = { showSupport = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
+                    }
+                }
             }
         }
+    }
+    if (termsAccepted == false) {
+        TermsAcceptanceDialog(
+            error = termsError,
+            onOpenTerms = { uriHandler.openUri(CampaignRepository.TERMS_URL) },
+            onAccept = {
+                scope.launch {
+                    val error = withContext(Dispatchers.IO) { termsRepository.acceptCurrentTerms() }
+                    termsError = error
+                    if (error == null) termsAccepted = true
+                }
+            },
+            onSignOut = { scope.launch { onSignOut() } }
+        )
     }
     if (showExitDialog) {
         AlertDialog(
@@ -203,6 +233,31 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
         )
     }
     if (showSupport) SupportDialog(onDismiss = { showSupport = false })
+}
+
+@Composable
+private fun TermsAcceptanceDialog(error: String?, onOpenTerms: () -> Unit, onAccept: () -> Unit, onSignOut: () -> Unit) {
+    var checked by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("Betalink kullanım koşulları") },
+        text = {
+            Column {
+                Text("Betalink'i kullanmadan önce Kullanım Koşulları ve Topluluk Kuralları'nı okuyup kabul etmelisin.")
+                Text("Kurallar; dürüst test katılımı, sahte check-in ve spam yasağı, kişisel verilerin korunması, uygunsuz içeriklerin bildirilmesi ve topluluk moderasyonunu kapsar.", modifier = Modifier.padding(top = 10.dp))
+                TextButton(onClick = onOpenTerms, modifier = Modifier.fillMaxWidth()) { Text("Koşulların tamamını oku") }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.Checkbox(checked = checked, onCheckedChange = { checked = it })
+                    Text("Okudum ve kabul ediyorum.", fontSize = 13.sp)
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onAccept, enabled = checked && error == null) { Text("Kabul et ve devam et") }
+        },
+        dismissButton = { TextButton(onClick = onSignOut) { Text("Çıkış yap") } }
+    )
 }
 
 @Composable
@@ -362,6 +417,7 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
         deleteMessage?.let { Text(it, color = Color(0xFFFF8A8A), fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
         Spacer(Modifier.height(18.dp))
         Button(onClick = onSupport, modifier = Modifier.fillMaxWidth()) { Text("Destek taleplerim") }
+        TextButton(onClick = { uriHandler.openUri(CampaignRepository.TERMS_URL) }, modifier = Modifier.fillMaxWidth()) { Text("Kullanım koşulları ve topluluk kuralları") }
         TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy") }, modifier = Modifier.fillMaxWidth()) { Text("Gizlilik politikası") }
         TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion") }, modifier = Modifier.fillMaxWidth()) { Text("Hesap ve veri silme sayfası") }
         if (isAdmin) Button(onClick = onAdminPanel, modifier = Modifier.fillMaxWidth()) { Text("Yönetici paneli") }
