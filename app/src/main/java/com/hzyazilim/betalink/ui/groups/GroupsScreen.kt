@@ -57,6 +57,8 @@ fun GroupsScreen() {
     var shareEmail by remember { mutableStateOf(false) }
     var playTestEmail by remember { mutableStateOf("") }
     var snapshotLoading by remember { mutableStateOf(false) }
+    var groupCheckins by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var groupSearch by remember { mutableStateOf("") }
 
     LaunchedEffect(refresh) {
         loading = true
@@ -76,11 +78,19 @@ fun GroupsScreen() {
         Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
             Text("＋ Yeni grup oluştur · 30 BP")
         }
+        OutlinedTextField(
+            value = groupSearch,
+            onValueChange = { groupSearch = it },
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            label = { Text("Grup ara") },
+            placeholder = { Text("Grup adı veya açıklama") },
+            singleLine = true
+        )
         message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
         if (loading) CircularProgressIndicator(Modifier.padding(24.dp))
         else if (groups.isEmpty()) Text("Henüz grup yok. İlk tester grubunu sen oluşturabilirsin.", modifier = Modifier.padding(top = 18.dp))
         else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 14.dp)) {
-            items(groups, key = { it.id }) { group ->
+            items(groups.filter { it.name.contains(groupSearch, ignoreCase = true) || it.description.contains(groupSearch, ignoreCase = true) }, key = { it.id }) { group ->
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Column(Modifier.padding(15.dp)) {
                         Text(group.name, style = MaterialTheme.typography.titleMedium)
@@ -104,6 +114,7 @@ fun GroupsScreen() {
                                         snapshotLoading = true
                                         val result = withContext(Dispatchers.IO) { repository.groupSnapshot(group.id) }
                                         groupSnapshot = result.first
+                                        groupCheckins = withContext(Dispatchers.IO) { repository.groupCheckinDates(group.id) }.first
                                         shareEmail = result.first?.myEmailShared ?: false
                                         playTestEmail = result.first?.myPlayTestEmail ?: ""
                                         message = result.second
@@ -186,6 +197,28 @@ fun GroupsScreen() {
                         Text(statusText, color = MaterialTheme.colorScheme.secondary)
                         Text("${snapshot.approvedMembers}/${snapshot.requiredMembers} onaylı tester")
                         Text("${snapshot.elapsedDays}/${snapshot.requiredDays} gün tamamlandı")
+                        val todayUtc = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date())
+                        val checkedToday = todayUtc in groupCheckins
+                        if (snapshot.status == "running") {
+                            Text(if (checkedToday) "Bugünkü test bildirimin tamamlandı." else "Bugün uygulamayı test ettiğini bildir.")
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        val result = withContext(Dispatchers.IO) { repository.checkInGroupToday(group.id) }
+                                        message = result.second ?: if (result.first == true) "Bugünkü grup testi bildirimin kaydedildi." else "Bugünkü bildirimin zaten kayıtlı."
+                                        if (result.second == null) {
+                                            groupCheckins = withContext(Dispatchers.IO) { repository.groupCheckinDates(group.id) }.first
+                                        }
+                                    }
+                                },
+                                enabled = !checkedToday,
+                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+                            ) { Text(if (checkedToday) "Bugün bildirildi ✓" else "Bugünkü testi tamamladım") }
+                            if (groupCheckins.isNotEmpty()) {
+                                Text("Son bildirimlerin: " + groupCheckins.sortedDescending().take(7).joinToString(" · "), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                         if (snapshot.status == "waiting" || snapshot.status == "paused") {
                             Text("15 tester onaylandığında 14 günlük sayaç başlayacak. Üye sayısı 15'in altına düşerse sayaç durur ve 15 tester yeniden tamamlandığında 14 gün baştan başlar.", fontSize = 11.sp)
                         } else {
