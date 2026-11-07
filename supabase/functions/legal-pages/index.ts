@@ -55,6 +55,31 @@ const privacy = `
 <div class="notice">Bu metin Betalink'in mevcut işlevlerine göre hazırlanmıştır. Yeni veri toplama, analiz, reklam veya üçüncü taraf SDK'ları eklenirse politika ve Play Console Veri Güvenliği beyanı güncellenmelidir.</div>
 `;
 
+const terms = `
+<h1>Betalink Kullanım Koşulları ve Topluluk Kuralları</h1>
+<p class="muted">Sürüm: 8 Kasım 2026 · Hizmet sağlayıcı: Hz Yazılım</p>
+<p>Betalink; uygulama geliştiricileri ile uygulamalarını gerçek koşullarda test eden katılımcıları buluşturan bir topluluk platformudur. Kullanıcılar kampanya, grup, görev, açıklama ve geri bildirim oluşturmadan önce bu koşulları kabul etmelidir.</p>
+<h2>1. Dürüst kullanım</h2>
+<ul><li>Hesabını yalnızca kendin kullan ve başkasının kimliğine bürünme.</li><li>Cihazın, uygunluğun ve test katılımın hakkında doğru bilgi ver.</li><li>Katıldığını beyan ettiğin Google Play testine gerçekten katıl; uygulamayı kullan ve dürüst geri bildirim sun.</li><li>Uygulama içi katılım ve günlük check-in kayıtlarının kullanıcı beyanı olduğunu, Google Play Console tarafından doğrulanmadığını bil.</li></ul>
+<h2>2. Yasaklanan içerik ve davranışlar</h2>
+<ul><li>Tehdit, taciz, zorbalık, nefret söylemi, hedef gösterme veya kişisel saldırı.</li><li>Hukuka aykırı, dolandırıcılık amaçlı veya başkasının haklarını ihlal eden içerik.</li><li>Spam, sahte test başvurusu, sahte check-in, yanıltıcı puan/ödül elde etme veya sistemi manipüle etme.</li><li>Başka kullanıcıların kişisel verilerini izinsiz paylaşma.</li><li>Google şifresi, doğrulama kodu veya Play Console giriş bilgisi isteme/paylaşma.</li><li>Zararlı bağlantı veya kötü amaçlı yazılım paylaşma.</li><li>BetaPuan'ı nakit veya gerçek para gibi sunma.</li></ul>
+<h2>3. Kampanyalar ve tester grupları</h2>
+<p>Kampanyalar ve gruplar gerçek test ihtiyacı için kullanılmalıdır. Geliştiriciler test kapsamını ve görevleri açıkça belirtmeli; tester'lar yalnızca gerçekten yaptıkları görevleri ve günlük bildirimleri tamamlandı olarak işaretlemelidir. Grup e-posta paylaşımı isteğe bağlıdır. Betalink, Google Play'de yayın onayı veya production erişimi garantisi vermez.</p>
+<h2>4. BetaPuan</h2>
+<p>BetaPuan sanal, devredilemez ve nakde çevrilemez uygulama içi puandır. Hileli veya kötüye kullanım amaçlı işlemler incelenebilir ve kurallara göre geri alınabilir.</p>
+<h2>5. Şikâyet ve moderasyon</h2>
+<p>Kullanıcılar uygunsuz içerik veya davranışı uygulama içinden bildirebilir ve diğer kullanıcıları engelleyebilir. Hz Yazılım bildirimleri inceleyebilir; içeriği kaldırabilir, grup üyeliğini sonlandırabilir veya hesabı geçici/kalıcı olarak kısıtlayabilir.</p>
+<h2>6. İçerik sorumluluğu</h2>
+<p>Paylaştığın içerik için gerekli hak ve izinlere sahip olmalısın. Başkasına ait marka, yazılım, görsel veya metinleri izinsiz kullanma. Paylaştığın içerikten sen sorumlusun; Betalink içeriği hizmeti işletmek ve moderasyon yapmak amacıyla platform içinde barındırabilir ve gösterebilir.</p>
+<h2>7. Üçüncü taraf hizmetler</h2>
+<p>Betalink, Google Play Console veya üçüncü taraf uygulamaların sahibi değildir. Üçüncü taraf hizmetlerinin kullanılabilirliği ve kuralları ilgili sağlayıcıya bağlıdır. Betalink bakım, güvenlik veya kötüye kullanım durumlarında özellikleri geçici olarak sınırlandırabilir.</p>
+<h2>8. Hesap ve gizlilik</h2>
+<p>Hesabını uygulama içinden Profil bölümünde silebilir veya <a href="https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion">harici hesap silme sayfasından</a> talep gönderebilirsin. Kişisel verilerin için <a href="https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy">Gizlilik Politikası</a> geçerlidir.</p>
+<h2>9. Güncellemeler ve iletişim</h2>
+<p>Önemli koşul değişikliklerinde yeni sürüm gösterilir ve yeniden onay istenir. Sorular için <a href="mailto:hz.yazilimm@gmail.com">hz.yazilimm@gmail.com</a> adresine ulaşabilirsin.</p>
+<div class="notice">Bu metin ürün ve topluluk kurallarını tanımlar. Yayın öncesinde Türkiye mevzuatı ve işletme modeline göre hukuk danışmanı tarafından gözden geçirilmelidir.</div>
+`;
+
 const deletion = `
 <h1>Betalink Hesap ve Veri Silme</h1>
 <p>Bu sayfa, Betalink hesabını ve ilişkili kişisel verilerini silmek için Google Play'in istediği harici başvuru yoludur. Uygulama içinden silme seçeneği de Profil ekranında bulunur.</p>
@@ -74,6 +99,9 @@ Deno.serve((req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "GET") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   const path = new URL(req.url).pathname.replace(/\/+$/, "");
+  if (path.endsWith("/terms")) {
+    return new Response(shell("Kullanım Koşulları", terms), { status: 200, headers: corsHeaders });
+  }
   if (path.endsWith("/account-deletion")) {
     return new Response(shell("Hesap ve Veri Silme", deletion), { status: 200, headers: corsHeaders });
   }
