@@ -254,7 +254,7 @@ private fun TermsAcceptanceDialog(error: String?, onOpenTerms: () -> Unit, onAcc
             }
         },
         confirmButton = {
-            TextButton(onClick = onAccept, enabled = checked && error == null) { Text("Kabul et ve devam et") }
+            TextButton(onClick = onAccept, enabled = checked) { Text("Kabul et ve devam et") }
         },
         dismissButton = { TextButton(onClick = onSignOut) { Text("Çıkış yap") } }
     )
