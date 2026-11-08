@@ -47,7 +47,6 @@ fun WalletStatusCard() {
                     Text("Tamamlanan test", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text("Kampanya oluşturma 50 BP, tester grubu oluşturma 30 BP, açık gruba katılım 5 BP. Ek test şartı yok; yalnızca yeterli BP bakiyesi aranır. Geçerli test tamamlamalarında +25 BP kazanırsın.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 10.sp) }
         }
     }
