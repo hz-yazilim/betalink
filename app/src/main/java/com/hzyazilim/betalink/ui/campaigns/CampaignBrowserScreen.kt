@@ -574,6 +574,38 @@ private fun DeveloperReviewDialog(
 }
 
 @Composable
+private fun DeveloperTesterReliabilityDialog(campaignId: String, testerId: String, repository: CampaignRepository, onDismiss: () -> Unit) {
+    var data by remember { mutableStateOf<com.hzyazilim.betalink.core.data.TesterReliability?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    LaunchedEffect(campaignId,testerId) {
+        val result = withContext(Dispatchers.IO) { repository.testerReliabilityForCampaign(campaignId,testerId) }
+        data = result.first
+        error = result.second
+        loading = false
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Tester güvenilirlik profili") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (loading) CircularProgressIndicator()
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                data?.let {
+                    Text("Katıldığı test: ${it.testsJoined}")
+                    Text("Tamamladığı test: ${it.testsCompleted}")
+                    Text("Devamsızlık nedeniyle ayrıldığı: ${it.testsDropped}")
+                    Text("Günlük bildirim: ${it.dailyCheckins} · Kaçırılan gün: ${it.missedDays}")
+                    Text("Katılım güvenilirliği: ${it.attendancePercent}%")
+                    Text("İtibar puanı: ${it.reputationPoints}")
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Kapat") } }
+    )
+}
+
+@Composable
 private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: CampaignRepository, onDismiss: () -> Unit, onMessage: (String) -> Unit) {
     var report by remember { mutableStateOf<com.hzyazilim.betalink.core.data.CampaignReport?>(null) }
     var feedback by remember { mutableStateOf<com.hzyazilim.betalink.core.data.FeedbackSummary?>(null) }
@@ -626,6 +658,7 @@ private fun DeveloperCampaignsScreen() {
     var selectedCampaign by remember { mutableStateOf<Campaign?>(null) }
     var selectedReviewCampaign by remember { mutableStateOf<Campaign?>(null) }
     var selectedReportCampaign by remember { mutableStateOf<Campaign?>(null) }
+    var reliabilityTesterId by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var applicants by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.CampaignMember>>(emptyList()) }
 
@@ -696,6 +729,10 @@ private fun DeveloperCampaignsScreen() {
     selectedReportCampaign?.let { campaign ->
         DeveloperCampaignReportDialog(campaign, repository, onDismiss = { selectedReportCampaign = null }, onMessage = { message = it })
     }
+    reliabilityTesterId?.let { testerId ->
+        val campaignId = selectedCampaign?.id
+        if (campaignId != null) DeveloperTesterReliabilityDialog(campaignId,testerId,repository,onDismiss = { reliabilityTesterId = null })
+    }
 
     selectedCampaign?.let { campaign ->
         AlertDialog(
@@ -708,6 +745,7 @@ private fun DeveloperCampaignsScreen() {
                         Column {
                             Text("Tester: ${applicant.testerId.take(8)}…")
                             Text("Durum: ${applicant.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            TextButton(onClick = { reliabilityTesterId = applicant.testerId }) { Text("Güvenilirlik profilini görüntüle") }
                             if (applicant.status == "applied" || applicant.status == "waitlisted") {
                                 Row {
                                     TextButton(onClick = {
