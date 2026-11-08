@@ -12,8 +12,8 @@ begin
   'tests_joined',(select count(*) from public.campaign_members where tester_id=p_tester_id and status in ('completed','active','opted_in','accepted','dropped')),
   'tests_completed',(select count(*) from public.campaign_members where tester_id=p_tester_id and status='completed'),
   'tests_dropped',(select count(*) from public.campaign_members where tester_id=p_tester_id and status='dropped'),
-  'daily_checkins',(select count(*) from public.campaign_daily_checkins where tester_id=p_tester_id),
-  'missed_days',(select coalesce(sum(missed_days),0) from public.campaign_members where tester_id=p_tester_id),
+  'daily_checkins',(select count(*) from public.campaign_daily_checkins where tester_id=p_tester_id)+(select count(*) from public.group_daily_checkins where user_id=p_tester_id),
+  'missed_days',(select coalesce(sum(missed_days),0) from public.campaign_members where tester_id=p_tester_id)+(select coalesce(sum(missed_days),0) from public.group_members where user_id=p_tester_id),
   'reputation_points',(select coalesce(sum(points),0) from public.reputation_events where user_id=p_tester_id)
  ) into result;
  return result;
