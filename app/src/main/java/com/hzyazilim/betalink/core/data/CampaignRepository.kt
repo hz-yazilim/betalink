@@ -24,7 +24,7 @@ data class BetaWallet(val balance: Int, val lifetimeEarned: Int, val completedSu
 data class TesterReliability(val testsJoined: Int, val testsCompleted: Int, val testsDropped: Int, val dailyCheckins: Int, val missedDays: Int, val reputationPoints: Int) {
     val attendancePercent: Int get() = if (dailyCheckins + missedDays == 0) 0 else (dailyCheckins * 100 / (dailyCheckins + missedDays)).coerceIn(0, 100)
 }
-data class CampaignReport(val activeTesters: Int, val backupTesters: Int, val droppedTesters: Int, val totalCheckins: Int, val feedbackCount: Int, val averageRating: Double?, val bugReports: Int, val suggestions: Int)
+data class CampaignReport(val activeTesters: Int, val backupTesters: Int, val droppedTesters: Int, val totalCheckins: Int, val feedbackCount: Int, val averageRating: Double?, val bugReports: Int, val suggestions: Int, val acceptedTesters: Int)
 data class FeedbackSummary(val feedbackCount: Int, val averageRating: Double?, val bugs: Int, val experiences: Int, val suggestions: Int, val resolved: Int)
 
 data class Campaign(
@@ -232,12 +232,12 @@ class CampaignRepository(context: Context) {
 
     fun campaignReport(campaignId: String): Pair<CampaignReport?, String?> {
         val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
-        val (status, body) = call("/rest/v1/betalink_campaign_report?select=active_testers,backup_testers,dropped_testers,total_checkins,feedback_count,average_rating,bug_reports,suggestions&campaign_id=eq.$campaignId", "GET", token)
+        val (status, body) = call("/rest/v1/betalink_campaign_report?select=active_testers,backup_testers,dropped_testers,total_checkins,feedback_count,average_rating,bug_reports,suggestions,accepted_testers&campaign_id=eq.$campaignId", "GET", token)
         if (status !in 200..299) return null to message(body)
         val rows = JSONArray(body)
         if (rows.length() == 0) return null to "Rapor bulunamadı."
         val row = rows.getJSONObject(0)
-        return CampaignReport(row.optInt("active_testers"),row.optInt("backup_testers"),row.optInt("dropped_testers"),row.optInt("total_checkins"),row.optInt("feedback_count"),if(row.isNull("average_rating")) null else row.optDouble("average_rating"),row.optInt("bug_reports"),row.optInt("suggestions")) to null
+        return CampaignReport(row.optInt("active_testers"),row.optInt("backup_testers"),row.optInt("dropped_testers"),row.optInt("total_checkins"),row.optInt("feedback_count"),if(row.isNull("average_rating")) null else row.optDouble("average_rating"),row.optInt("bug_reports"),row.optInt("suggestions"),row.optInt("accepted_testers")) to null
     }
 
     fun campaignFeedbackSummary(campaignId: String): Pair<FeedbackSummary?, String?> {
