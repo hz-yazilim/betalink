@@ -12,8 +12,8 @@ android {
         applicationId = "com.hzyazilim.betalink"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.3.2"
+        versionCode = 5
+        versionName = "0.4.0"
         buildConfigField("String", "SUPABASE_URL", "\"https://lwloymjcnmzobjmgvlnp.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_iafVZ3uELvqqUKYaMfYwgA_kEu5LACD\"")
         // Public Google Web OAuth client ID used as the audience for native Google ID tokens.
