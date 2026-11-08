@@ -574,6 +574,47 @@ private fun DeveloperReviewDialog(
 }
 
 @Composable
+private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: CampaignRepository, onDismiss: () -> Unit, onMessage: (String) -> Unit) {
+    var report by remember { mutableStateOf<com.hzyazilim.betalink.core.data.CampaignReport?>(null) }
+    var feedback by remember { mutableStateOf<com.hzyazilim.betalink.core.data.FeedbackSummary?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    LaunchedEffect(campaign.id) {
+        val r = withContext(Dispatchers.IO) { repository.campaignReport(campaign.id) }
+        report = r.first
+        r.second?.let(onMessage)
+        val f = withContext(Dispatchers.IO) { repository.campaignFeedbackSummary(campaign.id) }
+        feedback = f.first
+        f.second?.let(onMessage)
+        loading = false
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${campaign.appName} · Test raporu") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                if (loading) CircularProgressIndicator()
+                report?.let {
+                    Text("Katılımcı özeti", style = MaterialTheme.typography.titleSmall)
+                    Text("Aktif tester: ${it.activeTesters} / ${campaign.targetTesters}")
+                    Text("Yedek tester: ${it.backupTesters} · Ayrılan: ${it.droppedTesters}")
+                    Text("Günlük test bildirimleri: ${it.totalCheckins}")
+                    Text("Geri bildirim: ${it.feedbackCount} · Ortalama puan: ${it.averageRating?.toString() ?: "Henüz yok"}")
+                    Text("Hata: ${it.bugReports} · Öneri: ${it.suggestions}")
+                }
+                feedback?.let {
+                    Text("Geri bildirim özeti", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 5.dp))
+                    Text("Deneyim: ${it.experiences} · Çözülen: ${it.resolved}")
+                    Text("Hata bildirimi: ${it.bugs} · Öneri: ${it.suggestions}")
+                    Text("Ortalama değerlendirme: ${it.averageRating?.toString() ?: "Henüz yok"}")
+                }
+                if (!loading && report == null) Text("Rapor verisi henüz oluşmadı.")
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Kapat") } }
+    )
+}
+
+@Composable
 private fun DeveloperCampaignsScreen() {
     val context = LocalContext.current
     val repository = remember { CampaignRepository(context) }
@@ -584,6 +625,7 @@ private fun DeveloperCampaignsScreen() {
     var refresh by remember { mutableStateOf(0) }
     var selectedCampaign by remember { mutableStateOf<Campaign?>(null) }
     var selectedReviewCampaign by remember { mutableStateOf<Campaign?>(null) }
+    var selectedReportCampaign by remember { mutableStateOf<Campaign?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var applicants by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.CampaignMember>>(emptyList()) }
 
@@ -622,6 +664,13 @@ private fun DeveloperCampaignsScreen() {
                             }
                         }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Başvuruları yönet") }
                         TextButton(onClick = { selectedReviewCampaign = campaign }, modifier = Modifier.fillMaxWidth()) { Text("Görev ve geri bildirimleri yönet") }
+                        TextButton(onClick = {
+                            scope.launch {
+                                val result = withContext(Dispatchers.IO) { repository.processCampaignAttendance(campaign.id) }
+                                message = result.second ?: "Devamsızlık kontrolü tamamlandı: ${result.first}"
+                                selectedReportCampaign = campaign
+                            }
+                        }, modifier = Modifier.fillMaxWidth()) { Text("Devamsızlık kontrolü ve test raporu") }
                     }
                 }
             }
@@ -643,6 +692,9 @@ private fun DeveloperCampaignsScreen() {
 
     selectedReviewCampaign?.let { campaign ->
         DeveloperReviewDialog(campaign, repository, onDismiss = { selectedReviewCampaign = null }, onMessage = { message = it })
+    }
+    selectedReportCampaign?.let { campaign ->
+        DeveloperCampaignReportDialog(campaign, repository, onDismiss = { selectedReportCampaign = null }, onMessage = { message = it })
     }
 
     selectedCampaign?.let { campaign ->
