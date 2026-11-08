@@ -221,6 +221,15 @@ class CampaignRepository(context: Context) {
         return TesterReliability(row.optInt("tests_joined"),row.optInt("tests_completed"),row.optInt("tests_dropped"),row.optInt("daily_checkins"),row.optInt("missed_days"),row.optInt("reputation_points")) to null
     }
 
+    fun testerReliabilityForCampaign(campaignId: String, testerId: String): Pair<TesterReliability?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val (status, body) = call("/rest/v1/rpc/betalink_tester_reliability_for_campaign", "POST", token,
+            JSONObject().put("p_campaign_id",campaignId).put("p_tester_id",testerId))
+        if (status !in 200..299) return null to message(body)
+        val row = JSONObject(body)
+        return TesterReliability(row.optInt("tests_joined"),row.optInt("tests_completed"),row.optInt("tests_dropped"),row.optInt("daily_checkins"),row.optInt("missed_days"),row.optInt("reputation_points")) to null
+    }
+
     fun campaignReport(campaignId: String): Pair<CampaignReport?, String?> {
         val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
         val (status, body) = call("/rest/v1/betalink_campaign_report?select=active_testers,backup_testers,dropped_testers,total_checkins,feedback_count,average_rating,bug_reports,suggestions&campaign_id=eq.$campaignId", "GET", token)
