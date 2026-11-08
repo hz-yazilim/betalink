@@ -21,6 +21,11 @@ data class TaskSubmission(val id: String, val taskTitle: String, val testerId: S
 data class FeedbackItem(val id: String, val testerId: String, val rating: Int?, val body: String, val status: String, val reply: String?)
 data class BetalinkNotification(val id: String, val title: String, val body: String, val read: Boolean, val createdAt: String)
 data class BetaWallet(val balance: Int, val lifetimeEarned: Int, val completedSupportTests: Int)
+data class TesterReliability(val testsJoined: Int, val testsCompleted: Int, val testsDropped: Int, val dailyCheckins: Int, val missedDays: Int, val reputationPoints: Int) {
+    val attendancePercent: Int get() = if (dailyCheckins + missedDays == 0) 100 else (dailyCheckins * 100 / (dailyCheckins + missedDays)).coerceIn(0, 100)
+}
+data class CampaignReport(val activeTesters: Int, val backupTesters: Int, val droppedTesters: Int, val totalCheckins: Int, val feedbackCount: Int, val averageRating: Double?, val bugReports: Int, val suggestions: Int)
+data class FeedbackSummary(val feedbackCount: Int, val averageRating: Double?, val bugs: Int, val experiences: Int, val suggestions: Int, val resolved: Int)
 
 data class Campaign(
     val id: String,
@@ -194,6 +199,51 @@ class CampaignRepository(context: Context) {
         val body = JSONObject().put("status", if (approved) "approved" else "removed")
         val (status, response) = call("/rest/v1/group_members?id=eq.$memberId", "PATCH", token, body)
         return if (status in 200..299) null else message(response)
+    }
+
+    fun removeGroupMember(groupId: String, memberId: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val (status, response) = call("/rest/v1/rpc/betalink_group_remove_member", "POST", token,
+            JSONObject().put("p_group_id", groupId).put("p_member_id", memberId))
+        return if (status in 200..299) null else message(response)
+    }
+
+    fun testerReliability(): Pair<TesterReliability?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return null to "Oturum doğrulanamadı."
+        val id = JSONObject(user.second).optString("id")
+        val (status, body) = call("/rest/v1/betalink_tester_reliability?select=tests_joined,tests_completed,tests_dropped,daily_checkins,missed_days,reputation_points&user_id=eq.$id", "GET", token)
+        if (status !in 200..299) return null to message(body)
+        val rows = JSONArray(body)
+        if (rows.length() == 0) return TesterReliability(0,0,0,0,0,0) to null
+        val row = rows.getJSONObject(0)
+        return TesterReliability(row.optInt("tests_joined"),row.optInt("tests_completed"),row.optInt("tests_dropped"),row.optInt("daily_checkins"),row.optInt("missed_days"),row.optInt("reputation_points")) to null
+    }
+
+    fun campaignReport(campaignId: String): Pair<CampaignReport?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val (status, body) = call("/rest/v1/betalink_campaign_report?select=active_testers,backup_testers,dropped_testers,total_checkins,feedback_count,average_rating,bug_reports,suggestions&campaign_id=eq.$campaignId", "GET", token)
+        if (status !in 200..299) return null to message(body)
+        val rows = JSONArray(body)
+        if (rows.length() == 0) return null to "Rapor bulunamadı."
+        val row = rows.getJSONObject(0)
+        return CampaignReport(row.optInt("active_testers"),row.optInt("backup_testers"),row.optInt("dropped_testers"),row.optInt("total_checkins"),row.optInt("feedback_count"),if(row.isNull("average_rating")) null else row.optDouble("average_rating"),row.optInt("bug_reports"),row.optInt("suggestions")) to null
+    }
+
+    fun campaignFeedbackSummary(campaignId: String): Pair<FeedbackSummary?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val (status, body) = call("/rest/v1/rpc/betalink_campaign_feedback_summary", "POST", token, JSONObject().put("p_campaign_id",campaignId))
+        if (status !in 200..299) return null to message(body)
+        val row = JSONObject(body)
+        return FeedbackSummary(row.optInt("feedback_count"),if(row.isNull("average_rating")) null else row.optDouble("average_rating"),row.optInt("bugs"),row.optInt("experiences"),row.optInt("suggestions"),row.optInt("resolved")) to null
+    }
+
+    fun processCampaignAttendance(campaignId: String): Pair<String?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val (status, body) = call("/rest/v1/rpc/betalink_process_campaign_attendance", "POST", token, JSONObject().put("p_campaign_id",campaignId))
+        if (status !in 200..299) return null to message(body)
+        return body to null
     }
 
     fun setGroupEmailConsent(groupId: String, consent: Boolean, playTestEmail: String): String? {
