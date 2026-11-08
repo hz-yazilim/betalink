@@ -525,7 +525,7 @@ class CampaignRepository(context: Context) {
     fun reviewApplicant(memberId: String, statusValue: String): String? {
         if (statusValue !in listOf("accepted","rejected","waitlisted")) return "Geçersiz başvuru durumu."
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
-        val body = JSONObject().put("status", statusValue)
+        val body = JSONObject().put("status", statusValue).put("is_backup", statusValue == "waitlisted")
         val (status, response) = call(
             "/rest/v1/campaign_members?id=eq.$memberId", "PATCH", token, body
         )
