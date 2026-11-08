@@ -29,7 +29,7 @@ begin
     where cm.campaign_id=p_campaign_id and cm.status in ('active','opted_in','accepted') and not cm.is_backup
     group by cm.id
   loop
-    if m.last_checkin < (now() at time zone 'utc')::date then
+    if m.last_checkin < ((now() at time zone 'utc')::date - 1) then
       update public.campaign_members set missed_days=missed_days+1,last_absence_notice_at=now(),
         status=case when missed_days+1>=2 then 'dropped' else status end where id=m.id;
       v_missing:=v_missing+1;
@@ -101,7 +101,7 @@ select p.user_id,p.display_name,
  (select count(*) from public.campaign_members cm where cm.tester_id=p.user_id and cm.status in ('completed','active','opted_in','accepted','dropped'))::integer tests_joined,
  (select count(*) from public.campaign_members cm where cm.tester_id=p.user_id and cm.status='completed')::integer tests_completed,
  (select count(*) from public.campaign_members cm where cm.tester_id=p.user_id and cm.status='dropped')::integer tests_dropped,
- (select count(*) from public.campaign_daily_checkins dc where dc.tester_id=p.user_id)::integer daily_checkins,
+ (select count(*) from public.campaign_daily_checkins dc where dc.tester_id=p.user_id)::integer daily_checkins,\n (select coalesce(sum(cm.missed_days),0) from public.campaign_members cm where cm.tester_id=p.user_id)::integer missed_days,
  (select coalesce(sum(re.points),0) from public.reputation_events re where re.user_id=p.user_id)::integer reputation_points
 from public.profiles p;
 
