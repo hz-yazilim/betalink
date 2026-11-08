@@ -22,7 +22,7 @@ data class FeedbackItem(val id: String, val testerId: String, val rating: Int?, 
 data class BetalinkNotification(val id: String, val title: String, val body: String, val read: Boolean, val createdAt: String)
 data class BetaWallet(val balance: Int, val lifetimeEarned: Int, val completedSupportTests: Int)
 data class TesterReliability(val testsJoined: Int, val testsCompleted: Int, val testsDropped: Int, val dailyCheckins: Int, val missedDays: Int, val reputationPoints: Int) {
-    val attendancePercent: Int get() = if (dailyCheckins + missedDays == 0) 100 else (dailyCheckins * 100 / (dailyCheckins + missedDays)).coerceIn(0, 100)
+    val attendancePercent: Int get() = if (dailyCheckins + missedDays == 0) 0 else (dailyCheckins * 100 / (dailyCheckins + missedDays)).coerceIn(0, 100)
 }
 data class CampaignReport(val activeTesters: Int, val backupTesters: Int, val droppedTesters: Int, val totalCheckins: Int, val feedbackCount: Int, val averageRating: Double?, val bugReports: Int, val suggestions: Int)
 data class FeedbackSummary(val feedbackCount: Int, val averageRating: Double?, val bugs: Int, val experiences: Int, val suggestions: Int, val resolved: Int)
