@@ -361,14 +361,8 @@ private fun CreateCampaignDialog(
 
 @Composable
 fun MyTestsHub() {
-    Column(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp)) {
-            Text("TESTLERİM", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
-            Text("Geliştirici paneli", style = MaterialTheme.typography.headlineSmall)
-            Text("Oluşturduğun kampanyaları ve tester başvurularını buradan yönet.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-        }
-        DeveloperCampaignsScreen()
-    }
+    // Başlık ve içerik aynı kaydırılabilir listede; üstte ikinci bir sabit başlık alanı yok.
+    DeveloperCampaignsScreen()
 }
 
 private data class MyGroupProgress(
@@ -670,41 +664,53 @@ private fun DeveloperCampaignsScreen() {
         loading = false
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
-        Text("GELİŞTİRİCİ PANELİ", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
-        Text("Oluşturduğun kampanyalar", style = MaterialTheme.typography.headlineSmall)
-        WalletStatusCard()
-        Text("Kampanya oluşturma ücreti 50 BP · Bakiyen 50 BP veya üzerindeyse oluşturabilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-        Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("＋ Yeni kampanya oluştur · 50 BP") }
-        message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (loading) CircularProgressIndicator(Modifier.padding(20.dp))
-        else if (campaigns.isEmpty()) Text("Henüz kampanya oluşturmadın. Kampanya oluşturmak için Testlerim ekranındaki butonu kullan.", modifier = Modifier.padding(top = 16.dp))
-        else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 12.dp)) {
-            items(campaigns, key = { it.id }) { campaign ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Column(Modifier.padding(15.dp)) {
-                        Text(campaign.appName, style = MaterialTheme.typography.titleMedium)
-                        Text("Durum: ${campaign.status} · Hedef: ${campaign.targetTesters} tester", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                        Button(onClick = {
-                            scope.launch {
-                                val result = withContext(Dispatchers.IO) { repository.applicants(campaign.id) }
-                                applicants = result.first
-                                message = result.second
-                                selectedCampaign = campaign
-                            }
-                        }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Başvuruları yönet") }
-                        TextButton(onClick = { selectedReviewCampaign = campaign }, modifier = Modifier.fillMaxWidth()) { Text("Görev ve geri bildirimleri yönet") }
-                        TextButton(onClick = {
-                            scope.launch {
-                                val result = withContext(Dispatchers.IO) { repository.processCampaignAttendance(campaign.id) }
-                                message = result.second ?: "Devamsızlık kontrolü tamamlandı: ${result.first}"
-                                selectedReportCampaign = campaign
-                            }
-                        }, modifier = Modifier.fillMaxWidth()) { Text("Devamsızlık kontrolü ve test raporu") }
-                    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 12.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            Text("GELİŞTİRİCİ PANELİ", color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp)
+            Text("Kampanyaların", style = MaterialTheme.typography.headlineSmall)
+            WalletStatusCard()
+            Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth()) {
+                Text("＋ Kampanya oluştur · 50 BP")
+            }
+            message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+            if (loading) {
+                CircularProgressIndicator(Modifier.padding(20.dp))
+            } else if (campaigns.isEmpty()) {
+                Text(
+                    "Henüz kampanya oluşturmadın.",
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        items(campaigns, key = { it.id }) { campaign ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(Modifier.padding(15.dp)) {
+                    Text(campaign.appName, style = MaterialTheme.typography.titleMedium)
+                    Text("Durum: ${campaign.status} · Hedef: ${campaign.targetTesters} tester", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Button(onClick = {
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) { repository.applicants(campaign.id) }
+                            applicants = result.first
+                            message = result.second
+                            selectedCampaign = campaign
+                        }
+                    }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Başvuruları yönet") }
+                    TextButton(onClick = { selectedReviewCampaign = campaign }, modifier = Modifier.fillMaxWidth()) { Text("Görev ve geri bildirimleri yönet") }
+                    TextButton(onClick = {
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) { repository.processCampaignAttendance(campaign.id) }
+                            message = result.second ?: "Devamsızlık kontrolü tamamlandı: ${result.first}"
+                            selectedReportCampaign = campaign
+                        }
+                    }, modifier = Modifier.fillMaxWidth()) { Text("Devamsızlık kontrolü ve test raporu") }
                 }
             }
         }
