@@ -1,13 +1,13 @@
 # Betalink 0.3.0
 
 ## New in 0.3.0
-- Daily campaign attendance processing with a one-day grace period.
+- Daily campaign and group attendance processing with a one-day grace period.
 - In-app absence reminders; two consecutive missed days release the active tester slot.
-- Automatic promotion of the oldest eligible backup tester into a vacated campaign slot.
+- Automatic promotion of the oldest eligible backup tester into a vacated campaign or group slot.
 - Campaign owners can manually run an attendance review and inspect the campaign report.
 - Tester reliability metrics are visible on the user's profile and to developers reviewing campaign applicants.
 - Group capacity and 14-day progress bars.
-- Group owners can remove an approved member; the oldest pending applicant is promoted into the free slot and notified.
+- Group owners can remove an approved member; the oldest pending applicant is promoted into the free slot and notified. Two consecutive missed group check-ins also release the slot and call the next pending member.
 - Developer campaign report: active/backup/dropped tester counts, check-ins, feedback count, average rating, bug reports and suggestions.
 - Automatic in-app feedback summary when the 14-day campaign tracking clock completes.
 - Android versionName 0.3.0 and versionCode 2.
