@@ -8,14 +8,14 @@ plugins {
 
 android {
     namespace = "com.hzyazilim.betalink"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.hzyazilim.betalink"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 1
-        versionName = "0.2.0"
+        targetSdk = 36
+        versionCode = 2
+        versionName = "0.3.0"
         buildConfigField("String", "SUPABASE_URL", "\"https://lwloymjcnmzobjmgvlnp.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_iafVZ3uELvqqUKYaMfYwgA_kEu5LACD\"")
         // Resolve the public Google Web OAuth client ID for Android Studio and CI builds.

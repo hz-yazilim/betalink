@@ -53,11 +53,17 @@ fun CampaignBrowserScreen(myTests: Boolean) {
     var showCreate by remember { mutableStateOf(false) }
     var selectedTaskCampaign by remember { mutableStateOf<Campaign?>(null) }
     var refresh by remember { mutableStateOf(0) }
+    var searchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(myTests, refresh) {
         loading = true
         val result = withContext(Dispatchers.IO) {
-            if (myTests) repository.myCampaigns() else repository.listOpenCampaigns()
+            if (myTests) repository.myCampaigns()
+            else {
+                val open = repository.listOpenCampaigns()
+                val joined = repository.myCampaigns()
+                (joined.first + open.first).distinctBy { it.id } to (open.second ?: joined.second)
+            }
         }
         campaigns = result.first
         message = result.second
@@ -69,8 +75,16 @@ fun CampaignBrowserScreen(myTests: Boolean) {
         Text(if (myTests) "TESTLERİM" else "KEŞFET", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
         Text(if (myTests) "Katıldığın kampanyalar" else "Açık test kampanyaları", style = MaterialTheme.typography.headlineSmall)
         WalletStatusCard()
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            label = { Text("Test kampanyası ara") },
+            placeholder = { Text("Uygulama, açıklama veya kategori") },
+            singleLine = true
+        )
         if (myTests) {
-            Text("Kampanya açma: en az 2 tamamlanmış destek testi + 50 BP", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            Text("Kampanya oluşturma ücreti 50 BP · Bakiyen 50 BP veya üzerindeyse oluşturabilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 Text("＋ Kampanya oluştur · 50 BP")
             }
@@ -86,12 +100,19 @@ fun CampaignBrowserScreen(myTests: Boolean) {
                 modifier = Modifier.padding(top = 20.dp)
             )
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 14.dp)) {
-                items(campaigns, key = { it.id }) { campaign ->
+            val filteredCampaigns = campaigns.filter {
+                it.appName.contains(searchQuery, ignoreCase = true) ||
+                    it.description.contains(searchQuery, ignoreCase = true) ||
+                    it.category.contains(searchQuery, ignoreCase = true)
+            }
+            if (filteredCampaigns.isEmpty()) {
+                Text("Aramana uygun kampanya bulunamadı.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 20.dp))
+            } else LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 14.dp)) {
+                items(filteredCampaigns, key = { it.id }) { campaign ->
                     CampaignCard(
                         campaign = campaign,
                         repository = repository,
-                        myTests = myTests,
+                        myTests = campaign.membershipStatus != null,
                         refreshKey = refresh,
                         onApply = {
                             scope.launch {
@@ -340,25 +361,13 @@ private fun CreateCampaignDialog(
 
 @Composable
 fun MyTestsHub() {
-    var developerMode by remember { mutableStateOf(false) }
-    var groupMode by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp)) {
-            TextButton(onClick = { developerMode = false; groupMode = false }, modifier = Modifier.weight(1f)) {
-                Text("Kampanyalar")
-            }
-            TextButton(onClick = { developerMode = false; groupMode = true }, modifier = Modifier.weight(1f)) {
-                Text("Gruplar")
-            }
-            TextButton(onClick = { developerMode = true }, modifier = Modifier.weight(1f)) {
-                Text("Geliştirici")
-            }
+        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp)) {
+            Text("TESTLERİM", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+            Text("Geliştirici paneli", style = MaterialTheme.typography.headlineSmall)
+            Text("Oluşturduğun kampanyaları ve tester başvurularını buradan yönet.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
-        when {
-            developerMode -> DeveloperCampaignsScreen()
-            groupMode -> MyGroupTestsScreen()
-            else -> CampaignBrowserScreen(myTests = true)
-        }
+        DeveloperCampaignsScreen()
     }
 }
 
@@ -565,6 +574,79 @@ private fun DeveloperReviewDialog(
 }
 
 @Composable
+private fun DeveloperTesterReliabilityDialog(campaignId: String, testerId: String, repository: CampaignRepository, onDismiss: () -> Unit) {
+    var data by remember { mutableStateOf<com.hzyazilim.betalink.core.data.TesterReliability?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    LaunchedEffect(campaignId,testerId) {
+        val result = withContext(Dispatchers.IO) { repository.testerReliabilityForCampaign(campaignId,testerId) }
+        data = result.first
+        error = result.second
+        loading = false
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Tester güvenilirlik profili") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (loading) CircularProgressIndicator()
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                data?.let {
+                    Text("Katıldığı test: ${it.testsJoined}")
+                    Text("Tamamladığı test: ${it.testsCompleted}")
+                    Text("Devamsızlık nedeniyle ayrıldığı: ${it.testsDropped}")
+                    Text("Günlük bildirim: ${it.dailyCheckins} · Kaçırılan gün: ${it.missedDays}")
+                    Text("Katılım güvenilirliği: ${it.attendancePercent}%")
+                    Text("İtibar puanı: ${it.reputationPoints}")
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Kapat") } }
+    )
+}
+
+@Composable
+private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: CampaignRepository, onDismiss: () -> Unit, onMessage: (String) -> Unit) {
+    var report by remember { mutableStateOf<com.hzyazilim.betalink.core.data.CampaignReport?>(null) }
+    var feedback by remember { mutableStateOf<com.hzyazilim.betalink.core.data.FeedbackSummary?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    LaunchedEffect(campaign.id) {
+        val r = withContext(Dispatchers.IO) { repository.campaignReport(campaign.id) }
+        report = r.first
+        r.second?.let(onMessage)
+        val f = withContext(Dispatchers.IO) { repository.campaignFeedbackSummary(campaign.id) }
+        feedback = f.first
+        f.second?.let(onMessage)
+        loading = false
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${campaign.appName} · Test raporu") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                if (loading) CircularProgressIndicator()
+                report?.let {
+                    Text("Katılımcı özeti", style = MaterialTheme.typography.titleSmall)
+                    Text("Aktif tester: ${it.activeTesters} / ${campaign.targetTesters}")
+                    Text("Yedek tester: ${it.backupTesters} · Ayrılan: ${it.droppedTesters}")
+                    Text("Günlük test bildirimleri: ${it.totalCheckins}")
+                    Text("Geri bildirim: ${it.feedbackCount} · Ortalama puan: ${it.averageRating?.toString() ?: "Henüz yok"}")
+                    Text("Hata: ${it.bugReports} · Öneri: ${it.suggestions}")
+                }
+                feedback?.let {
+                    Text("Geri bildirim özeti", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 5.dp))
+                    Text("Deneyim: ${it.experiences} · Çözülen: ${it.resolved}")
+                    Text("Hata bildirimi: ${it.bugs} · Öneri: ${it.suggestions}")
+                    Text("Ortalama değerlendirme: ${it.averageRating?.toString() ?: "Henüz yok"}")
+                }
+                if (!loading && report == null) Text("Rapor verisi henüz oluşmadı.")
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Kapat") } }
+    )
+}
+
+@Composable
 private fun DeveloperCampaignsScreen() {
     val context = LocalContext.current
     val repository = remember { CampaignRepository(context) }
@@ -575,6 +657,8 @@ private fun DeveloperCampaignsScreen() {
     var refresh by remember { mutableStateOf(0) }
     var selectedCampaign by remember { mutableStateOf<Campaign?>(null) }
     var selectedReviewCampaign by remember { mutableStateOf<Campaign?>(null) }
+    var selectedReportCampaign by remember { mutableStateOf<Campaign?>(null) }
+    var reliabilityTesterId by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var applicants by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.CampaignMember>>(emptyList()) }
 
@@ -590,7 +674,7 @@ private fun DeveloperCampaignsScreen() {
         Text("GELİŞTİRİCİ PANELİ", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
         Text("Oluşturduğun kampanyalar", style = MaterialTheme.typography.headlineSmall)
         WalletStatusCard()
-        Text("Kampanya açma: en az 2 tamamlanmış destek testi + 50 BP", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+        Text("Kampanya oluşturma ücreti 50 BP · Bakiyen 50 BP veya üzerindeyse oluşturabilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("＋ Yeni kampanya oluştur · 50 BP") }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (loading) CircularProgressIndicator(Modifier.padding(20.dp))
@@ -613,6 +697,13 @@ private fun DeveloperCampaignsScreen() {
                             }
                         }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Başvuruları yönet") }
                         TextButton(onClick = { selectedReviewCampaign = campaign }, modifier = Modifier.fillMaxWidth()) { Text("Görev ve geri bildirimleri yönet") }
+                        TextButton(onClick = {
+                            scope.launch {
+                                val result = withContext(Dispatchers.IO) { repository.processCampaignAttendance(campaign.id) }
+                                message = result.second ?: "Devamsızlık kontrolü tamamlandı: ${result.first}"
+                                selectedReportCampaign = campaign
+                            }
+                        }, modifier = Modifier.fillMaxWidth()) { Text("Devamsızlık kontrolü ve test raporu") }
                     }
                 }
             }
@@ -635,6 +726,13 @@ private fun DeveloperCampaignsScreen() {
     selectedReviewCampaign?.let { campaign ->
         DeveloperReviewDialog(campaign, repository, onDismiss = { selectedReviewCampaign = null }, onMessage = { message = it })
     }
+    selectedReportCampaign?.let { campaign ->
+        DeveloperCampaignReportDialog(campaign, repository, onDismiss = { selectedReportCampaign = null }, onMessage = { message = it })
+    }
+    reliabilityTesterId?.let { testerId ->
+        val campaignId = selectedCampaign?.id
+        if (campaignId != null) DeveloperTesterReliabilityDialog(campaignId,testerId,repository,onDismiss = { reliabilityTesterId = null })
+    }
 
     selectedCampaign?.let { campaign ->
         AlertDialog(
@@ -647,6 +745,7 @@ private fun DeveloperCampaignsScreen() {
                         Column {
                             Text("Tester: ${applicant.testerId.take(8)}…")
                             Text("Durum: ${applicant.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            TextButton(onClick = { reliabilityTesterId = applicant.testerId }) { Text("Güvenilirlik profilini görüntüle") }
                             if (applicant.status == "applied" || applicant.status == "waitlisted") {
                                 Row {
                                     TextButton(onClick = {

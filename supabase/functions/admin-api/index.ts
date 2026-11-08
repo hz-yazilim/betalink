@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
       admin.from("reports").select("id", { count: "exact", head: true }),
       admin.from("tester_groups").select("id", { count: "exact", head: true }),
       admin.from("reports").select("id,reporter_id,target_user_id,campaign_id,reason,details,status,created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(50),
-      admin.from("support_tickets").select("id,user_id,subject,message,status,created_at").in("status", ["open","in_progress"]).order("created_at", { ascending: false }).limit(50),
+      admin.from("support_tickets").select("id,user_id,subject,message,status,ticket_type,created_at").in("status", ["open","in_progress"]).order("created_at", { ascending: false }).limit(50),
       admin.from("profiles").select("user_id,display_name").order("created_at", { ascending: false }).limit(500),
       admin.from("tester_groups").select("id,name,description,created_by,tracking_status,created_at").order("created_at", { ascending: false }).limit(200),
     ]);

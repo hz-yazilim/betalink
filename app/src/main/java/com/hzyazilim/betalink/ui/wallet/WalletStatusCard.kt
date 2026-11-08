@@ -43,11 +43,11 @@ fun WalletStatusCard() {
                     Text((wallet?.balance ?: 0).toString() + " BP", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.secondary)
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text((wallet?.completedSupportTests ?: 0).toString() + "/2", style = MaterialTheme.typography.titleMedium)
+                    Text((wallet?.completedSupportTests ?: 0).toString(), style = MaterialTheme.typography.titleMedium)
                     Text("Tamamlanan test", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            Text(if ((wallet?.completedSupportTests ?: 0) >= 2) "Kampanya ve grup oluşturma kilidi açıldı." else "Önce 2 farklı uygulamanın testini tamamla. Her geçerli tamamlamada +25 BP kazanırsın.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+            Text("Kampanya oluşturma 50 BP, tester grubu oluşturma 30 BP, açık gruba katılım 5 BP. Ek test şartı yok; yalnızca yeterli BP bakiyesi aranır. Geçerli test tamamlamalarında +25 BP kazanırsın.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 10.sp) }
         }
     }
