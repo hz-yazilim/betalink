@@ -152,7 +152,7 @@ fun GroupsScreen(onOpenContacts: () -> Unit = {}) {
                     if (members.isEmpty()) item { Text("Henüz üye isteği yok.") }
                     items(members, key = { it.id }) { member ->
                         Column {
-                            Text("Üye: ${member.userId.take(8)}…")
+                            Text("Grup üyesi")
                             Text("Durum: ${member.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             if (member.status == "approved") {
                                 TextButton(onClick = {
