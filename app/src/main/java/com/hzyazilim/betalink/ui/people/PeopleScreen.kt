@@ -81,7 +81,7 @@ fun PeopleScreen(inviteToken: String? = null) {
     Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         Spacer(Modifier.height(18.dp))
         Text("TOPLULUK", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
-        Text("Kişiler", style = MaterialTheme.typography.headlineSmall)
+        Text("Toplum", style = MaterialTheme.typography.headlineSmall)
         Text("Betalink'e kayıtlı kişileri keşfet, gruplarına davet gönder ve gelen davetleri yönet.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
 
@@ -137,7 +137,7 @@ fun PeopleScreen(inviteToken: String? = null) {
                             Text(selectedGroup?.name ?: "Grup seç")
                         }
                     }
-                    Text("Uygulamadaki kişiler · ${people.size}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+                    Text("Toplumdaki kullanıcılar · ${people.size}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
                 }
                 items(people, key = { it.id }) { person ->
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
@@ -234,7 +234,7 @@ fun PeopleScreen(inviteToken: String? = null) {
                                 append("\nBetalink; uygulama geliştiricileri ile gerçek testerları buluşturan bir platformdur. Gruplar üzerinden kapalı testlere birlikte katılabilir, test sürecini ve günlük katılımı takip edebilirsin.")
                                 append("\n\nDavet bağlantısı: betalink://group-invite/${result.first ?: ""}")
                                 append("\n\nUygulama: https://play.google.com/store/apps/details?id=com.hzyazilim.betalink")
-                                append("\nDavetini uygulamadaki Kişiler > Gelen grup davetleri bölümünden kabul edebilirsin.")
+                                append("\nDavetini uygulamadaki Toplum > Gelen grup davetleri bölümünden kabul edebilirsin.")
                             }
                             runCatching {
                                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
