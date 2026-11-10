@@ -17,7 +17,7 @@ data class AdminReport(
     val status: String
 )
 
-data class AdminSupportTicket(val id: String, val userId: String, val subject: String, val message: String, val status: String, val ticketType: String)
+data class AdminSupportTicket(val id: String, val userId: String, val userEmail: String, val subject: String, val message: String, val status: String, val ticketType: String)
 
 data class AdminUser(val id: String, val displayName: String, val email: String)
 data class AdminGroup(val id: String, val name: String, val description: String, val status: String)
@@ -54,7 +54,7 @@ class AdminApiRepository(context: Context) {
         val groupsArray = json.optJSONArray("groupsList") ?: JSONArray()
         val support = (0 until supportArray.length()).map { i ->
             val row = supportArray.getJSONObject(i)
-            AdminSupportTicket(row.getString("id"), row.getString("user_id"), row.optString("subject"), row.optString("message"), row.optString("status"), row.optString("ticket_type", "support"))
+            AdminSupportTicket(row.getString("id"), row.getString("user_id"), row.optString("user_email"), row.optString("subject"), row.optString("message"), row.optString("status"), row.optString("ticket_type", "support"))
         }
         val reports = (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
