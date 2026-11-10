@@ -19,7 +19,7 @@ data class AdminReport(
 
 data class AdminSupportTicket(val id: String, val userId: String, val subject: String, val message: String, val status: String, val ticketType: String)
 
-data class AdminUser(val id: String, val displayName: String)
+data class AdminUser(val id: String, val displayName: String, val email: String)
 data class AdminGroup(val id: String, val name: String, val description: String, val status: String)
 
 data class AdminDashboard(
@@ -65,7 +65,7 @@ class AdminApiRepository(context: Context) {
                 row.optString("reason"), row.optString("details"), row.optString("status")
             )
         }
-        val usersList = (0 until usersArray.length()).map { i -> usersArray.getJSONObject(i).let { AdminUser(it.getString("user_id"), it.optString("display_name")) } }
+        val usersList = (0 until usersArray.length()).map { i -> usersArray.getJSONObject(i).let { AdminUser(it.getString("user_id"), it.optString("display_name"), it.optString("email")) } }
         val groupsList = (0 until groupsArray.length()).map { i -> groupsArray.getJSONObject(i).let { AdminGroup(it.getString("id"), it.optString("name"), it.optString("description"), it.optString("tracking_status")) } }
         return AdminDashboard(
             stats.optInt("users"), stats.optInt("campaigns"), stats.optInt("reports"),
