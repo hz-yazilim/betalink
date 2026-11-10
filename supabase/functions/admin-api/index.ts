@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
       admin.from("tester_groups").select("id", { count: "exact", head: true }),
       admin.from("reports").select("id,reporter_id,target_user_id,campaign_id,reason,details,status,created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(50),
       admin.from("support_tickets").select("id,user_id,subject,message,status,ticket_type,created_at").in("status", ["open","in_progress"]).order("created_at", { ascending: false }).limit(50),
-      admin.from("profiles").select("user_id,display_name").order("created_at", { ascending: false }).limit(500),
+      admin.from("profiles").select("user_id,display_name").order("created_at", { ascending: false }).limit(1000),
       admin.from("tester_groups").select("id,name,description,created_by,tracking_status,created_at").order("created_at", { ascending: false }).limit(200),
     ]);
     if (pending.error || support.error || userRows.error || groupRows.error) return Response.json({ error: "Could not load admin data" }, { status: 500, headers: cors });
@@ -66,7 +66,15 @@ Deno.serve(async (req: Request) => {
       if (data.users.length < 1000) break;
     }
     const emailByUserId = new Map(authUsers.map((u) => [u.id, u.email]));
-    const usersList = (userRows.data ?? []).map((row) => ({
+    const allProfileRows = [...(userRows.data ?? [])];
+    for (let offset = 1000; ; offset += 1000) {
+      const { data, error } = await admin.from("profiles").select("user_id,display_name")
+        .order("created_at", { ascending: false }).range(offset, offset + 999);
+      if (error) return Response.json({ error: "Could not load the complete user list" }, { status: 500, headers: cors });
+      allProfileRows.push(...(data ?? []));
+      if ((data ?? []).length < 1000) break;
+    }
+    const usersList = allProfileRows.map((row) => ({
       user_id: row.user_id,
       display_name: row.display_name,
       email: emailByUserId.get(row.user_id) ?? "",
