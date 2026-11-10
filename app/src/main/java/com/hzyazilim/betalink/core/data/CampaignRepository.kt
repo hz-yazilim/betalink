@@ -651,7 +651,8 @@ class CampaignRepository(context: Context) {
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return emptyList<GroupInvitation>() to "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
-        val tokenFilter = inviteToken?.takeIf { it.isNotBlank() }?.let { "&invite_token=eq.${URLEncoder.encode(it, "UTF-8")}" } ?: ""\n        val path = "/rest/v1/group_invitations?select=id,group_id,inviter_id,custom_message,invite_token,created_at,tester_groups(name,description)&invitee_id=eq.$userId&status=eq.pending&order=created_at.desc&limit=100$tokenFilter"
+        val tokenFilter = inviteToken?.takeIf { it.isNotBlank() }?.let { "&invite_token=eq.${URLEncoder.encode(it, "UTF-8")}" } ?: ""
+        val path = "/rest/v1/group_invitations?select=id,group_id,inviter_id,custom_message,invite_token,created_at,tester_groups(name,description)&invitee_id=eq.$userId&status=eq.pending&order=created_at.desc&limit=100$tokenFilter"
         val (status, body) = call(path, "GET", token)
         if (status !in 200..299) return emptyList<GroupInvitation>() to message(body)
         val rows = JSONArray(body)
