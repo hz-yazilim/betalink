@@ -13,7 +13,8 @@ import java.net.URLEncoder
 data class CampaignMember(val id: String, val testerId: String, val status: String)
 data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?, val isCreator: Boolean)
 data class GroupMember(val id: String, val userId: String, val status: String)
-data class DirectoryPerson(val id: String, val displayName: String, val canReceiveInvites: Boolean)
+data class DirectoryPerson(val id: String, val displayName: String, val canReceiveInvites: Boolean, val publicEmail: String = "", val bio: String = "", val avatarUrl: String = "")
+data class EditableProfile(val displayName: String, val bio: String, val avatarUrl: String, val contactEmail: String, val showPublicEmail: Boolean)
 data class GroupInvitation(
     val id: String, val groupId: String, val groupName: String, val groupDescription: String,
     val inviterId: String, val message: String, val token: String, val createdAt: String
@@ -635,15 +636,92 @@ class CampaignRepository(context: Context) {
         if (user.first !in 200..299) return emptyList<DirectoryPerson>() to "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
         val (status, body) = call(
-            "/rest/v1/profiles?select=user_id,display_name,allow_group_invites&user_id=neq.$userId&order=created_at.desc&offset=$offset&limit=50",
+            "/rest/v1/profiles?select=user_id,display_name,allow_group_invites,bio,avatar_url&user_id=neq.$userId&order=created_at.desc&offset=$offset&limit=50",
             "GET", token
         )
         if (status !in 200..299) return emptyList<DirectoryPerson>() to message(body)
+        val (emailStatus, emailBody) = call("/rest/v1/rpc/betalink_public_contact_emails", "POST", token, JSONObject())
+        val publicEmails = if (emailStatus in 200..299) {
+            val emailRows = JSONArray(emailBody)
+            (0 until emailRows.length()).associate {
+                val row = emailRows.getJSONObject(it)
+                row.optString("user_id") to row.optString("contact_email")
+            }
+        } else emptyMap()
         val rows = JSONArray(body)
         return (0 until rows.length()).map { i ->
             val row = rows.getJSONObject(i)
-            DirectoryPerson(row.getString("user_id"), row.optString("display_name").ifBlank { "Betalink kullanıcısı" }, row.optBoolean("allow_group_invites", true))
-        } to null
+            val id = row.getString("user_id")
+            DirectoryPerson(
+                id,
+                row.optString("display_name").ifBlank { "Betalink kullanıcısı" },
+                row.optBoolean("allow_group_invites", true),
+                publicEmails[id].orEmpty(),
+                row.optString("bio"),
+                row.optString("avatar_url")
+            )
+        } to if (emailStatus !in 200..299) message(emailBody) else null
+    }
+
+    fun myProfile(): Pair<EditableProfile?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return null to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val (profileStatus, profileBody) = call(
+            "/rest/v1/profiles?select=display_name,bio,avatar_url&user_id=eq.$userId", "GET", token
+        )
+        if (profileStatus !in 200..299) return null to message(profileBody)
+        val profileRows = JSONArray(profileBody)
+        val profile = profileRows.optJSONObject(0) ?: JSONObject()
+        val (contactStatus, contactBody) = call(
+            "/rest/v1/profile_contact_settings?select=contact_email,show_public_email&user_id=eq.$userId", "GET", token
+        )
+        if (contactStatus !in 200..299) return null to message(contactBody)
+        val contact = JSONArray(contactBody).optJSONObject(0) ?: JSONObject()
+        return EditableProfile(
+            profile.optString("display_name"),
+            profile.optString("bio"),
+            profile.optString("avatar_url"),
+            contact.optString("contact_email"),
+            contact.optBoolean("show_public_email", false)
+        ) to null
+    }
+
+    fun saveMyProfile(displayName: String, bio: String, avatarUrl: String, contactEmail: String, showPublicEmail: Boolean): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val cleanName = displayName.trim()
+        val cleanBio = bio.trim()
+        val cleanAvatar = avatarUrl.trim()
+        val cleanEmail = contactEmail.trim()
+        if (cleanName.length !in 2..50) return "Görünen ad 2-50 karakter olmalı."
+        if (cleanBio.length > 280) return "Hakkımda alanı en fazla 280 karakter olabilir."
+        if (cleanAvatar.isNotBlank() && (!cleanAvatar.startsWith("https://") || cleanAvatar.length > 1000)) return "Profil fotoğrafı bağlantısı https:// ile başlamalı."
+        if (cleanEmail.isNotBlank() && (!android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches() || cleanEmail.length > 254)) return "Geçerli bir e-posta adresi gir."
+        if (showPublicEmail && cleanEmail.isBlank()) return "Halka açık e-posta için önce e-posta adresini gir."
+        val (profileStatus, profileBody) = call(
+            "/rest/v1/profiles?user_id=eq.$userId", "PATCH", token,
+            JSONObject().put("display_name", cleanName).put("bio", cleanBio).put("avatar_url", cleanAvatar.ifBlank { JSONObject.NULL })
+        )
+        if (profileStatus !in 200..299) return message(profileBody)
+        val (existingStatus, existingBody) = call(
+            "/rest/v1/profile_contact_settings?select=user_id&user_id=eq.$userId", "GET", token
+        )
+        if (existingStatus !in 200..299) return message(existingBody)
+        val contactBody = JSONObject()
+            .put("user_id", userId)
+            .put("contact_email", cleanEmail)
+            .put("show_public_email", showPublicEmail)
+            .put("updated_at", utcNow())
+        val exists = JSONArray(existingBody).length() > 0
+        val (contactStatus, response) = call(
+            if (exists) "/rest/v1/profile_contact_settings?user_id=eq.$userId" else "/rest/v1/profile_contact_settings",
+            if (exists) "PATCH" else "POST", token, contactBody
+        )
+        return if (contactStatus in 200..299) null else message(response)
     }
 
     fun listIncomingGroupInvitations(inviteToken: String? = null): Pair<List<GroupInvitation>, String?> {
