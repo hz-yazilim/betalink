@@ -38,7 +38,7 @@ class AdminApiRepository(context: Context) {
 
     fun isAdmin(): Boolean {
         val token = sessions.read()?.first ?: return false
-        val (status, _) = call("GET", token)
+        val (status, _) = call("GET", token, query = "?check=1")
         return status in 200..299
     }
 
@@ -123,8 +123,8 @@ class AdminApiRepository(context: Context) {
         return count to null
     }
 
-    private fun call(method: String, token: String, body: JSONObject? = null): Pair<Int, String> {
-        val connection = URL(BuildConfig.SUPABASE_URL + "/functions/v1/admin-api").openConnection() as HttpURLConnection
+    private fun call(method: String, token: String, body: JSONObject? = null, query: String = ""): Pair<Int, String> {
+        val connection = URL(BuildConfig.SUPABASE_URL + "/functions/v1/admin-api" + query).openConnection() as HttpURLConnection
         return try {
             connection.requestMethod = method
             connection.connectTimeout = 15000
