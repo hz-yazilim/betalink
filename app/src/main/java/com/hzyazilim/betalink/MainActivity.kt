@@ -102,7 +102,7 @@ private val tabs = listOf(
     AppTab("Ana sayfa", Icons.Filled.Home),
     AppTab("Test bul", Icons.Filled.Search),
     AppTab("Gruplar", Icons.Filled.Groups),
-    AppTab("Kişiler", Icons.Filled.PersonAdd),
+    AppTab("Toplum", Icons.Filled.Groups),
     AppTab("Testlerim", Icons.Filled.Checklist),
     AppTab("Profil", Icons.Filled.Person)
 )
@@ -438,7 +438,7 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
     var confirmDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxSize().padding(22.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
         Text("HESAP", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 11.sp)
         Text(profileName.ifBlank { currentUser.displayName }, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
@@ -447,7 +447,7 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
         Card(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("PROFİLİNİ DÜZENLE", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Text("Kişiler bölümünde diğer kullanıcıların göreceği bilgileri buradan yönetebilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                Text("Toplum bölümünde diğer kullanıcıların göreceği bilgileri buradan yönetebilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 if (profileLoading) CircularProgressIndicator()
                 else {
                     androidx.compose.material3.OutlinedTextField(value = profileName, onValueChange = { profileName = it.take(50) }, label = { Text("Görünen ad") }, singleLine = true, modifier = Modifier.fillMaxWidth())
