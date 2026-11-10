@@ -702,9 +702,10 @@ class CampaignRepository(context: Context) {
         if (cleanAvatar.isNotBlank() && (!cleanAvatar.startsWith("https://") || cleanAvatar.length > 1000)) return "Profil fotoğrafı bağlantısı https:// ile başlamalı."
         if (cleanEmail.isNotBlank() && (!android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches() || cleanEmail.length > 254)) return "Geçerli bir e-posta adresi gir."
         if (showPublicEmail && cleanEmail.isBlank()) return "Halka açık e-posta için önce e-posta adresini gir."
+        val profileUpdate = JSONObject().put("display_name", cleanName).put("bio", cleanBio)
+        profileUpdate.put("avatar_url", if (cleanAvatar.isBlank()) JSONObject.NULL else cleanAvatar)
         val (profileStatus, profileBody) = call(
-            "/rest/v1/profiles?user_id=eq.$userId", "PATCH", token,
-            JSONObject().put("display_name", cleanName).put("bio", cleanBio).put("avatar_url", cleanAvatar.ifBlank { JSONObject.NULL })
+            "/rest/v1/profiles?user_id=eq.$userId", "PATCH", token, profileUpdate
         )
         if (profileStatus !in 200..299) return message(profileBody)
         val (existingStatus, existingBody) = call(
