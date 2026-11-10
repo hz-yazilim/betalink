@@ -39,6 +39,10 @@ Deno.serve(async (req: Request) => {
     return Response.json({ error: "Verified owner account required" }, { status: 403, headers: cors });
   }
 
+  if (req.method === "GET" && new URL(req.url).searchParams.get("check") === "1") {
+    return Response.json({ isAdmin: true }, { headers: cors });
+  }
+
   const admin = createClient(url, service, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
