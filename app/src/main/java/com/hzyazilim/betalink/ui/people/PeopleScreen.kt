@@ -50,6 +50,7 @@ fun PeopleScreen() {
     var selectedGroup by remember { mutableStateOf<TesterGroup?>(null) }
     var personToInvite by remember { mutableStateOf<DirectoryPerson?>(null) }
     var customMessage by remember { mutableStateOf("") }
+    var showGroupPicker by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -123,7 +124,7 @@ fun PeopleScreen() {
                     if (myGroups.isEmpty()) {
                         Text("Önce Gruplar bölümünden bir tester grubu oluşturmalısın.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
-                        TextButton(onClick = { personToInvite = null }) {
+                        TextButton(onClick = { showGroupPicker = true }) {
                             Text(selectedGroup?.name ?: "Grup seç")
                         }
                     }
@@ -150,13 +151,6 @@ fun PeopleScreen() {
         }
     }
 
-    if (personToInvite == null && myGroups.isNotEmpty()) {
-        // Group picker is opened only from the group selector.
-        // The flag is represented by the separate picker state below.
-    }
-
-    var showGroupPicker by remember { mutableStateOf(false) }
-    // Keep the group picker action separate from selecting a person.
     if (showGroupPicker) {
         AlertDialog(
             onDismissRequest = { showGroupPicker = false },
