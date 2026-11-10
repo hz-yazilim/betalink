@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
@@ -194,7 +193,7 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, openPeopleInitially
                     } else when (selectedTab) {
                         0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 4 }, onNotifications = { showNotifications = true })
                         1 -> CampaignBrowserScreen(myTests = false)
-                        2 -> GroupsScreen(onOpenContacts = { selectedTab = 3 })
+                        2 -> GroupsScreen(onOpenCommunity = { selectedTab = 3 })
                         3 -> PeopleScreen(inviteToken = initialInviteToken)
                         4 -> MyTestsHub()
                         else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSupport = { showSupport = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
