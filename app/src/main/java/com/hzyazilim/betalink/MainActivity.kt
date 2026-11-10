@@ -449,7 +449,7 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
                     }
                 })
             }
-            invitePreferenceMessage?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 14.dp, bottom = 10.dp)) }
+            invitePreferenceMessage?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp)) }
         }
         Text(
             "Tek hesapla tester ve geliştirici olarak yer alabilirsin. Hesabını silersen profilin ve ilişkili kişisel kayıtların veritabanından kaldırılır.",
