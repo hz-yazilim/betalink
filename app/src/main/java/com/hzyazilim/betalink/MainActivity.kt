@@ -441,8 +441,8 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
         verticalArrangement = Arrangement.Center
     ) {
         Text("HESAP", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 11.sp)
-        Text(currentUser.displayName, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
-        Text(currentUser.email, color = Color(0xFFB5BED4), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        Text(profileName.ifBlank { currentUser.displayName }, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+        Text("Hesap e-postası · ${currentUser.email}", color = Color(0xFFB5BED4), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         Text("İtibar puanın: $reputation", color = MaterialTheme.colorScheme.secondary, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
         Card(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
