@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
@@ -65,6 +66,7 @@ import com.hzyazilim.betalink.core.data.TesterReliability
 import com.hzyazilim.betalink.ui.campaigns.MyTestsHub
 import com.hzyazilim.betalink.ui.campaigns.CampaignBrowserScreen
 import com.hzyazilim.betalink.ui.groups.GroupsScreen
+import com.hzyazilim.betalink.ui.people.PeopleScreen
 import com.hzyazilim.betalink.ui.notifications.NotificationsDialog
 import com.hzyazilim.betalink.ui.admin.AdminScreen
 import com.hzyazilim.betalink.ui.support.SupportDialog
@@ -100,6 +102,7 @@ private val tabs = listOf(
     AppTab("Ana sayfa", Icons.Filled.Home),
     AppTab("Test bul", Icons.Filled.Search),
     AppTab("Gruplar", Icons.Filled.Groups),
+    AppTab("Kişiler", Icons.Filled.PersonAdd),
     AppTab("Testlerim", Icons.Filled.Checklist),
     AppTab("Profil", Icons.Filled.Person)
 )
@@ -189,10 +192,11 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
                     if (showAdminPanel) {
                         AdminScreen(onClose = { showAdminPanel = false })
                     } else when (selectedTab) {
-                        0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 3 }, onNotifications = { showNotifications = true })
+                        0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 4 }, onNotifications = { showNotifications = true })
                         1 -> CampaignBrowserScreen(myTests = false)
-                        2 -> GroupsScreen()
-                        3 -> MyTestsHub()
+                        2 -> GroupsScreen(onOpenContacts = { selectedTab = 3 })
+                        3 -> PeopleScreen()
+                        4 -> MyTestsHub()
                         else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSupport = { showSupport = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
                     }
                 }
@@ -399,13 +403,19 @@ private fun EmptyListScreen(eyebrow: String, title: String, message: String, act
 @Composable
 private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMessage: String?, onAdminPanel: () -> Unit, onSupport: () -> Unit, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     val repository = remember(context) { CampaignRepository(context) }
     var reputation by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var reliability by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<TesterReliability?>(null) }
+    var allowGroupInvites by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+    var invitePreferenceMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     LaunchedEffect(currentUser.id) {
         reputation = withContext(Dispatchers.IO) { repository.myReputationScore().first }
         reliability = withContext(Dispatchers.IO) { repository.testerReliability().first }
+        val preference = withContext(Dispatchers.IO) { repository.groupInvitePreference() }
+        allowGroupInvites = preference.first
+        invitePreferenceMessage = preference.second
     }
     var confirmDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Column(
@@ -424,6 +434,22 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
                 Text("Günlük test bildirimleri: ${reliability?.dailyCheckins ?: 0} · Kaçırılan gün: ${reliability?.missedDays ?: 0}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Katılım güvenilirliği: ${reliability?.attendancePercent ?: 100}%", fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
             }
+        }
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Grup davetleri", fontWeight = FontWeight.SemiBold)
+                    Text(if (allowGroupInvites) "Diğer kullanıcılar seni gruplarına davet edebilir." else "Grup davetleri kapalı. Kişiler listesinde davet alamazsın.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                }
+                androidx.compose.material3.Switch(checked = allowGroupInvites, onCheckedChange = { enabled ->
+                    scope.launch {
+                        val error = withContext(Dispatchers.IO) { repository.setGroupInvitePreference(enabled) }
+                        if (error == null) allowGroupInvites = enabled
+                        invitePreferenceMessage = error ?: "Davet tercihin kaydedildi."
+                    }
+                })
+            }
+            invitePreferenceMessage?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 14.dp, bottom = 10.dp)) }
         }
         Text(
             "Tek hesapla tester ve geliştirici olarak yer alabilirsin. Hesabını silersen profilin ve ilişkili kişisel kayıtların veritabanından kaldırılır.",
