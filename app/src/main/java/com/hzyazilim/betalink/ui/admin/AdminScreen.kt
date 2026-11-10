@@ -233,7 +233,7 @@ private fun SupportTicketCard(ticket: AdminSupportTicket, onReply: (String) -> U
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp)) {
             Text(if (ticket.ticketType == "complaint") "ŞİKAYET · ${ticket.subject}" else "DESTEK · ${ticket.subject}", style = MaterialTheme.typography.titleSmall, color = if (ticket.ticketType == "complaint") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
-            Text("Kullanıcı: ${ticket.userId.take(8)}… · ${ticket.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+            Text("Kullanıcı: ${ticket.userEmail.ifBlank { "E-posta yok" }} · ${ticket.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
             Text(ticket.message, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
             OutlinedTextField(reply, { reply = it }, label = { Text("Destek yanıtı") }, minLines = 2)
             Button(onClick = { onReply(reply) }, enabled = reply.trim().length >= 2, modifier = Modifier.fillMaxWidth()) {
