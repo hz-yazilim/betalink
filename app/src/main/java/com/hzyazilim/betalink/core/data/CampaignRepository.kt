@@ -629,13 +629,13 @@ class CampaignRepository(context: Context) {
         return result to null
     }
 
-    fun listPeople(): Pair<List<DirectoryPerson>, String?> {
+    fun listPeople(offset: Int = 0): Pair<List<DirectoryPerson>, String?> {
         val token = sessions.read()?.first ?: return emptyList<DirectoryPerson>() to "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return emptyList<DirectoryPerson>() to "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
         val (status, body) = call(
-            "/rest/v1/profiles?select=user_id,display_name,allow_group_invites&user_id=neq.$userId&order=created_at.desc&limit=500",
+            "/rest/v1/profiles?select=user_id,display_name,allow_group_invites&user_id=neq.$userId&order=created_at.desc&offset=$offset&limit=50",
             "GET", token
         )
         if (status !in 200..299) return emptyList<DirectoryPerson>() to message(body)
