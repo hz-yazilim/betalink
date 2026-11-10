@@ -52,16 +52,18 @@ fun PeopleScreen() {
     var customMessage by remember { mutableStateOf("") }
     var showGroupPicker by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
+    var canLoadMore by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
 
     LaunchedEffect(refresh) {
         loading = true
-        val directory = withContext(Dispatchers.IO) { repository.listPeople() }
+        val directory = withContext(Dispatchers.IO) { repository.listPeople(0) }
         val inbox = withContext(Dispatchers.IO) { repository.listIncomingGroupInvitations() }
         val groups = withContext(Dispatchers.IO) { repository.listGroups() }
         people = directory.first
+        canLoadMore = directory.first.size == 50
         invitations = inbox.first
         myGroups = groups.first.filter { it.isCreator }
         message = directory.second ?: inbox.second ?: groups.second
@@ -144,8 +146,20 @@ fun PeopleScreen() {
                         }
                     }
                 }
+                if (canLoadMore) item {
+                    TextButton(enabled = !busy, onClick = {
+                        scope.launch {
+                            busy = true
+                            val next = withContext(Dispatchers.IO) { repository.listPeople(people.size) }
+                            message = next.second
+                            people = people + next.first
+                            canLoadMore = next.first.size == 50
+                            busy = false
+                        }
+                    }, modifier = Modifier.fillMaxWidth()) { Text("Daha fazla kişi yükle") }
+                }
                 item {
-                    Text("Listede ilk 500 kayıt gösterilir. E-posta adresleri diğer kullanıcılara gösterilmez.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, modifier = Modifier.padding(vertical = 12.dp))
+                    Text("E-posta adresleri diğer kullanıcılara gösterilmez. Grup davetlerini kapatan kişiler davet alamaz.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, modifier = Modifier.padding(vertical = 12.dp))
                 }
             }
         }
