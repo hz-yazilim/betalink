@@ -456,7 +456,7 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Halka açık göster", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                            Text(if (showPublicEmail) "İletişim e-postan Kişiler listesinde görünür." else "E-posta adresin diğer kullanıcılardan gizli kalır.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            Text(if (showPublicEmail) "İletişim e-postan Toplum bölümünde görünür." else "E-posta adresin diğer kullanıcılardan gizli kalır.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                         }
                         androidx.compose.material3.Switch(checked = showPublicEmail, onCheckedChange = { showPublicEmail = it })
                     }
@@ -487,7 +487,7 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
             Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Grup davetleri", fontWeight = FontWeight.SemiBold)
-                    Text(if (allowGroupInvites) "Diğer kullanıcılar seni gruplarına davet edebilir." else "Grup davetleri kapalı. Kişiler listesinde davet alamazsın.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                    Text(if (allowGroupInvites) "Diğer kullanıcılar seni gruplarına davet edebilir." else "Grup davetleri kapalı. Toplum bölümünde davet alamazsın.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
                 androidx.compose.material3.Switch(checked = allowGroupInvites, onCheckedChange = { enabled ->
                     scope.launch {
