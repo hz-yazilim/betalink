@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AuthGate()
+                    AuthGate(openPeopleInitially = intent?.data?.scheme == "betalink" && intent?.data?.host == "group-invite")
                 }
             }
         }
@@ -130,9 +130,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend () -> Unit, onDeleteAccount: suspend () -> String?) {
+fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, openPeopleInitially: Boolean = false, onSignOut: suspend () -> Unit, onDeleteAccount: suspend () -> String?) {
     val scope = rememberCoroutineScope()
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(if (openPeopleInitially) 3 else 0) }
     var deleteMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var showNotifications by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showAdminPanel by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
