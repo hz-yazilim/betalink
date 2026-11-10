@@ -39,6 +39,10 @@ Deno.serve(async (req: Request) => {
     return Response.json({ error: "Verified owner account required" }, { status: 403, headers: cors });
   }
 
+  if (req.method === "GET" && new URL(req.url).searchParams.get("check") === "1") {
+    return Response.json({ isAdmin: true }, { headers: cors });
+  }
+
   const admin = createClient(url, service, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -51,10 +55,39 @@ Deno.serve(async (req: Request) => {
       admin.from("tester_groups").select("id", { count: "exact", head: true }),
       admin.from("reports").select("id,reporter_id,target_user_id,campaign_id,reason,details,status,created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(50),
       admin.from("support_tickets").select("id,user_id,subject,message,status,ticket_type,created_at").in("status", ["open","in_progress"]).order("created_at", { ascending: false }).limit(50),
-      admin.from("profiles").select("user_id,display_name").order("created_at", { ascending: false }).limit(500),
+      admin.from("profiles").select("user_id,display_name").order("created_at", { ascending: false }).limit(1000),
       admin.from("tester_groups").select("id,name,description,created_by,tracking_status,created_at").order("created_at", { ascending: false }).limit(200),
     ]);
     if (pending.error || support.error || userRows.error || groupRows.error) return Response.json({ error: "Could not load admin data" }, { status: 500, headers: cors });
+
+    // Auth emails are private account data: fetch them only inside this owner-verified
+    // service-role function. Never expose them through the public profiles table.
+    const authUsers: Array<{ id: string; email?: string }> = [];
+    for (let page = 1; page <= 100; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) return Response.json({ error: "Could not load account email addresses" }, { status: 500, headers: cors });
+      authUsers.push(...data.users.map((u) => ({ id: u.id, email: u.email ?? "" })));
+      if (data.users.length < 1000) break;
+    }
+    const emailByUserId = new Map(authUsers.map((u) => [u.id, u.email]));
+    const allProfileRows = [...(userRows.data ?? [])];
+    for (let offset = 1000; ; offset += 1000) {
+      const { data, error } = await admin.from("profiles").select("user_id,display_name")
+        .order("created_at", { ascending: false }).range(offset, offset + 999);
+      if (error) return Response.json({ error: "Could not load the complete user list" }, { status: 500, headers: cors });
+      allProfileRows.push(...(data ?? []));
+      if ((data ?? []).length < 1000) break;
+    }
+    const usersList = allProfileRows.map((row) => ({
+      user_id: row.user_id,
+      display_name: row.display_name,
+      email: emailByUserId.get(row.user_id) ?? "",
+    }));
+    const supportTickets = (support.data ?? []).map((row) => ({
+      ...row,
+      user_email: emailByUserId.get(row.user_id) ?? "",
+    }));
+
     return Response.json({
       stats: {
         users: users.count ?? 0,
@@ -63,8 +96,8 @@ Deno.serve(async (req: Request) => {
         groups: groups.count ?? 0,
       },
       pendingReports: pending.data ?? [],
-      supportTickets: support.data ?? [],
-      usersList: userRows.data ?? [],
+      supportTickets,
+      usersList,
       groupsList: groupRows.data ?? [],
     }, { headers: cors });
   }

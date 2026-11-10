@@ -20,12 +20,12 @@ Betalink is a native Android community platform connecting app developers who ne
 - Independent campaign progress display and 12 active-tester threshold.
 - Starter tasks, task submission, developer approval/change requests, and tester resubmission.
 - Tester feedback, developer replies, and report/block actions.
-- Public/private tester groups, joining, and owner approval of private-group requests.\n- Group testing starts only when 15 approved tester members are present; a shared 14-day clock is recorded server-side. If the approved count falls below 15 before completion, the clock pauses and restarts when the group is full again.\n- Group participants can explicitly opt in to sharing their Play test email; only approved members can view addresses of members who consented.
+- Public tester groups, joining, and owner approval of group requests.\n- Dedicated people directory with paginated registered-user list, editable display name and biography, optional avatar URL, separately entered contact email with an explicit public/private visibility switch (private by default), opt-out group invitation preference, custom-note invitations, accept/decline inbox, and in-app notifications.\n- Group testing starts only when 15 approved tester members are present; a shared 14-day clock is recorded server-side. If the approved count falls below 15 before completion, the clock pauses and restarts when the group is full again.\n- Group participants can explicitly opt in to sharing their Play test email; only approved members can view addresses of members who consented.
 - In-app notifications for applications, group requests, task reviews, feedback replies, and group test start/pause/completion.\n- Android 13+ notification permission explanation and runtime request, with a notification channel.
 - Reputation points from reviewed tasks and dropouts.
 - Profile reputation score.
 - Account deletion from inside the app.
-- Hidden administrator panel, visible only when the verified `hz.yazilimm@gmail.com` account passes server-side email allowlisting.
+- Hidden administrator panel, visible only when the verified `hz.yazilimm@gmail.com` account passes server-side email allowlisting. The owner-only dashboard resolves all registered account email addresses server-side; the public people directory never exposes emails.
 
 ## Google Play testing integrity
 Betalink helps users organize and document genuine testing participation. It does not access Google Play Console private data and cannot guarantee production access approval. Users must join tests with their own Google accounts, install and genuinely use the apps, and provide honest feedback. Never request Google passwords or Play Console credentials.

@@ -1,6 +1,6 @@
 # Betalink Gizlilik Politikası
 
-**Son güncelleme: 6 Kasım 2026**
+**Son güncelleme: 10 Kasım 2026**
 
 Bu politika, Betalink Android uygulaması ve ilgili hizmetleri için geçerlidir. Hizmeti sunan: **Hz Yazılım**. İletişim: **hz.yazilimm@gmail.com**.
 
@@ -13,7 +13,7 @@ Betalink, uygulama geliştiricileri ile gerçek kapalı test katılımcıların�
 - **Kampanya ve grup etkinliği:** oluşturulan kampanyalar, başvurular, grup üyelikleri, test katılım durumları, kullanıcının girdiği günlük onaylar, görev gönderimleri ve zaman damgaları.
 - **İletişim ve güvenlik:** uygulama içi geri bildirimler, geliştirici yanıtları, destek talepleri, şikâyetler, engelleme kayıtları, bildirimlerin okunma durumu ve kötüye kullanım incelemesi için gerekli kayıtlar.
 - **BetaPuan:** sanal puan bakiyesi ve puan hareketleri. BetaPuan nakde çevrilemez; gerçek para veya ödeme bilgisi değildir.
-- **Google Play test e-postası:** yalnızca bir test grubunda açıkça paylaşmayı seçersen, Google Play kapalı testinde kullandığın e-posta adresi. Bu adres o grubun onaylı üyelerine gösterilebilir. Paylaşım iznini kapatırsan adres grup görünümünden kaldırılır.
+- **Kişiler ve grup davetleri:** kayıtlı kullanıcıların görünen adları, grup davetini alabilme tercihi, davet eden/alıcı hesap bilgileri, davet notu, davet durumu ve zaman damgaları. Kişiler dizininde görünen ad ve isteğe bağlı biyografi gösterilebilir. Profilde ayrıca girilen iletişim e-postası varsayılan olarak gizlidir; yalnızca 'Halka açık göster' izni açıldığında diğer oturum açmış kullanıcılara gösterilir. Hesap giriş e-postası halka açık dizinde hiçbir zaman gösterilmez.\n- **Yönetici erişimi:** hesap e-posta adresleri yalnızca doğrulanmış platform yöneticisinin sunucu tarafında korunan yönetim panelinde hesap/destek yönetimi amacıyla görüntülenebilir.\n- **Google Play test e-postası:** yalnızca bir test grubunda açıkça paylaşmayı seçersen, Google Play kapalı testinde kullandığın e-posta adresi. Bu adres o grubun onaylı üyelerine gösterilebilir. Paylaşım iznini kapatırsan adres grup görünümünden kaldırılır.
 
 ## 2. Kullanım amaçları
 
@@ -23,7 +23,7 @@ Veriler; hesap ve oturum yönetimi, hesap güvenliği, kampanya/test/grup süre�
 
 Betalink kişisel verileri satmaz ve reklam hedeflemesi için kullanmaz. Veriler, hizmetin çalışması için kullanılan Supabase altyapı sağlayıcısı (kimlik doğrulama, veritabanı ve sunucu fonksiyonları) tarafından işlenebilir.
 
-Kampanya bilgileri, başvurunun ve test organizasyonunun gerektirdiği ölçüde ilgili kampanya geliştiricisine; görev ve geri bildirimler ilgili kampanya taraflarına gösterilir. Google Play test e-posta adresin yalnızca ilgili grupta paylaşım için açık rıza verdiğinde o grubun onaylı üyelerine gösterilir.
+Kişiler dizininde görünen adlar oturum açmış Betalink kullanıcılarına gösterilir. Grup davetleri yalnızca davet eden ve davet edilen hesaplar tarafından görüntülenebilir; davet alma tercihini Profil bölümünden kapatabilirsin. Profil iletişim e-postası varsayılan olarak gizlidir; yalnızca 'Halka açık göster' izni açılırsa diğer oturum açmış kullanıcılara görünür. Hesap giriş e-posta adresleri diğer kullanıcılara gösterilmez; yalnızca doğrulanmış platform yöneticisi tarafından yönetim panelinde görülebilir. Profil iletişim e-postası kullanıcı tarafından ayrıca girilir ve görünürlüğü kullanıcının kontrolündedir. Kampanya bilgileri, başvurunun ve test organizasyonunun gerektirdiği ölçüde ilgili kampanya geliştiricisine; görev ve geri bildirimler ilgili kampanya taraflarına gösterilir. Google Play test e-posta adresin yalnızca ilgili grupta paylaşım için açık rıza verdiğinde o grubun onaylı üyelerine gösterilir.
 
 Betalink Google Play Console hesabına erişmez; Google şifreni, Play Console giriş bilgilerini veya Google hesabı doğrulama kodlarını istemez. Google Play bağlantılarına geçtiğinde Google'ın kendi hizmet ve gizlilik koşulları geçerlidir. Betalink şu anda reklam göstermez ve uzaktan anlık bildirim (FCM) altyapısı etkin değildir.
 
@@ -39,7 +39,7 @@ Veriler; hesabın ve hizmet sözleşmesinin kurulması/ifası, hukuki yükümlü
 
 Hesap verileri hesabın aktif olduğu süre boyunca hizmeti sunmak için saklanır. Uygulama içinden hesabını silebilir veya uygulamayı kullanamıyorsan [hesap silme sayfasından](https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion) talep gönderebilirsin.
 
-Hesap silindiğinde, hesabına bağlı profil, kampanya/grup üyelikleri, görevler, geri bildirimler, bildirimler, destek kayıtları ve BetaPuan kayıtları ilgili ilişkisel kayıtlarla birlikte silinir. Başka kullanıcıların kayıtlarında sana işaret eden bazı bağlantılar, kayıt bütünlüğü ve güvenlik amacıyla kimlikten arındırılmış biçimde kalabilir. Kanunen saklanması zorunlu kayıtlar yalnızca gerekli süre boyunca tutulur.
+Hesap silindiğinde, hesabına bağlı profil, kampanya/grup üyelikleri, görevler, geri bildirimler, bildirimler, grup davetleri, destek kayıtları ve BetaPuan kayıtları ilgili ilişkisel kayıtlarla birlikte silinir. Başka kullanıcıların kayıtlarında sana işaret eden bazı bağlantılar, kayıt bütünlüğü ve güvenlik amacıyla kimlikten arındırılmış biçimde kalabilir. Kanunen saklanması zorunlu kayıtlar yalnızca gerekli süre boyunca tutulur.
 
 Harici silme talepleri kimlik doğrulaması gerekebileceğinden en kısa sürede ve KVKK kapsamındaki başvurular için en geç 30 gün içinde yanıtlanır. Hesap şifreni veya doğrulama kodunu e-posta ile gönderme.
 

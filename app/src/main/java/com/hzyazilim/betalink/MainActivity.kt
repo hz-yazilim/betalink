@@ -65,6 +65,7 @@ import com.hzyazilim.betalink.core.data.TesterReliability
 import com.hzyazilim.betalink.ui.campaigns.MyTestsHub
 import com.hzyazilim.betalink.ui.campaigns.CampaignBrowserScreen
 import com.hzyazilim.betalink.ui.groups.GroupsScreen
+import com.hzyazilim.betalink.ui.people.PeopleScreen
 import com.hzyazilim.betalink.ui.notifications.NotificationsDialog
 import com.hzyazilim.betalink.ui.admin.AdminScreen
 import com.hzyazilim.betalink.ui.support.SupportDialog
@@ -100,6 +101,7 @@ private val tabs = listOf(
     AppTab("Ana sayfa", Icons.Filled.Home),
     AppTab("Test bul", Icons.Filled.Search),
     AppTab("Gruplar", Icons.Filled.Groups),
+    AppTab("Toplum", Icons.Filled.Groups),
     AppTab("Testlerim", Icons.Filled.Checklist),
     AppTab("Profil", Icons.Filled.Person)
 )
@@ -119,7 +121,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AuthGate()
+                    AuthGate(initialInviteToken = intent?.data?.takeIf { it.scheme == "betalink" && it.host == "group-invite" }?.lastPathSegment)
                 }
             }
         }
@@ -127,9 +129,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend () -> Unit, onDeleteAccount: suspend () -> String?) {
+fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, openPeopleInitially: Boolean = false, initialInviteToken: String? = null, onSignOut: suspend () -> Unit, onDeleteAccount: suspend () -> String?) {
     val scope = rememberCoroutineScope()
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(if (openPeopleInitially) 3 else 0) }
     var deleteMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var showNotifications by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var showAdminPanel by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -188,10 +190,11 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, onSignOut: suspend 
                     if (showAdminPanel) {
                         AdminScreen(onClose = { showAdminPanel = false })
                     } else when (selectedTab) {
-                        0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 3 }, onNotifications = { showNotifications = true })
+                        0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 4 }, onNotifications = { showNotifications = true })
                         1 -> CampaignBrowserScreen(myTests = false)
-                        2 -> GroupsScreen()
-                        3 -> MyTestsHub()
+                        2 -> GroupsScreen(onOpenCommunity = { selectedTab = 3 })
+                        3 -> PeopleScreen(inviteToken = initialInviteToken)
+                        4 -> MyTestsHub()
                         else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSupport = { showSupport = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
                     }
                 }
@@ -398,23 +401,78 @@ private fun EmptyListScreen(eyebrow: String, title: String, message: String, act
 @Composable
 private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMessage: String?, onAdminPanel: () -> Unit, onSupport: () -> Unit, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     val repository = remember(context) { CampaignRepository(context) }
     var reputation by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     var reliability by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<TesterReliability?>(null) }
+    var allowGroupInvites by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+    var invitePreferenceMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    var profileName by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf(currentUser.displayName) }
+    var profileBio by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf("") }
+    var profileAvatar by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf("") }
+    var contactEmail by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf("") }
+    var showPublicEmail by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf(false) }
+    var profileLoading by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+    var profileSaving by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var profileMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     LaunchedEffect(currentUser.id) {
         reputation = withContext(Dispatchers.IO) { repository.myReputationScore().first }
         reliability = withContext(Dispatchers.IO) { repository.testerReliability().first }
+        val preference = withContext(Dispatchers.IO) { repository.groupInvitePreference() }
+        allowGroupInvites = preference.first
+        invitePreferenceMessage = preference.second
+        val profile = withContext(Dispatchers.IO) { repository.myProfile() }
+        profile.first?.let {
+            profileName = it.displayName.ifBlank { currentUser.displayName }
+            profileBio = it.bio
+            profileAvatar = it.avatarUrl
+            contactEmail = it.contactEmail
+            showPublicEmail = it.showPublicEmail
+        }
+        profileMessage = profile.second
+        profileLoading = false
     }
     var confirmDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxSize().padding(22.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
         Text("HESAP", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 11.sp)
-        Text(currentUser.displayName, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
-        Text(currentUser.email, color = Color(0xFFB5BED4), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        Text(profileName.ifBlank { currentUser.displayName }, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+        Text("Hesap e-postası · ${currentUser.email}", color = Color(0xFFB5BED4), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         Text("İtibar puanın: $reputation", color = MaterialTheme.colorScheme.secondary, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("PROFİLİNİ DÜZENLE", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("Toplum bölümünde diğer kullanıcıların göreceği bilgileri buradan yönetebilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                if (profileLoading) CircularProgressIndicator()
+                else {
+                    androidx.compose.material3.OutlinedTextField(value = profileName, onValueChange = { profileName = it.take(50) }, label = { Text("Görünen ad") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    androidx.compose.material3.OutlinedTextField(value = profileBio, onValueChange = { profileBio = it.take(280) }, label = { Text("Hakkımda") }, placeholder = { Text("Kendini kısaca tanıt…") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+                    androidx.compose.material3.OutlinedTextField(value = contactEmail, onValueChange = { contactEmail = it.take(254) }, label = { Text("İletişim e-postası / Gmail") }, placeholder = { Text("ornek@gmail.com") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Text("Bu alan hesap giriş e-postandan ayrıdır. İstersen farklı bir Gmail yazabilir, halka açık paylaşımı ayrıca açabilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Halka açık göster", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Text(if (showPublicEmail) "İletişim e-postan Toplum bölümünde görünür." else "E-posta adresin diğer kullanıcılardan gizli kalır.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        }
+                        androidx.compose.material3.Switch(checked = showPublicEmail, onCheckedChange = { showPublicEmail = it })
+                    }
+                    androidx.compose.material3.OutlinedTextField(value = profileAvatar, onValueChange = { profileAvatar = it.take(1000) }, label = { Text("Profil fotoğrafı bağlantısı (isteğe bağlı)") }, placeholder = { Text("https://...") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Text("Profil fotoğrafı için doğrudan https:// ile başlayan bir görsel bağlantısı kullanabilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    Button(onClick = {
+                        scope.launch {
+                            profileSaving = true
+                            val error = withContext(Dispatchers.IO) { repository.saveMyProfile(profileName, profileBio, profileAvatar, contactEmail, showPublicEmail) }
+                            profileMessage = error ?: "Profilin kaydedildi."
+                            profileSaving = false
+                        }
+                    }, enabled = !profileSaving, modifier = Modifier.fillMaxWidth()) { Text(if (profileSaving) "Kaydediliyor…" else "Profili kaydet") }
+                }
+                profileMessage?.let { Text(it, color = if (it == "Profilin kaydedildi.") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error, fontSize = 11.sp) }
+            }
+        }
         Card(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text("TESTER GÜVENİLİRLİK PROFİLİ", color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -423,6 +481,22 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
                 Text("Günlük test bildirimleri: ${reliability?.dailyCheckins ?: 0} · Kaçırılan gün: ${reliability?.missedDays ?: 0}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Katılım güvenilirliği: ${reliability?.attendancePercent ?: 100}%", fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
             }
+        }
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Grup davetleri", fontWeight = FontWeight.SemiBold)
+                    Text(if (allowGroupInvites) "Diğer kullanıcılar seni gruplarına davet edebilir." else "Grup davetleri kapalı. Toplum bölümünde davet alamazsın.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                }
+                androidx.compose.material3.Switch(checked = allowGroupInvites, onCheckedChange = { enabled ->
+                    scope.launch {
+                        val error = withContext(Dispatchers.IO) { repository.setGroupInvitePreference(enabled) }
+                        if (error == null) allowGroupInvites = enabled
+                        invitePreferenceMessage = error ?: "Davet tercihin kaydedildi."
+                    }
+                })
+            }
+            invitePreferenceMessage?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp)) }
         }
         Text(
             "Tek hesapla tester ve geliştirici olarak yer alabilirsin. Hesabını silersen profilin ve ilişkili kişisel kayıtların veritabanından kaldırılır.",

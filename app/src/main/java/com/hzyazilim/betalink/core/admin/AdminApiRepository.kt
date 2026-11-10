@@ -17,9 +17,9 @@ data class AdminReport(
     val status: String
 )
 
-data class AdminSupportTicket(val id: String, val userId: String, val subject: String, val message: String, val status: String, val ticketType: String)
+data class AdminSupportTicket(val id: String, val userId: String, val userEmail: String, val subject: String, val message: String, val status: String, val ticketType: String)
 
-data class AdminUser(val id: String, val displayName: String)
+data class AdminUser(val id: String, val displayName: String, val email: String)
 data class AdminGroup(val id: String, val name: String, val description: String, val status: String)
 
 data class AdminDashboard(
@@ -38,7 +38,7 @@ class AdminApiRepository(context: Context) {
 
     fun isAdmin(): Boolean {
         val token = sessions.read()?.first ?: return false
-        val (status, _) = call("GET", token)
+        val (status, _) = call("GET", token, query = "?check=1")
         return status in 200..299
     }
 
@@ -54,7 +54,7 @@ class AdminApiRepository(context: Context) {
         val groupsArray = json.optJSONArray("groupsList") ?: JSONArray()
         val support = (0 until supportArray.length()).map { i ->
             val row = supportArray.getJSONObject(i)
-            AdminSupportTicket(row.getString("id"), row.getString("user_id"), row.optString("subject"), row.optString("message"), row.optString("status"), row.optString("ticket_type", "support"))
+            AdminSupportTicket(row.getString("id"), row.getString("user_id"), row.optString("user_email"), row.optString("subject"), row.optString("message"), row.optString("status"), row.optString("ticket_type", "support"))
         }
         val reports = (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
@@ -65,7 +65,7 @@ class AdminApiRepository(context: Context) {
                 row.optString("reason"), row.optString("details"), row.optString("status")
             )
         }
-        val usersList = (0 until usersArray.length()).map { i -> usersArray.getJSONObject(i).let { AdminUser(it.getString("user_id"), it.optString("display_name")) } }
+        val usersList = (0 until usersArray.length()).map { i -> usersArray.getJSONObject(i).let { AdminUser(it.getString("user_id"), it.optString("display_name"), it.optString("email")) } }
         val groupsList = (0 until groupsArray.length()).map { i -> groupsArray.getJSONObject(i).let { AdminGroup(it.getString("id"), it.optString("name"), it.optString("description"), it.optString("tracking_status")) } }
         return AdminDashboard(
             stats.optInt("users"), stats.optInt("campaigns"), stats.optInt("reports"),
@@ -123,8 +123,8 @@ class AdminApiRepository(context: Context) {
         return count to null
     }
 
-    private fun call(method: String, token: String, body: JSONObject? = null): Pair<Int, String> {
-        val connection = URL(BuildConfig.SUPABASE_URL + "/functions/v1/admin-api").openConnection() as HttpURLConnection
+    private fun call(method: String, token: String, body: JSONObject? = null, query: String = ""): Pair<Int, String> {
+        val connection = URL(BuildConfig.SUPABASE_URL + "/functions/v1/admin-api" + query).openConnection() as HttpURLConnection
         return try {
             connection.requestMethod = method
             connection.connectTimeout = 15000

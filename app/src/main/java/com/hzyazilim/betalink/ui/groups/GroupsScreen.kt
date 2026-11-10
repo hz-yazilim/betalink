@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun GroupsScreen() {
+fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
     val context = LocalContext.current
     val repository = remember(context) { CampaignRepository(context) }
     val scope = rememberCoroutineScope()
@@ -97,14 +97,17 @@ fun GroupsScreen() {
                         Text("Herkese açık grup", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
                         if (group.description.isNotBlank()) Text(group.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
                         if (group.isCreator) {
-                            TextButton(onClick = {
-                                scope.launch {
-                                    val result = withContext(Dispatchers.IO) { repository.groupMembers(group.id) }
-                                    members = result.first
-                                    message = result.second
-                                    selectedGroup = group
-                                }
-                            }) { Text("Üye isteklerini yönet") }
+                            Row {
+                                TextButton(onClick = {
+                                    scope.launch {
+                                        val result = withContext(Dispatchers.IO) { repository.groupMembers(group.id) }
+                                        members = result.first
+                                        message = result.second
+                                        selectedGroup = group
+                                    }
+                                }) { Text("Üyeleri yönet") }
+                                TextButton(onClick = onOpenCommunity) { Text("Toplumdan davet et") }
+                            }
                         }
                         when (group.membershipStatus) {
                             "approved" -> {
@@ -149,7 +152,7 @@ fun GroupsScreen() {
                     if (members.isEmpty()) item { Text("Henüz üye isteği yok.") }
                     items(members, key = { it.id }) { member ->
                         Column {
-                            Text("Üye: ${member.userId.take(8)}…")
+                            Text("Grup üyesi")
                             Text("Durum: ${member.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             if (member.status == "approved") {
                                 TextButton(onClick = {

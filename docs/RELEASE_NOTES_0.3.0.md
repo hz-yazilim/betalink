@@ -20,3 +20,12 @@ FCM is intentionally deferred. Attendance reminders, backup invitations, group m
 - Absence processing is based on the previous UTC day, so users are not penalized before the day ends.
 - Backup promotion is FIFO among applicants explicitly placed on the backup/waitlist queue.
 - A daily check-in is a self-reported confirmation, not independent proof of Play Store installation or use.
+
+## People and group invitations (10 November 2026)
+- Added a dedicated Kişiler tab with a paginated directory of registered Betalink users.
+- Added a profile setting to opt in or out of receiving group invitations.
+- Group owners can invite eligible users with a custom note; invitees can accept or decline from the Kişiler inbox.
+- Invitation creation, capacity checks, duplicate prevention, and acceptance are enforced by server-side database functions.
+- Invitation events generate in-app notifications for both recipients and group owners.
+- Share sheet text includes the group name, description, optional note, Betalink purpose, and Play Store link.
+- The owner-only admin dashboard now shows account email addresses instead of internal user IDs; email addresses are never exposed in the public people directory.

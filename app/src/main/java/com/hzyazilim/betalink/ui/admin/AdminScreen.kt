@@ -103,7 +103,7 @@ fun AdminScreen(onClose: () -> Unit) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(Modifier.weight(1f)) {
                         Text(target.displayName.ifBlank { "Kullanıcı" }, style = MaterialTheme.typography.bodyMedium)
-                        Text(target.id.take(8) + "…", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                        Text(target.email.ifBlank { "E-posta bilgisi alınamadı" }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                     TextButton(onClick = {
                         val amount = bpAmount.toIntOrNull()
@@ -233,7 +233,7 @@ private fun SupportTicketCard(ticket: AdminSupportTicket, onReply: (String) -> U
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp)) {
             Text(if (ticket.ticketType == "complaint") "ŞİKAYET · ${ticket.subject}" else "DESTEK · ${ticket.subject}", style = MaterialTheme.typography.titleSmall, color = if (ticket.ticketType == "complaint") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
-            Text("Kullanıcı: ${ticket.userId.take(8)}… · ${ticket.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+            Text("Kullanıcı: ${ticket.userEmail.ifBlank { "E-posta yok" }} · ${ticket.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
             Text(ticket.message, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
             OutlinedTextField(reply, { reply = it }, label = { Text("Destek yanıtı") }, minLines = 2)
             Button(onClick = { onReply(reply) }, enabled = reply.trim().length >= 2, modifier = Modifier.fillMaxWidth()) {
