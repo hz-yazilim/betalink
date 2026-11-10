@@ -55,6 +55,27 @@ Deno.serve(async (req: Request) => {
       admin.from("tester_groups").select("id,name,description,created_by,tracking_status,created_at").order("created_at", { ascending: false }).limit(200),
     ]);
     if (pending.error || support.error || userRows.error || groupRows.error) return Response.json({ error: "Could not load admin data" }, { status: 500, headers: cors });
+
+    // Auth emails are private account data: fetch them only inside this owner-verified
+    // service-role function. Never expose them through the public profiles table.
+    const authUsers: Array<{ id: string; email?: string }> = [];
+    for (let page = 1; page <= 100; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) return Response.json({ error: "Could not load account email addresses" }, { status: 500, headers: cors });
+      authUsers.push(...data.users.map((u) => ({ id: u.id, email: u.email ?? "" })));
+      if (data.users.length < 1000) break;
+    }
+    const emailByUserId = new Map(authUsers.map((u) => [u.id, u.email]));
+    const usersList = (userRows.data ?? []).map((row) => ({
+      user_id: row.user_id,
+      display_name: row.display_name,
+      email: emailByUserId.get(row.user_id) ?? "",
+    }));
+    const supportTickets = (support.data ?? []).map((row) => ({
+      ...row,
+      user_email: emailByUserId.get(row.user_id) ?? "",
+    }));
+
     return Response.json({
       stats: {
         users: users.count ?? 0,
@@ -63,8 +84,8 @@ Deno.serve(async (req: Request) => {
         groups: groups.count ?? 0,
       },
       pendingReports: pending.data ?? [],
-      supportTickets: support.data ?? [],
-      usersList: userRows.data ?? [],
+      supportTickets,
+      usersList,
       groupsList: groupRows.data ?? [],
     }, { headers: cors });
   }
