@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun GroupsScreen(onOpenContacts: () -> Unit = {}) {
+fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
     val context = LocalContext.current
     val repository = remember(context) { CampaignRepository(context) }
     val scope = rememberCoroutineScope()
@@ -106,7 +106,7 @@ fun GroupsScreen(onOpenContacts: () -> Unit = {}) {
                                         selectedGroup = group
                                     }
                                 }) { Text("Üyeleri yönet") }
-                                TextButton(onClick = onOpenContacts) { Text("Kişileri davet et") }
+                                TextButton(onClick = onOpenCommunity) { Text("Toplumdan davet et") }
                             }
                         }
                         when (group.membershipStatus) {
