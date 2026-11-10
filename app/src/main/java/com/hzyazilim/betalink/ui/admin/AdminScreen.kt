@@ -103,7 +103,7 @@ fun AdminScreen(onClose: () -> Unit) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(Modifier.weight(1f)) {
                         Text(target.displayName.ifBlank { "Kullanıcı" }, style = MaterialTheme.typography.bodyMedium)
-                        Text(target.id.take(8) + "…", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                        Text(target.email.ifBlank { "E-posta bilgisi alınamadı" }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                     TextButton(onClick = {
                         val amount = bpAmount.toIntOrNull()
