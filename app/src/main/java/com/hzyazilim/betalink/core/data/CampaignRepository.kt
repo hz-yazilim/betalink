@@ -13,6 +13,11 @@ import java.net.URLEncoder
 data class CampaignMember(val id: String, val testerId: String, val status: String)
 data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?, val isCreator: Boolean)
 data class GroupMember(val id: String, val userId: String, val status: String)
+data class DirectoryPerson(val id: String, val displayName: String, val canReceiveInvites: Boolean)
+data class GroupInvitation(
+    val id: String, val groupId: String, val groupName: String, val groupDescription: String,
+    val inviterId: String, val message: String, val token: String, val createdAt: String
+)
 data class GroupTestEmail(val displayName: String, val email: String)
 data class GroupSnapshot(val status: String, val approvedMembers: Int, val requiredMembers: Int, val elapsedDays: Int, val requiredDays: Int, val startedAt: String?, val myEmailShared: Boolean, val myPlayTestEmail: String, val emails: List<GroupTestEmail>)
 data class CampaignTask(val id: String, val title: String, val description: String, val completed: Boolean)
@@ -622,6 +627,86 @@ class CampaignRepository(context: Context) {
             )
         }
         return result to null
+    }
+
+    fun listPeople(): Pair<List<DirectoryPerson>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<DirectoryPerson>() to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return emptyList<DirectoryPerson>() to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val (status, body) = call(
+            "/rest/v1/profiles?select=user_id,display_name,allow_group_invites&user_id=neq.$userId&order=created_at.desc&limit=500",
+            "GET", token
+        )
+        if (status !in 200..299) return emptyList<DirectoryPerson>() to message(body)
+        val rows = JSONArray(body)
+        return (0 until rows.length()).map { i ->
+            val row = rows.getJSONObject(i)
+            DirectoryPerson(row.getString("user_id"), row.optString("display_name").ifBlank { "Betalink kullanıcısı" }, row.optBoolean("allow_group_invites", true))
+        } to null
+    }
+
+    fun listIncomingGroupInvitations(): Pair<List<GroupInvitation>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<GroupInvitation>() to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return emptyList<GroupInvitation>() to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val path = "/rest/v1/group_invitations?select=id,group_id,inviter_id,custom_message,invite_token,created_at,tester_groups(name,description)&invitee_id=eq.$userId&status=eq.pending&order=created_at.desc&limit=100"
+        val (status, body) = call(path, "GET", token)
+        if (status !in 200..299) return emptyList<GroupInvitation>() to message(body)
+        val rows = JSONArray(body)
+        return (0 until rows.length()).map { i ->
+            val row = rows.getJSONObject(i)
+            val group = row.optJSONObject("tester_groups") ?: JSONObject()
+            GroupInvitation(
+                row.getString("id"), row.getString("group_id"), group.optString("name", "Tester grubu"),
+                group.optString("description"), row.optString("inviter_id"), row.optString("custom_message"),
+                row.optString("invite_token"), row.optString("created_at")
+            )
+        } to null
+    }
+
+    fun sendGroupInvitation(groupId: String, inviteeId: String, messageText: String): Pair<String?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/rpc/betalink_send_group_invitation", "POST", token,
+            JSONObject().put("p_group_id", groupId).put("p_invitee_id", inviteeId).put("p_message", messageText.trim())
+        )
+        if (status !in 200..299) return null to message(body)
+        return try { JSONObject(body).optString("invite_token").takeIf { it.isNotBlank() } to null }
+        catch (_: Exception) { null to "Davet oluşturuldu ancak bağlantı bilgisi okunamadı." }
+    }
+
+    fun respondGroupInvitation(invitationId: String, accept: Boolean): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/rpc/betalink_respond_group_invitation", "POST", token,
+            JSONObject().put("p_invitation_id", invitationId).put("p_accept", accept)
+        )
+        return if (status in 200..299) null else message(body)
+    }
+
+    fun groupInvitePreference(): Pair<Boolean, String?> {
+        val token = sessions.read()?.first ?: return true to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return true to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val (status, body) = call("/rest/v1/profiles?select=allow_group_invites&user_id=eq.$userId", "GET", token)
+        if (status !in 200..299) return true to message(body)
+        val rows = JSONArray(body)
+        return (if (rows.length() > 0) rows.getJSONObject(0).optBoolean("allow_group_invites", true) else true) to null
+    }
+
+    fun setGroupInvitePreference(enabled: Boolean): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val (status, body) = call(
+            "/rest/v1/profiles?user_id=eq.$userId", "PATCH", token,
+            JSONObject().put("allow_group_invites", enabled)
+        )
+        return if (status in 200..299) null else message(body)
     }
 
     private fun utcNow(): String = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date())
