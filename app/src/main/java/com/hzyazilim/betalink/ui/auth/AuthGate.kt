@@ -81,7 +81,8 @@ fun AuthGate(initialInviteToken: String? = null) {
     } else {
         BetalinkApp(
             currentUser = user!!,
-            isAdmin = isAdmin,\n            openPeopleInitially = !initialInviteToken.isNullOrBlank(),\n            initialInviteToken = initialInviteToken,
+            isAdmin = isAdmin,
+            openPeopleInitially = !initialInviteToken.isNullOrBlank(),\n            initialInviteToken = initialInviteToken,
             onSignOut = {
                 withContext(Dispatchers.IO) { repository.signOut() }
                 user = null
