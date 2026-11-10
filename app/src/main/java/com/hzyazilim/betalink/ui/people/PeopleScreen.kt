@@ -40,7 +40,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun PeopleScreen() {
+fun PeopleScreen(inviteToken: String? = null) {
     val context = LocalContext.current
     val repository = remember(context) { CampaignRepository(context) }
     val scope = rememberCoroutineScope()
@@ -60,7 +60,7 @@ fun PeopleScreen() {
     LaunchedEffect(refresh) {
         loading = true
         val directory = withContext(Dispatchers.IO) { repository.listPeople(0) }
-        val inbox = withContext(Dispatchers.IO) { repository.listIncomingGroupInvitations() }
+        val inbox = withContext(Dispatchers.IO) { repository.listIncomingGroupInvitations(inviteToken) }
         val groups = withContext(Dispatchers.IO) { repository.listGroups() }
         people = directory.first
         canLoadMore = directory.first.size == 50
