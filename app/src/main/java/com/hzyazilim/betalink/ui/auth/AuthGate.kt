@@ -48,7 +48,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun AuthGate(openPeopleInitially: Boolean = false) {
+fun AuthGate(initialInviteToken: String? = null) {
     val context = LocalContext.current
     val repository = remember { SupabaseAuthRepository(context) }
     var user by remember { mutableStateOf<BetalinkUser?>(null) }
@@ -81,7 +81,7 @@ fun AuthGate(openPeopleInitially: Boolean = false) {
     } else {
         BetalinkApp(
             currentUser = user!!,
-            isAdmin = isAdmin,\n            openPeopleInitially = openPeopleInitially,
+            isAdmin = isAdmin,\n            openPeopleInitially = !initialInviteToken.isNullOrBlank(),\n            initialInviteToken = initialInviteToken,
             onSignOut = {
                 withContext(Dispatchers.IO) { repository.signOut() }
                 user = null
