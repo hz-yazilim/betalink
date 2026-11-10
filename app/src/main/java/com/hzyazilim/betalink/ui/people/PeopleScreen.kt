@@ -217,6 +217,7 @@ fun PeopleScreen() {
                                 if (group.description.isNotBlank()) append("${group.description}\n")
                                 if (customMessage.isNotBlank()) append("\nDavet notu: ${customMessage}\n")
                                 append("\nBetalink; uygulama geliştiricileri ile gerçek testerları buluşturan bir platformdur. Gruplar üzerinden kapalı testlere birlikte katılabilir, test sürecini ve günlük katılımı takip edebilirsin.")
+                                append("\n\nDavet bağlantısı: betalink://group-invite/${result.first ?: ""}")
                                 append("\n\nUygulama: https://play.google.com/store/apps/details?id=com.hzyazilim.betalink")
                                 append("\nDavetini uygulamadaki Kişiler > Gelen grup davetleri bölümünden kabul edebilirsin.")
                             }
