@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AuthGate(openPeopleInitially = intent?.data?.scheme == "betalink" && intent?.data?.host == "group-invite")
+                    AuthGate(initialInviteToken = intent?.data?.takeIf { it.scheme == "betalink" && it.host == "group-invite" }?.lastPathSegment)
                 }
             }
         }
@@ -130,7 +130,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, openPeopleInitially: Boolean = false, onSignOut: suspend () -> Unit, onDeleteAccount: suspend () -> String?) {
+fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, openPeopleInitially: Boolean = false, initialInviteToken: String? = null, onSignOut: suspend () -> Unit, onDeleteAccount: suspend () -> String?) {
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableIntStateOf(if (openPeopleInitially) 3 else 0) }
     var deleteMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
@@ -195,7 +195,7 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, openPeopleInitially
                         0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 4 }, onNotifications = { showNotifications = true })
                         1 -> CampaignBrowserScreen(myTests = false)
                         2 -> GroupsScreen(onOpenContacts = { selectedTab = 3 })
-                        3 -> PeopleScreen()
+                        3 -> PeopleScreen(inviteToken = initialInviteToken)
                         4 -> MyTestsHub()
                         else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSupport = { showSupport = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
                     }
