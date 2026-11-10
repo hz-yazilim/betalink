@@ -410,12 +410,30 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
     var reliability by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<TesterReliability?>(null) }
     var allowGroupInvites by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
     var invitePreferenceMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    var profileName by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf(currentUser.displayName) }
+    var profileBio by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf("") }
+    var profileAvatar by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf("") }
+    var contactEmail by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf("") }
+    var showPublicEmail by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf(false) }
+    var profileLoading by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+    var profileSaving by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var profileMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     LaunchedEffect(currentUser.id) {
         reputation = withContext(Dispatchers.IO) { repository.myReputationScore().first }
         reliability = withContext(Dispatchers.IO) { repository.testerReliability().first }
         val preference = withContext(Dispatchers.IO) { repository.groupInvitePreference() }
         allowGroupInvites = preference.first
         invitePreferenceMessage = preference.second
+        val profile = withContext(Dispatchers.IO) { repository.myProfile() }
+        profile.first?.let {
+            profileName = it.displayName.ifBlank { currentUser.displayName }
+            profileBio = it.bio
+            profileAvatar = it.avatarUrl
+            contactEmail = it.contactEmail
+            showPublicEmail = it.showPublicEmail
+        }
+        profileMessage = profile.second
+        profileLoading = false
     }
     var confirmDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Column(
@@ -426,6 +444,37 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
         Text(currentUser.displayName, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
         Text(currentUser.email, color = Color(0xFFB5BED4), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
         Text("İtibar puanın: $reputation", color = MaterialTheme.colorScheme.secondary, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("PROFİLİNİ DÜZENLE", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("Kişiler bölümünde diğer kullanıcıların göreceği bilgileri buradan yönetebilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                if (profileLoading) CircularProgressIndicator()
+                else {
+                    androidx.compose.material3.OutlinedTextField(value = profileName, onValueChange = { profileName = it.take(50) }, label = { Text("Görünen ad") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    androidx.compose.material3.OutlinedTextField(value = profileBio, onValueChange = { profileBio = it.take(280) }, label = { Text("Hakkımda") }, placeholder = { Text("Kendini kısaca tanıt…") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+                    androidx.compose.material3.OutlinedTextField(value = contactEmail, onValueChange = { contactEmail = it.take(254) }, label = { Text("İletişim e-postası / Gmail") }, placeholder = { Text("ornek@gmail.com") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Text("Bu alan hesap giriş e-postandan ayrıdır. İstersen farklı bir Gmail yazabilir, halka açık paylaşımı ayrıca açabilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Halka açık göster", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Text(if (showPublicEmail) "İletişim e-postan Kişiler listesinde görünür." else "E-posta adresin diğer kullanıcılardan gizli kalır.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        }
+                        androidx.compose.material3.Switch(checked = showPublicEmail, onCheckedChange = { showPublicEmail = it })
+                    }
+                    androidx.compose.material3.OutlinedTextField(value = profileAvatar, onValueChange = { profileAvatar = it.take(1000) }, label = { Text("Profil fotoğrafı bağlantısı (isteğe bağlı)") }, placeholder = { Text("https://...") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Text("Profil fotoğrafı için doğrudan https:// ile başlayan bir görsel bağlantısı kullanabilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    Button(onClick = {
+                        scope.launch {
+                            profileSaving = true
+                            val error = withContext(Dispatchers.IO) { repository.saveMyProfile(profileName, profileBio, profileAvatar, contactEmail, showPublicEmail) }
+                            profileMessage = error ?: "Profilin kaydedildi."
+                            profileSaving = false
+                        }
+                    }, enabled = !profileSaving, modifier = Modifier.fillMaxWidth()) { Text(if (profileSaving) "Kaydediliyor…" else "Profili kaydet") }
+                }
+                profileMessage?.let { Text(it, color = if (it == "Profilin kaydedildi.") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error, fontSize = 11.sp) }
+            }
+        }
         Card(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text("TESTER GÜVENİLİRLİK PROFİLİ", color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
