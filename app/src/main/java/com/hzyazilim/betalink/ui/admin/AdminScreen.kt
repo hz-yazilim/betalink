@@ -50,6 +50,7 @@ fun AdminScreen(onClose: () -> Unit) {
     var showAnnouncement by remember { mutableStateOf(false) }
     var bpAmount by remember { mutableStateOf("25") }
     var pointType by remember { mutableStateOf("bp") }
+    var selectedDeleteUser by remember { mutableStateOf<AdminUser?>(null) }
     var bpReason by remember { mutableStateOf("Yönetici puan düzenlemesi") }
     var newGroupName by remember { mutableStateOf("") }
     var newGroupDescription by remember { mutableStateOf("") }
@@ -119,6 +120,7 @@ fun AdminScreen(onClose: () -> Unit) {
                             if (error == null) refresh++
                         }
                     }) { Text("Uygula") }
+                    TextButton(onClick = { selectedDeleteUser = target }) { Text("Kullanıcıyı sil", color = MaterialTheme.colorScheme.error) }
                 }
             }
             Text("Grup yönetimi", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp))
@@ -186,6 +188,25 @@ fun AdminScreen(onClose: () -> Unit) {
         }
         }
         }
+    }
+
+    selectedDeleteUser?.let { target ->
+        AlertDialog(
+            onDismissRequest = { selectedDeleteUser = null },
+            title = { Text("Kullanıcı hesabı kalıcı olarak silinsin mi?") },
+            text = { Text("${target.displayName.ifBlank { "Kullanıcı" }} (${target.email}) hesabı Supabase Auth üzerinden silinecek. Profil, oturumlar ve hesaba bağlı kayıtlar da silinebilir. Bu işlem geri alınamaz.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        val error = withContext(Dispatchers.IO) { repository.deleteUser(target.id) }
+                        message = error ?: "${target.email.ifBlank { target.displayName }} hesabı kalıcı olarak silindi."
+                        selectedDeleteUser = null
+                        if (error == null) refresh++
+                    }
+                }) { Text("Evet, kalıcı sil", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { selectedDeleteUser = null }) { Text("Vazgeç") } }
+        )
     }
 
     if (showAnnouncement) {
