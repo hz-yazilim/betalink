@@ -48,15 +48,27 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun AuthGate(initialInviteToken: String? = null) {
+fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null) {
     val context = LocalContext.current
     val repository = remember { SupabaseAuthRepository(context) }
     var user by remember { mutableStateOf<BetalinkUser?>(null) }
     var isAdmin by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(true) }
+    var authMessage by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         user = withContext(Dispatchers.IO) { repository.restoreSession() }
         checking = false
+    }
+    LaunchedEffect(authCallbackUri) {
+        if (!authCallbackUri.isNullOrBlank()) {
+            val result = withContext(Dispatchers.IO) { repository.completeEmailConfirmation(authCallbackUri) }
+            if (result.user != null) {
+                user = result.user
+                authMessage = "E-posta adresin doğrulandı. Betalink'e hoş geldin!"
+            } else {
+                authMessage = result.message
+            }
+        }
     }
     LaunchedEffect(user?.id) {
         if (user != null) {
@@ -76,6 +88,8 @@ fun AuthGate(initialInviteToken: String? = null) {
             onSignIn = { email, password -> withContext(Dispatchers.IO) { repository.signIn(email, password) } },
             onSignUp = { name, email, password -> withContext(Dispatchers.IO) { repository.signUp(email, password, name) } },
             onGoogleSignIn = { idToken -> withContext(Dispatchers.IO) { repository.signInWithGoogleIdToken(idToken) } },
+            onResendConfirmation = { email -> withContext(Dispatchers.IO) { repository.resendSignupConfirmation(email) } },
+            initialMessage = authMessage,
             onAuthenticated = { user = it }
         )
     } else {
@@ -102,6 +116,8 @@ private fun AuthScreen(
     onSignIn: suspend (String, String) -> com.hzyazilim.betalink.core.auth.AuthResult,
     onSignUp: suspend (String, String, String) -> com.hzyazilim.betalink.core.auth.AuthResult,
     onGoogleSignIn: suspend (String) -> com.hzyazilim.betalink.core.auth.AuthResult,
+    onResendConfirmation: suspend (String) -> com.hzyazilim.betalink.core.auth.AuthResult,
+    initialMessage: String?,
     onAuthenticated: (BetalinkUser) -> Unit
 ) {
     var isSignUp by remember { mutableStateOf(false) }
@@ -109,7 +125,8 @@ private fun AuthScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<String?>(initialMessage) }
+    LaunchedEffect(initialMessage) { if (!initialMessage.isNullOrBlank()) message = initialMessage }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -179,6 +196,21 @@ private fun AuthScreen(
                 if (busy) CircularProgressIndicator(strokeWidth = 2.dp)
                 else Text(if (isSignUp) "Ücretsiz hesap oluştur" else "Giriş yap")
             }
+            TextButton(
+                onClick = {
+                    if (email.isBlank()) {
+                        message = "Önce kayıt e-posta adresini yaz."
+                    } else {
+                        scope.launch {
+                            busy = true
+                            val result = onResendConfirmation(email)
+                            busy = false
+                            message = result.message ?: "Doğrulama e-postası gönderilemedi."
+                        }
+                    }
+                },
+                enabled = !busy
+            ) { Text("Doğrulama e-postasını yeniden gönder") }
             Button(
                 onClick = {
                     if (googleClientId.isBlank()) {
