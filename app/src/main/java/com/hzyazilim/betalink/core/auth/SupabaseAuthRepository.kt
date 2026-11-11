@@ -1,6 +1,7 @@
 package com.hzyazilim.betalink.core.auth
 
 import android.content.Context
+import android.net.Uri
 import com.hzyazilim.betalink.BuildConfig
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -77,7 +78,8 @@ class SupabaseAuthRepository(context: Context) {
             .put("email", email.trim())
             .put("password", password)
             .put("data", metadata)
-        val response = request("/auth/v1/signup", "POST", body)
+        val redirect = URLEncoder.encode("betalink://auth-callback", "UTF-8")
+        val response = request("/auth/v1/signup?redirect_to=$redirect", "POST", body)
         if (response.first !in 200..299) return AuthResult(message = errorMessage(response.second))
         val json = JSONObject(response.second)
         val access = json.optString("access_token")
@@ -87,6 +89,45 @@ class SupabaseAuthRepository(context: Context) {
             return AuthResult(user = parseUser(json.optJSONObject("user") ?: JSONObject()))
         }
         return AuthResult(message = "Kayıt oluşturuldu. E-posta doğrulama bağlantısını kontrol et; doğruladıktan sonra giriş yap.")
+    }
+
+    fun completeEmailConfirmation(callbackUri: String): AuthResult {
+        val uri = Uri.parse(callbackUri)
+        val params = Uri.parse("https://callback.invalid/?${uri.fragment.orEmpty()}")
+        val errorCode = params.getQueryParameter("error_code").orEmpty()
+        if (errorCode.isNotBlank()) {
+            val message = if (errorCode == "otp_expired") {
+                "Doğrulama bağlantısının süresi dolmuş veya daha önce açılmış. Yeni doğrulama e-postası isteyebilirsin."
+            } else {
+                params.getQueryParameter("error_description")?.replace("+", " ")
+                    ?: "E-posta doğrulaması tamamlanamadı. Yeni bağlantı isteyip tekrar dene."
+            }
+            return AuthResult(message = message)
+        }
+        val access = params.getQueryParameter("access_token").orEmpty()
+        val refresh = params.getQueryParameter("refresh_token").orEmpty()
+        if (access.isBlank() || refresh.isBlank()) {
+            return AuthResult(message = "Doğrulama bağlantısı açıldı ancak oturum bilgisi alınamadı. Yeni e-posta isteyip tekrar dene.")
+        }
+        sessions.save(access, refresh)
+        val response = request("/auth/v1/user", "GET", token = access)
+        if (response.first !in 200..299) {
+            sessions.clear()
+            return AuthResult(message = "E-posta bağlantısı doğrulandı ancak oturum açılamadı. Uygulamadan giriş yap.")
+        }
+        return AuthResult(user = parseUser(JSONObject(response.second)))
+    }
+
+    fun resendSignupConfirmation(email: String): AuthResult {
+        if (email.isBlank()) return AuthResult(message = "Önce kayıt e-posta adresini yaz.")
+        val redirect = URLEncoder.encode("betalink://auth-callback", "UTF-8")
+        val body = JSONObject().put("type", "signup").put("email", email.trim())
+        val response = request("/auth/v1/resend?redirect_to=$redirect", "POST", body)
+        return if (response.first in 200..299) {
+            AuthResult(message = "Yeni doğrulama e-postası gönderildi. Gelen kutunu ve spam klasörünü kontrol et.")
+        } else {
+            AuthResult(message = errorMessage(response.second))
+        }
     }
 
     fun deleteAccount(): String? {
