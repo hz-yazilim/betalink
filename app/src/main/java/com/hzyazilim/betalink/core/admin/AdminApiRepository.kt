@@ -75,6 +75,13 @@ class AdminApiRepository(context: Context) {
 
 
 
+    fun adjustReputation(userIds: List<String>, amount: Int, reason: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val ids = JSONArray(); userIds.forEach { ids.put(it) }
+        val (code, body) = call("POST", token, JSONObject().put("action", "adjust_reputation").put("user_ids", ids).put("amount", amount).put("reason", reason))
+        return if (code in 200..299) null else error(body)
+    }
+
     fun adjustBp(userIds: List<String>, amount: Int, reason: String): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val ids = JSONArray()
