@@ -32,6 +32,16 @@ Betalink helps users organize and document genuine testing participation. It doe
 
 An in-app Play opt-in confirmation is a self-report, not proof of Google Play Console enrollment. The campaign clock starts only after the required number of testers have been accepted and self-attested. The server pauses the clock if the active tester threshold falls below 12. The progress endpoint reports eligibility after 14 days only while the threshold remains satisfied. Developers must still verify actual participation in Play Console.
 
+## Email confirmation and Android deep link
+
+The native Android sign-up flow sends Supabase Auth confirmations to `betalink://auth-callback`. The app receives the confirmation tokens through its Android intent filter and completes the session in-app. Users can request a fresh confirmation email from the sign-in screen if a link expires.
+
+Required Supabase Dashboard configuration (**Authentication → URL Configuration**):
+- Set **Site URL** to the public Betalink legal page: `https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy` (prevents localhost from being used as the default fallback).
+- Add this exact value under **Additional Redirect URLs**: `betalink://auth-callback`.
+
+Do not remove the deep-link redirect from the allow list. The app's sign-up and resend requests explicitly pass this redirect destination.
+
 ## Android project
 Open this repository in Android Studio. The native application is in app/.
 
