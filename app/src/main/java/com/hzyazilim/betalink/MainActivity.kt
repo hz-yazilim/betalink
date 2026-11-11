@@ -107,8 +107,20 @@ private val tabs = listOf(
 )
 
 class MainActivity : ComponentActivity() {
+    private var authCallbackUri by mutableStateOf<String?>(null)
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val data = intent.data
+        if (data?.scheme == "betalink" && data.host == "auth-callback") {
+            authCallbackUri = data.toString()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        intent?.data?.takeIf { it.scheme == "betalink" && it.host == "auth-callback" }?.let { authCallbackUri = it.toString() }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel("betalink_updates", "Betalink bildirimleri", NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = "Test davetleri, grup durumu ve görev bildirimleri"
@@ -121,7 +133,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AuthGate(initialInviteToken = intent?.data?.takeIf { it.scheme == "betalink" && it.host == "group-invite" }?.lastPathSegment)
+                    AuthGate(initialInviteToken = intent?.data?.takeIf { it.scheme == "betalink" && it.host == "group-invite" }?.lastPathSegment, authCallbackUri = authCallbackUri)
                 }
             }
         }
