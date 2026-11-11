@@ -12,7 +12,7 @@ import java.net.URLEncoder
 
 data class CampaignMember(val id: String, val testerId: String, val status: String, val displayName: String = "", val email: String = "")
 data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?, val isCreator: Boolean)
-data class GroupMember(val id: String, val userId: String, val status: String, val displayName: String = "", val email: String = "")
+data class GroupMember(val id: String, val userId: String, val status: String, val displayName: String = "", val email: String = "", val playTestEmail: String = "", val sharesPlayTestEmail: Boolean = false)
 data class DirectoryPerson(val id: String, val displayName: String, val canReceiveInvites: Boolean, val publicEmail: String = "", val bio: String = "", val avatarUrl: String = "")
 data class EditableProfile(val displayName: String, val bio: String, val avatarUrl: String, val contactEmail: String, val showPublicEmail: Boolean)
 data class GroupInvitation(
@@ -189,14 +189,14 @@ class CampaignRepository(context: Context) {
     fun groupMembers(groupId: String): Pair<List<GroupMember>, String?> {
         val token = sessions.read()?.first ?: return emptyList<GroupMember>() to "Oturum bulunamadı."
         val (status, body) = call(
-            "/rest/v1/group_members?select=id,user_id,status&group_id=eq.$groupId&order=joined_at.asc",
+            "/rest/v1/group_members?select=id,user_id,status,share_test_email,play_test_email&group_id=eq.$groupId&order=joined_at.asc",
             "GET", token
         )
         if (status !in 200..299) return emptyList<GroupMember>() to message(body)
         val array = JSONArray(body)
         val base = (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
-            GroupMember(row.getString("id"), row.getString("user_id"), row.optString("status"))
+            GroupMember(row.getString("id"), row.getString("user_id"), row.optString("status"), playTestEmail = row.optString("play_test_email"), sharesPlayTestEmail = row.optBoolean("share_test_email"))
         }
         if (base.isEmpty()) return emptyList<GroupMember>() to null
         val ids = base.map { it.userId }.distinct().joinToString(",")
