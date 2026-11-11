@@ -82,7 +82,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
         loading = false
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp).verticalScroll(rememberScrollState())) {
         Spacer(Modifier.height(18.dp))
         Text(if (myTests) "TESTLERİM" else "KEŞFET", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
         Text(if (myTests) "Katıldığın kampanyalar" else "Açık test kampanyaları", style = MaterialTheme.typography.headlineSmall)
@@ -119,8 +119,8 @@ fun CampaignBrowserScreen(myTests: Boolean) {
             }
             if (filteredCampaigns.isEmpty()) {
                 Text("Aramana uygun kampanya bulunamadı.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 20.dp))
-            } else LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 14.dp)) {
-                items(filteredCampaigns, key = { it.id }) { campaign ->
+            } else Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 14.dp)) {
+                filteredCampaigns.forEach { campaign ->
                     CampaignCard(
                         campaign = campaign,
                         repository = repository,
@@ -758,7 +758,7 @@ private fun DeveloperCampaignsScreen() {
                     TextButton(onClick = {
                         scope.launch {
                             val result = withContext(Dispatchers.IO) { repository.processCampaignAttendance(campaign.id) }
-                            message = result.second ?: "Devamsızlık kontrolü tamamlandı: ${result.first}"
+                            message = result.second ?: "Devamsızlık kontrolü tamamlandı. Katılımcı durumları güncellendi."
                             selectedReportCampaign = campaign
                         }
                     }, modifier = Modifier.fillMaxWidth()) { Text("Devamsızlık kontrolü ve test raporu") }
@@ -802,8 +802,9 @@ private fun DeveloperCampaignsScreen() {
                     if (applicants.isEmpty()) item { Text("Henüz başvuru yok.") }
                     items(applicants, key = { it.id }) { applicant ->
                         Column {
-                            Text("Tester: ${applicant.testerId.take(8)}…")
-                            Text("Durum: ${applicant.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            Text(applicant.displayName.ifBlank { "Betalink kullanıcısı" }, style = MaterialTheme.typography.titleSmall)
+                            Text(applicant.email.ifBlank { "İletişim e-postası paylaşılmamış" }, color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                            Text("Durum: " + when(applicant.status) { "applied" -> "Başvurdu"; "accepted" -> "Kabul edildi"; "waitlisted" -> "Yedek listede"; "rejected" -> "Reddedildi"; else -> applicant.status }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             TextButton(onClick = { reliabilityTesterId = applicant.testerId }) { Text("Güvenilirlik profilini görüntüle") }
                             if (applicant.status == "applied" || applicant.status == "waitlisted") {
                                 Row {
