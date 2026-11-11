@@ -49,6 +49,7 @@ fun AdminScreen(onClose: () -> Unit) {
     var refresh by remember { mutableStateOf(0) }
     var showAnnouncement by remember { mutableStateOf(false) }
     var bpAmount by remember { mutableStateOf("25") }
+    var pointType by remember { mutableStateOf("bp") }
     var bpReason by remember { mutableStateOf("Yönetici BetaPuan ödülü") }
     var newGroupName by remember { mutableStateOf("") }
     var newGroupDescription by remember { mutableStateOf("") }
@@ -86,15 +87,19 @@ fun AdminScreen(onClose: () -> Unit) {
                 Text("Tüm kullanıcılara duyuru gönder")
             }
 
-            Text("BetaPuan yönetimi", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp))
+            Text("Puan yönetimi", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = { pointType = "bp" }) { Text(if (pointType == "bp") "✓ BetaPuan (BP)" else "BetaPuan (BP)") }
+                TextButton(onClick = { pointType = "reputation" }) { Text(if (pointType == "reputation") "✓ İtibar puanı" else "İtibar puanı") }
+            }
             OutlinedTextField(bpAmount, { bpAmount = it.filter { ch -> ch == '-' || ch.isDigit() }.take(7) }, label = { Text("Puan miktarı (+/-)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(bpReason, { bpReason = it.take(240) }, label = { Text("İşlem açıklaması") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             Button(onClick = {
                 val amount = bpAmount.toIntOrNull()
                 if (amount == null || amount == 0 || bpReason.trim().length < 3) message = "Puan miktarı ve açıklamayı kontrol et."
                 else scope.launch {
-                    val error = withContext(Dispatchers.IO) { repository.adjustBp(data.usersList.map { it.id }, amount, bpReason) }
-                    message = error ?: data.usersList.size.toString() + " kullanıcının BetaPuan bakiyesi güncellendi."
+                    val error = withContext(Dispatchers.IO) { if (pointType == "bp") repository.adjustBp(data.usersList.map { it.id }, amount, bpReason) else repository.adjustReputation(data.usersList.map { it.id }, amount, bpReason) }
+                    message = error ?: data.usersList.size.toString() + if (pointType == "bp") " kullanıcının BetaPuan bakiyesi güncellendi." else " kullanıcının itibar puanı güncellendi."
                     if (error == null) refresh++
                 }
             }, enabled = data.usersList.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Tüm kullanıcılara uygula") }
@@ -109,8 +114,8 @@ fun AdminScreen(onClose: () -> Unit) {
                         val amount = bpAmount.toIntOrNull()
                         if (amount == null || amount == 0 || bpReason.trim().length < 3) message = "Puan miktarı ve açıklamayı kontrol et."
                         else scope.launch {
-                            val error = withContext(Dispatchers.IO) { repository.adjustBp(listOf(target.id), amount, bpReason) }
-                            message = error ?: target.displayName + " için puan güncellendi."
+                            val error = withContext(Dispatchers.IO) { if (pointType == "bp") repository.adjustBp(listOf(target.id), amount, bpReason) else repository.adjustReputation(listOf(target.id), amount, bpReason) }
+                            message = error ?: target.displayName + " için " + if (pointType == "bp") "BetaPuan güncellendi." else "itibar puanı güncellendi."
                             if (error == null) refresh++
                         }
                     }) { Text("Uygula") }
