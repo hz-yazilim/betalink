@@ -155,7 +155,7 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
                     items(members, key = { it.id }) { member ->
                         Column {
                             Text(member.displayName.ifBlank { "Betalink kullanıcısı" }, style = MaterialTheme.typography.titleSmall)
-                            Text(member.email.ifBlank { "E-posta paylaşılmamış" }, color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                            Text(if (member.sharesPlayTestEmail && member.playTestEmail.isNotBlank()) "Play test Gmail: ${member.playTestEmail}" else member.email.ifBlank { "İletişim e-postası paylaşılmamış" }, color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
                             Text("Durum: " + when(member.status) { "approved" -> "Onaylandı"; "pending" -> "Onay bekliyor"; else -> member.status }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             if (member.status == "approved") {
                                 TextButton(onClick = {
