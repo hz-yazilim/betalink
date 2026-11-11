@@ -8,9 +8,9 @@ const corsHeaders = {
   "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'self' mailto:; frame-ancestors 'none'",
 };
 
-const shell = (title: string, body: string) => `<!doctype html>
+const shell = (title: string, body: string, robots = "index,follow") => `<!doctype html>
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${title} | Betalink</title><meta name="robots" content="index,follow">
+<title>${title} | Betalink</title><meta name="robots" content="${robots}">
 <style>
 :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0a1020;color:#edf1ff;font:16px/1.7 system-ui,-apple-system,Segoe UI,sans-serif}
 main{max-width:850px;margin:40px auto;padding:28px;background:#151e33;border:1px solid #2b3857;border-radius:20px}
@@ -95,6 +95,32 @@ const deletion = `
 <h2>Yardım</h2><p>Hesap silme veya kişisel verilerle ilgili sorular: <a href="mailto:hz.yazilimm@gmail.com">hz.yazilimm@gmail.com</a></p>
 `;
 
+const notFound = `
+<style>
+body{min-height:100vh;background:radial-gradient(ellipse at 50% 38%,#26396a 0%,#111a35 38%,#070b17 78%);overflow-x:hidden}
+main{position:relative;isolation:isolate;max-width:760px;margin:7vh auto;padding:clamp(28px,6vw,64px);text-align:center;background:linear-gradient(145deg,rgba(28,43,76,.92),rgba(12,19,38,.94));border:1px solid rgba(145,162,255,.25);box-shadow:0 30px 100px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.06);overflow:hidden}
+main:before,main:after{content:"";position:absolute;z-index:-1;border:1px solid rgba(145,162,255,.2);border-radius:50%;width:390px;height:390px;left:50%;top:45%;transform:translate(-50%,-50%) rotate(-25deg);box-shadow:0 0 70px rgba(103,217,197,.08),inset 0 0 60px rgba(145,162,255,.08)}
+main:after{width:510px;height:190px;transform:translate(-50%,-50%) rotate(28deg);border-color:rgba(103,217,197,.22)}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;padding:7px 13px;border:1px solid rgba(145,162,255,.28);border-radius:99px;color:#b9c5ff;letter-spacing:.16em;font-size:.7rem;font-weight:800}
+.signal{width:7px;height:7px;border-radius:50%;background:#67d9c5;box-shadow:0 0 14px #67d9c5}
+.error-code{font-size:clamp(6rem,22vw,12rem);font-weight:950;letter-spacing:-.1em;line-height:.95;margin:32px 0 12px;background:linear-gradient(115deg,#fff 12%,#a9b8ff 48%,#67d9c5 90%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 18px 55px rgba(111,143,255,.16)}
+h1{font-size:clamp(1.5rem,5vw,2.4rem);letter-spacing:-.04em;margin:20px 0 10px}
+.description{max-width:480px;margin:0 auto;color:#b9c5dc;font-size:1rem}
+.actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:30px}
+.button.secondary{background:rgba(255,255,255,.06);color:#eaf0ff;border:1px solid rgba(255,255,255,.14)}
+footer{border:0;margin-top:40px;padding-top:0}
+@media(max-width:600px){main{margin:12px;padding:34px 20px}.error-code{margin-top:42px}.actions{flex-direction:column}.actions a{width:100%}}
+</style>
+<div class="eyebrow"><span class="signal"></span> BETALINK · SİNYAL BULUNAMADI</div>
+<div class="error-code">404</div>
+<h1>Bu sayfa başka bir evrene taşınmış.</h1>
+<p class="description">Aradığın bağlantı artık burada değil ya da adres yanlış yazılmış olabilir. Merak etme, Betalink evreninde yolunu yeniden bulabiliriz.</p>
+<div class="actions">
+<a class="button" href="https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy">Ana üsse dön</a>
+<a class="button secondary" href="mailto:hz.yazilimm@gmail.com?subject=Betalink%20404%20Sayfa%20Bildirimi">Bize haber ver</a>
+</div>
+`;
+
 Deno.serve((req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "GET") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
@@ -108,5 +134,5 @@ Deno.serve((req: Request) => {
   if (path.endsWith("/privacy") || path.endsWith("/privacy-policy") || path.endsWith("/legal-pages")) {
     return new Response(shell("Gizlilik Politikası", privacy), { status: 200, headers: corsHeaders });
   }
-  return new Response(shell("Gizlilik Politikası", privacy), { status: 200, headers: corsHeaders });
+  return new Response(shell("Sayfa bulunamadı", notFound, "noindex,nofollow"), { status: 404, headers: corsHeaders });
 });
