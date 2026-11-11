@@ -27,7 +27,7 @@ begin
   end if;
   update public.betalink_wallets w
   set balance = w.balance + p_amount,
-      lifetime_earned = w.lifetime_earned + pg_catalog.greatest(0,p_amount),
+      lifetime_earned = w.lifetime_earned + greatest(0,p_amount),
       updated_at = pg_catalog.now()
   where w.user_id = any(p_user_ids);
   insert into public.betalink_wallet_ledger(user_id,amount,entry_type,description)
