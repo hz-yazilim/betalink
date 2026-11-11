@@ -10,9 +10,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-data class CampaignMember(val id: String, val testerId: String, val status: String)
+data class CampaignMember(val id: String, val testerId: String, val status: String, val displayName: String = "", val email: String = "")
 data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?, val isCreator: Boolean)
-data class GroupMember(val id: String, val userId: String, val status: String)
+data class GroupMember(val id: String, val userId: String, val status: String, val displayName: String = "", val email: String = "")
 data class DirectoryPerson(val id: String, val displayName: String, val canReceiveInvites: Boolean, val publicEmail: String = "", val bio: String = "", val avatarUrl: String = "")
 data class EditableProfile(val displayName: String, val bio: String, val avatarUrl: String, val contactEmail: String, val showPublicEmail: Boolean)
 data class GroupInvitation(
@@ -194,10 +194,17 @@ class CampaignRepository(context: Context) {
         )
         if (status !in 200..299) return emptyList<GroupMember>() to message(body)
         val array = JSONArray(body)
-        return (0 until array.length()).map { i ->
+        val base = (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
             GroupMember(row.getString("id"), row.getString("user_id"), row.optString("status"))
-        } to null
+        }
+        if (base.isEmpty()) return emptyList<GroupMember>() to null
+        val ids = base.map { it.userId }.distinct().joinToString(",")
+        val (profileStatus, profileBody) = call("/rest/v1/profiles?select=user_id,display_name&user_id=in.($ids)", "GET", token)
+        val names = if (profileStatus in 200..299) { val rows = JSONArray(profileBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("display_name") } } else emptyMap()
+        val (emailStatus, emailBody) = call("/rest/v1/rpc/betalink_public_contact_emails", "POST", token, JSONObject())
+        val emails = if (emailStatus in 200..299) { val rows = JSONArray(emailBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("contact_email") } } else emptyMap()
+        base.map { it.copy(displayName = names[it.userId].orEmpty(), email = emails[it.userId].orEmpty()) } to null
     }
 
     fun reviewGroupMember(memberId: String, approved: Boolean): String? {
@@ -531,10 +538,17 @@ class CampaignRepository(context: Context) {
         )
         if (status !in 200..299) return emptyList<CampaignMember>() to message(body)
         val array = JSONArray(body)
-        return (0 until array.length()).map { i ->
+        val base = (0 until array.length()).map { i ->
             val j = array.getJSONObject(i)
             CampaignMember(j.getString("id"), j.getString("tester_id"), j.optString("status"))
-        } to null
+        }
+        if (base.isEmpty()) return emptyList<CampaignMember>() to null
+        val ids = base.map { it.testerId }.distinct().joinToString(",")
+        val (profileStatus, profileBody) = call("/rest/v1/profiles?select=user_id,display_name&user_id=in.($ids)", "GET", token)
+        val names = if (profileStatus in 200..299) { val rows = JSONArray(profileBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("display_name") } } else emptyMap()
+        val (emailStatus, emailBody) = call("/rest/v1/rpc/betalink_public_contact_emails", "POST", token, JSONObject())
+        val emails = if (emailStatus in 200..299) { val rows = JSONArray(emailBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("contact_email") } } else emptyMap()
+        base.map { it.copy(displayName = names[it.testerId].orEmpty(), email = emails[it.testerId].orEmpty()) } to null
     }
 
     fun reviewApplicant(memberId: String, statusValue: String): String? {
