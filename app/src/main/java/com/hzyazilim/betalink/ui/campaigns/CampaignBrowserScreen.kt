@@ -7,6 +7,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.window.DialogProperties
 import com.hzyazilim.betalink.core.data.Campaign
 import com.hzyazilim.betalink.core.data.CampaignRepository
 import com.hzyazilim.betalink.ui.wallet.WalletStatusCard
@@ -150,16 +161,13 @@ fun CampaignBrowserScreen(myTests: Boolean) {
         CreateCampaignDialog(
             onDismiss = { showCreate = false },
             onCreate = { name, url, description, category, target, minAndroid ->
-                scope.launch {
-                    val error = withContext(Dispatchers.IO) {
-                        repository.createCampaign(name, url, description, category, target, minAndroid)
-                    }
-                    message = error ?: "Kampanya oluşturuldu ve yayına alındı."
-                    if (error == null) {
-                        showCreate = false
-                        refresh++
-                    }
+                withContext(Dispatchers.IO) {
+                    repository.createCampaign(name, url, description, category, target, minAndroid)
                 }
+            },
+            onCreated = {
+                message = "Kampanya oluşturuldu ve yayına alındı."
+                refresh++
             }
         )
     }
@@ -318,8 +326,11 @@ private fun CampaignTaskDialog(
 @Composable
 private fun CreateCampaignDialog(
     onDismiss: () -> Unit,
-    onCreate: (String, String, String, String, Int, Int?) -> Unit
+    onCreate: suspend (String, String, String, String, Int, Int?) -> String?,
+    onCreated: () -> Unit
 ) {
+    val submitScope = rememberCoroutineScope()
+    var submitting by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -328,11 +339,24 @@ private fun CreateCampaignDialog(
     var android by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val buttonScale by animateFloatAsState(
+        targetValue = if (pressed) 0.97f else 1f,
+        animationSpec = spring(stiffness = 500f),
+        label = "publish-button-scale"
+    )
+
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Yeni test kampanyası") },
+        modifier = Modifier.fillMaxWidth(0.94f).widthIn(max = 560.dp).imePadding(),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        onDismissRequest = { if (!submitting) onDismiss() },
+        title = { Text("Yeni test kampanyası", color = MaterialTheme.colorScheme.onSurface) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 OutlinedTextField(name, { name = it }, label = { Text("Uygulama adı") }, singleLine = true)
                 OutlinedTextField(url, { url = it }, label = { Text("Google Play kapalı test katılım bağlantısı") }, singleLine = true)
                 OutlinedTextField(description, { description = it }, label = { Text("Açıklama ve test beklentileri") }, minLines = 2)
@@ -343,19 +367,45 @@ private fun CreateCampaignDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                val count = target.toIntOrNull()
-                val min = android.takeIf { it.isNotBlank() }?.toIntOrNull()
-                when {
-                    name.trim().length < 2 -> error = "Uygulama adını gir."
-                    !url.trim().startsWith("https://") -> error = "Google Play bağlantısı https:// ile başlamalı."
-                    count == null || count !in 12..1000 -> error = "Kapalı test hedefi en az 12, en fazla 1000 tester olmalı."
-                    android.isNotBlank() && (min == null || min < 1) -> error = "Android sürümünü sayı olarak gir."
-                    else -> onCreate(name, url, description, category.ifBlank { "other" }, count, min)
+            Button(
+                enabled = !submitting,
+                interactionSource = interactionSource,
+                modifier = Modifier.graphicsLayer(scaleX = buttonScale, scaleY = buttonScale),
+                onClick = {
+                    val count = target.toIntOrNull()
+                    val min = android.takeIf { it.isNotBlank() }?.toIntOrNull()
+                    when {
+                        name.trim().length < 2 -> error = "Uygulama adını gir."
+                        !url.trim().startsWith("https://") -> error = "Google Play bağlantısı https:// ile başlamalı."
+                        count == null || count !in 12..1000 -> error = "Kapalı test hedefi en az 12, en fazla 1000 tester olmalı."
+                        android.isNotBlank() && (min == null || min < 1) -> error = "Android sürümünü sayı olarak gir."
+                        else -> submitScope.launch {
+                            submitting = true
+                            error = runCatching {
+                                onCreate(name.trim(), url.trim(), description.trim(), category.ifBlank { "other" }, count, min)
+                            }.getOrElse { it.message ?: "Kampanya yayınlanırken beklenmeyen bir hata oluştu." }
+                            if (error == null) {
+                                onCreated()
+                                onDismiss()
+                            }
+                            submitting = false
+                        }
+                    }
                 }
-            }) { Text("Yayınla") }
+            ) {
+                if (submitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.height(18.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Text(" Yayınlanıyor…")
+                } else Text("Yayınla")
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Vazgeç") } }
+        dismissButton = {
+            TextButton(enabled = !submitting, onClick = onDismiss) { Text("Vazgeç") }
+        }
     )
 }
 
@@ -720,11 +770,13 @@ private fun DeveloperCampaignsScreen() {
         CreateCampaignDialog(
             onDismiss = { showCreate = false },
             onCreate = { name, url, description, category, target, minAndroid ->
-                scope.launch {
-                    val error = withContext(Dispatchers.IO) { repository.createCampaign(name, url, description, category, target, minAndroid) }
-                    message = error ?: "Kampanya oluşturuldu."
-                    if (error == null) { showCreate = false; refresh++ }
+                withContext(Dispatchers.IO) {
+                    repository.createCampaign(name, url, description, category, target, minAndroid)
                 }
+            },
+            onCreated = {
+                message = "Kampanya oluşturuldu."
+                refresh++
             }
         )
     }
