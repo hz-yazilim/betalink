@@ -204,7 +204,7 @@ class CampaignRepository(context: Context) {
         val names = if (profileStatus in 200..299) { val rows = JSONArray(profileBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("display_name") } } else emptyMap()
         val (emailStatus, emailBody) = call("/rest/v1/rpc/betalink_public_contact_emails", "POST", token, JSONObject())
         val emails = if (emailStatus in 200..299) { val rows = JSONArray(emailBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("contact_email") } } else emptyMap()
-        base.map { it.copy(displayName = names[it.userId].orEmpty(), email = emails[it.userId].orEmpty()) } to null
+        return base.map { it.copy(displayName = names[it.userId].orEmpty(), email = emails[it.userId].orEmpty()) } to null
     }
 
     fun reviewGroupMember(memberId: String, approved: Boolean): String? {
@@ -548,7 +548,7 @@ class CampaignRepository(context: Context) {
         val names = if (profileStatus in 200..299) { val rows = JSONArray(profileBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("display_name") } } else emptyMap()
         val (emailStatus, emailBody) = call("/rest/v1/rpc/betalink_public_contact_emails", "POST", token, JSONObject())
         val emails = if (emailStatus in 200..299) { val rows = JSONArray(emailBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("contact_email") } } else emptyMap()
-        base.map { it.copy(displayName = names[it.testerId].orEmpty(), email = emails[it.testerId].orEmpty()) } to null
+        return base.map { it.copy(displayName = names[it.testerId].orEmpty(), email = emails[it.testerId].orEmpty()) } to null
     }
 
     fun reviewApplicant(memberId: String, statusValue: String): String? {
