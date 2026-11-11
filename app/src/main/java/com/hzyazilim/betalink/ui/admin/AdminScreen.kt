@@ -50,7 +50,7 @@ fun AdminScreen(onClose: () -> Unit) {
     var showAnnouncement by remember { mutableStateOf(false) }
     var bpAmount by remember { mutableStateOf("25") }
     var pointType by remember { mutableStateOf("bp") }
-    var bpReason by remember { mutableStateOf("Yönetici BetaPuan ödülü") }
+    var bpReason by remember { mutableStateOf("Yönetici puan düzenlemesi") }
     var newGroupName by remember { mutableStateOf("") }
     var newGroupDescription by remember { mutableStateOf("") }
 
