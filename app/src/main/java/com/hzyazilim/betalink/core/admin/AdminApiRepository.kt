@@ -116,6 +116,12 @@ class AdminApiRepository(context: Context) {
         return if (code in 200..299) null else error(body)
     }
 
+    fun deleteUser(userId: String): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val (code, body) = call("POST", token, JSONObject().put("action", "delete_user").put("user_id", userId))
+        return if (code in 200..299) null else error(body)
+    }
+
     fun blockUser(userId: String): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val (code, body) = call("POST", token, JSONObject().put("action", "block_user").put("user_id", userId))
