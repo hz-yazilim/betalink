@@ -12,6 +12,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -86,13 +93,28 @@ import androidx.compose.ui.unit.sp
 
 private val BetalinkColors = darkColorScheme(
     primary = Color(0xFF91A2FF),
-    secondary = Color(0xFF67D9C5),
-    background = Color(0xFF0A1020),
-    surface = Color(0xFF151E33),
-    surfaceVariant = Color(0xFF202B45),
     onPrimary = Color(0xFF10152B),
+    primaryContainer = Color(0xFF29385F),
+    onPrimaryContainer = Color(0xFFE3E8FF),
+    secondary = Color(0xFF67D9C5),
+    onSecondary = Color(0xFF062E29),
+    secondaryContainer = Color(0xFF164B45),
+    onSecondaryContainer = Color(0xFFB5F4E8),
+    tertiary = Color(0xFFFFC875),
+    onTertiary = Color(0xFF3E2800),
+    background = Color(0xFF0A1020),
     onBackground = Color(0xFFF4F6FF),
-    onSurface = Color(0xFFF4F6FF)
+    surface = Color(0xFF151E33),
+    onSurface = Color(0xFFF4F6FF),
+    surfaceVariant = Color(0xFF202B45),
+    onSurfaceVariant = Color(0xFFB9C4DA),
+    surfaceTint = Color(0xFF91A2FF),
+    outline = Color(0xFF53617F),
+    outlineVariant = Color(0xFF35425F),
+    error = Color(0xFFFF7B86),
+    onError = Color(0xFF3F0710),
+    errorContainer = Color(0xFF5D1B29),
+    onErrorContainer = Color(0xFFFFDADF)
 )
 
 private data class AppTab(val label: String, val icon: ImageVector)
@@ -200,15 +222,26 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, openPeopleInitially
                 null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 false -> Unit
                 true -> {
-                    if (showAdminPanel) {
-                        AdminScreen(onClose = { showAdminPanel = false })
-                    } else when (selectedTab) {
-                        0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 4 }, onNotifications = { showNotifications = true })
-                        1 -> CampaignBrowserScreen(myTests = false)
-                        2 -> GroupsScreen(onOpenCommunity = { selectedTab = 3 })
-                        3 -> PeopleScreen(inviteToken = initialInviteToken)
-                        4 -> MyTestsHub()
-                        else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSupport = { showSupport = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
+                    AnimatedContent(
+                        targetState = selectedTab to showAdminPanel,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = tween(220)) +
+                                slideInHorizontally(animationSpec = tween(220)) { it / 14 }) togetherWith
+                                (fadeOut(animationSpec = tween(160)) +
+                                    slideOutHorizontally(animationSpec = tween(160)) { -it / 14 })
+                        },
+                        label = "betalink-screen-transition"
+                    ) { (tab, adminVisible) ->
+                        if (adminVisible) {
+                            AdminScreen(onClose = { showAdminPanel = false })
+                        } else when (tab) {
+                            0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 4 }, onNotifications = { showNotifications = true })
+                            1 -> CampaignBrowserScreen(myTests = false)
+                            2 -> GroupsScreen(onOpenCommunity = { selectedTab = 3 })
+                            3 -> PeopleScreen(inviteToken = initialInviteToken)
+                            4 -> MyTestsHub()
+                            else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSupport = { showSupport = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
+                        }
                     }
                 }
             }
