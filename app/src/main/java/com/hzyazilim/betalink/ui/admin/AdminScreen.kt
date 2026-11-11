@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hzyazilim.betalink.core.admin.AdminApiRepository
 import com.hzyazilim.betalink.core.admin.AdminDashboard
+import com.hzyazilim.betalink.core.admin.AdminGroup
 import com.hzyazilim.betalink.core.admin.AdminReport
 import com.hzyazilim.betalink.core.admin.AdminSupportTicket
 import com.hzyazilim.betalink.core.admin.AdminUser
@@ -52,6 +53,7 @@ fun AdminScreen(onClose: () -> Unit) {
     var bpAmount by remember { mutableStateOf("25") }
     var pointType by remember { mutableStateOf("bp") }
     var selectedDeleteUser by remember { mutableStateOf<AdminUser?>(null) }
+    var selectedDeleteGroup by remember { mutableStateOf<AdminGroup?>(null) }
     var bpReason by remember { mutableStateOf("Yönetici puan düzenlemesi") }
     var newGroupName by remember { mutableStateOf("") }
     var newGroupDescription by remember { mutableStateOf("") }
@@ -140,13 +142,9 @@ fun AdminScreen(onClose: () -> Unit) {
                         Text(group.name, style = MaterialTheme.typography.bodyMedium)
                         Text(group.status, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                     }
-                    TextButton(onClick = {
-                        scope.launch {
-                            val error = withContext(Dispatchers.IO) { repository.deleteGroup(group.id) }
-                            message = error ?: "Grup silindi."
-                            if (error == null) refresh++
-                        }
-                    }) { Text("Sil") }
+                    TextButton(onClick = { selectedDeleteGroup = group }) {
+                        Text("Sil", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
             Text("Bekleyen şikâyetler", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp))
@@ -207,6 +205,25 @@ fun AdminScreen(onClose: () -> Unit) {
                 }) { Text("Evet, kalıcı sil", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { selectedDeleteUser = null }) { Text("Vazgeç") } }
+        )
+    }
+
+    selectedDeleteGroup?.let { group ->
+        AlertDialog(
+            onDismissRequest = { selectedDeleteGroup = null },
+            title = { Text("Grup kalıcı olarak silinsin mi?") },
+            text = { Text("${group.name} grubu ve ilişkili üyelik/davet kayıtları silinebilir. Bu işlem geri alınamaz.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        val error = withContext(Dispatchers.IO) { repository.deleteGroup(group.id) }
+                        message = error ?: "Grup kalıcı olarak silindi."
+                        selectedDeleteGroup = null
+                        if (error == null) refresh++
+                    }
+                }) { Text("Evet, grubu sil", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { selectedDeleteGroup = null }) { Text("Vazgeç") } }
         )
     }
 
