@@ -107,6 +107,28 @@ Deno.serve(async (req: Request) => {
 
   const action = payload.action;
 
+  if (action === "delete_user") {
+    const targetId = String(payload.user_id ?? "").trim();
+    if (!targetId || targetId === userData.user.id) {
+      return Response.json({ error: "Kendi yönetici hesabını silemezsin." }, { status: 400, headers: cors });
+    }
+    const { data: targetResult, error: targetLookupError } = await admin.auth.admin.getUserById(targetId);
+    if (targetLookupError || !targetResult.user) return Response.json({ error: "Kullanıcı hesabı bulunamadı." }, { status: 404, headers: cors });
+    const targetEmail = (targetResult.user.email ?? "").trim().toLowerCase();
+    if (targetEmail === "hz.yazilimm@gmail.com") {
+      return Response.json({ error: "Ana yönetici hesabı silinemez." }, { status: 403, headers: cors });
+    }
+    const { error: auditError } = await admin.from("admin_audit_logs").insert({
+      actor_id: userData.user.id, action: "delete_user", target_type: "user",
+      target_id: targetId, metadata: { email: targetResult.user.email ?? "" },
+    });
+    if (auditError) return Response.json({ error: "Silme işlemi kayıt altına alınamadı; kullanıcı silinmedi." }, { status: 500, headers: cors });
+    // Auth deletion cascades to identities, sessions and app rows configured ON DELETE CASCADE.
+    const { error: deleteError } = await admin.auth.admin.deleteUser(targetId);
+    if (deleteError) return Response.json({ error: "Kullanıcı hesabı silinemedi: " + deleteError.message }, { status: 500, headers: cors });
+    return Response.json({ success: true, deleted_user_id: targetId }, { headers: cors });
+  }
+
   if (action === "adjust_bp") {
     const amount = Number(payload.amount);
     const reason = String(payload.reason ?? "").trim();
