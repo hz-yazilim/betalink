@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -68,7 +70,7 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
         loading = false
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp).verticalScroll(rememberScrollState())) {
         Spacer(Modifier.height(18.dp))
         Text("TOPLULUK", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
         Text("Tester grupları", style = MaterialTheme.typography.headlineSmall)
@@ -89,8 +91,8 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
         message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
         if (loading) CircularProgressIndicator(Modifier.padding(24.dp))
         else if (groups.isEmpty()) Text("Henüz grup yok. İlk tester grubunu sen oluşturabilirsin.", modifier = Modifier.padding(top = 18.dp))
-        else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 14.dp)) {
-            items(groups.filter { it.name.contains(groupSearch, ignoreCase = true) || it.description.contains(groupSearch, ignoreCase = true) }, key = { it.id }) { group ->
+        else Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 14.dp)) {
+            groups.filter { it.name.contains(groupSearch, ignoreCase = true) || it.description.contains(groupSearch, ignoreCase = true) }.forEach { group ->
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Column(Modifier.padding(15.dp)) {
                         Text(group.name, style = MaterialTheme.typography.titleMedium)
@@ -152,8 +154,9 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
                     if (members.isEmpty()) item { Text("Henüz üye isteği yok.") }
                     items(members, key = { it.id }) { member ->
                         Column {
-                            Text("Grup üyesi")
-                            Text("Durum: ${member.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            Text(member.displayName.ifBlank { "Betalink kullanıcısı" }, style = MaterialTheme.typography.titleSmall)
+                            Text(member.email.ifBlank { "E-posta paylaşılmamış" }, color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                            Text("Durum: " + when(member.status) { "approved" -> "Onaylandı"; "pending" -> "Onay bekliyor"; else -> member.status }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             if (member.status == "approved") {
                                 TextButton(onClick = {
                                     scope.launch {
