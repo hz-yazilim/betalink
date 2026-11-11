@@ -139,6 +139,25 @@ Deno.serve(async (req: Request) => {
     return Response.json({ success: true, affected: userIds.length }, { headers: cors });
   }
 
+  if (action === "adjust_reputation") {
+    const amount = Number(payload.amount);
+    const reason = String(payload.reason ?? "").trim();
+    const userIds = Array.isArray(payload.user_ids) ? [...new Set(payload.user_ids.map(String))] : [];
+    if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 100000 || reason.length < 3 || reason.length > 240 || userIds.length < 1 || userIds.length > 500) return Response.json({ error: "Invalid reputation adjustment" }, { status: 400, headers: cors });
+    const { data: targets, error: targetError } = await admin.from("profiles").select("user_id").in("user_id", userIds);
+    if (targetError || (targets ?? []).length !== userIds.length) return Response.json({ error: "One or more users were not found" }, { status: 404, headers: cors });
+    for (const target of targets ?? []) {
+      const { data: events, error: readError } = await admin.from("reputation_events").select("points").eq("user_id", target.user_id);
+      if (readError) return Response.json({ error: "Could not read reputation balance" }, { status: 500, headers: cors });
+      const balance = (events ?? []).reduce((sum, event) => sum + Number(event.points ?? 0), 0);
+      if (balance + amount < 0) return Response.json({ error: "Adjustment would make a reputation balance negative" }, { status: 409, headers: cors });
+      const { error: insertError } = await admin.from("reputation_events").insert({ user_id: target.user_id, event_type: "admin_adjustment", points: amount, reason });
+      if (insertError) return Response.json({ error: "Reputation ledger write failed" }, { status: 500, headers: cors });
+    }
+    await admin.from("admin_audit_logs").insert({ actor_id: userData.user.id, action: "adjust_reputation", target_type: "users", target_id: null, metadata: { user_ids: userIds, amount, reason } });
+    return Response.json({ success: true, affected: userIds.length }, { headers: cors });
+  }
+
   if (action === "create_group") {
     const name = String(payload.name ?? "").trim();
     const description = String(payload.description ?? "").trim();
