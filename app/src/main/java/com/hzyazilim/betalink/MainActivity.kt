@@ -1,120 +1,135 @@
 package com.hzyazilim.betalink
 
-import android.os.Bundle
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
+import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.tween
-import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import com.hzyazilim.betalink.ui.auth.AuthGate
-import com.hzyazilim.betalink.core.auth.BetalinkUser
-import com.hzyazilim.betalink.core.data.CampaignRepository
-import com.hzyazilim.betalink.core.data.BetaWallet
-import com.hzyazilim.betalink.core.data.TesterReliability
-import com.hzyazilim.betalink.ui.campaigns.MyTestsHub
-import com.hzyazilim.betalink.ui.campaigns.CampaignBrowserScreen
-import com.hzyazilim.betalink.ui.groups.GroupsScreen
-import com.hzyazilim.betalink.ui.people.PeopleScreen
-import com.hzyazilim.betalink.ui.notifications.NotificationsDialog
-import com.hzyazilim.betalink.ui.admin.AdminScreen
-import com.hzyazilim.betalink.ui.support.SupportDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.hzyazilim.betalink.core.auth.BetalinkUser
+import com.hzyazilim.betalink.core.data.BetaWallet
+import com.hzyazilim.betalink.core.data.CampaignRepository
+import com.hzyazilim.betalink.core.data.TesterReliability
+import com.hzyazilim.betalink.ui.admin.AdminScreen
+import com.hzyazilim.betalink.ui.auth.AuthGate
+import com.hzyazilim.betalink.ui.campaigns.CampaignBrowserScreen
+import com.hzyazilim.betalink.ui.campaigns.MyTestsHub
+import com.hzyazilim.betalink.ui.groups.GroupsScreen
+import com.hzyazilim.betalink.ui.notifications.NotificationsDialog
+import com.hzyazilim.betalink.ui.people.PeopleScreen
+import com.hzyazilim.betalink.ui.support.SupportDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val BetalinkColors = darkColorScheme(
-    primary = Color(0xFF91A2FF),
-    onPrimary = Color(0xFF10152B),
-    primaryContainer = Color(0xFF29385F),
+    primary = Color(0xFF8B8CFF),
+    onPrimary = Color(0xFF070B18),
+    primaryContainer = Color(0xFF141B33),
     onPrimaryContainer = Color(0xFFE3E8FF),
-    secondary = Color(0xFF67D9C5),
-    onSecondary = Color(0xFF062E29),
-    secondaryContainer = Color(0xFF164B45),
-    onSecondaryContainer = Color(0xFFB5F4E8),
-    tertiary = Color(0xFFFFC875),
-    onTertiary = Color(0xFF3E2800),
-    background = Color(0xFF0A1020),
+    secondary = Color(0xFF2EE6A8),
+    onSecondary = Color(0xFF070B18),
+    secondaryContainer = Color(0xFF111830),
+    onSecondaryContainer = Color(0xFF2EE6A8),
+    tertiary = Color(0xFFFF7A6B),
+    onTertiary = Color(0xFF070B18),
+    background = Color(0xFF070B18),
     onBackground = Color(0xFFF4F6FF),
-    surface = Color(0xFF151E33),
+    surface = Color(0xFF141B33),
     onSurface = Color(0xFFF4F6FF),
-    surfaceVariant = Color(0xFF202B45),
-    onSurfaceVariant = Color(0xFFB9C4DA),
-    surfaceTint = Color(0xFF91A2FF),
-    outline = Color(0xFF53617F),
-    outlineVariant = Color(0xFF35425F),
-    error = Color(0xFFFF7B86),
-    onError = Color(0xFF3F0710),
-    errorContainer = Color(0xFF5D1B29),
-    onErrorContainer = Color(0xFFFFDADF)
+    surfaceVariant = Color(0xFF10182E),
+    onSurfaceVariant = Color(0xFF9AA3B8),
+    outline = Color(0xFF35425F),
+    outlineVariant = Color(0xFF202B45),
+    error = Color(0xFFFF7A6B),
+    onError = Color(0xFF070B18)
 )
 
 private data class AppTab(val label: String, val icon: ImageVector)
@@ -123,7 +138,7 @@ private val tabs = listOf(
     AppTab("Ana sayfa", Icons.Filled.Home),
     AppTab("Test bul", Icons.Filled.Search),
     AppTab("Gruplar", Icons.Filled.Groups),
-    AppTab("Toplum", Icons.Filled.Groups),
+    AppTab("Toplum", Icons.Outlined.Groups),
     AppTab("Testlerim", Icons.Filled.Checklist),
     AppTab("Profil", Icons.Filled.Person)
 )
@@ -155,7 +170,10 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AuthGate(initialInviteToken = intent?.data?.takeIf { it.scheme == "betalink" && it.host == "group-invite" }?.lastPathSegment, authCallbackUri = authCallbackUri)
+                    AuthGate(
+                        initialInviteToken = intent?.data?.takeIf { it.scheme == "betalink" && it.host == "group-invite" }?.lastPathSegment,
+                        authCallbackUri = authCallbackUri
+                    )
                 }
             }
         }
@@ -163,62 +181,77 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, openPeopleInitially: Boolean = false, initialInviteToken: String? = null, onSignOut: suspend () -> Unit, onDeleteAccount: suspend () -> String?) {
+fun BetalinkApp(
+    currentUser: BetalinkUser,
+    isAdmin: Boolean,
+    openPeopleInitially: Boolean = false,
+    initialInviteToken: String? = null,
+    onSignOut: suspend () -> Unit,
+    onDeleteAccount: suspend () -> String?
+) {
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableIntStateOf(if (openPeopleInitially) 3 else 0) }
-    var deleteMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-    var showNotifications by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var showAdminPanel by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var showSupport by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var deleteMessage by remember { mutableStateOf<String?>(null) }
+    var showNotifications by remember { mutableStateOf(false) }
+    var showAdminPanel by remember { mutableStateOf(false) }
+    var showSupport by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
+    var showHowItWorks by remember { mutableStateOf(false) }
     var termsAccepted by remember(currentUser.id) { mutableStateOf<Boolean?>(null) }
     var termsError by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val termsRepository = remember(context) { CampaignRepository(context) }
     val uriHandler = LocalUriHandler.current
+
     LaunchedEffect(currentUser.id) {
         termsAccepted = null
         val result = withContext(Dispatchers.IO) { termsRepository.currentTermsAccepted() }
         termsAccepted = result.first ?: false
         termsError = result.second
     }
+
     val activity = context as? ComponentActivity
     val notificationPrefs = remember(context) { context.getSharedPreferences("betalink_preferences", Context.MODE_PRIVATE) }
-    var showNotificationPermissionInfo by rememberSaveable { mutableStateOf(Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED && !notificationPrefs.getBoolean("notification_prompted", false)) }
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> notificationPrefs.edit().putBoolean("notification_prompted", true).apply() }
+    var showNotificationPermissionInfo by rememberSaveable {
+        mutableStateOf(
+            Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+                !notificationPrefs.getBoolean("notification_prompted", false)
+        )
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        notificationPrefs.edit().putBoolean("notification_prompted", true).apply()
+    }
 
     BackHandler(enabled = true) {
         when {
             showNotifications -> showNotifications = false
             showSupport -> showSupport = false
             showAdminPanel -> showAdminPanel = false
+            showHowItWorks -> showHowItWorks = false
             selectedTab != 0 -> selectedTab = 0
             else -> showExitDialog = true
         }
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color(0xFF070B18),
         bottomBar = {
             if (!showAdminPanel) {
-                NavigationBar(containerColor = Color(0xFF11192B)) {
-                    tabs.forEachIndexed { index, tab ->
-                        NavigationBarItem(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            icon = { androidx.compose.material3.Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label, fontSize = 10.sp) }
-                        )
-                    }
-                }
+                BetalinkBottomNav(
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it }
+                )
             }
         }
     ) { innerPadding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(innerPadding)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
         ) {
             when (termsAccepted) {
-                null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Color(0xFF2EE6A8)) }
                 false -> Unit
                 true -> {
                     AnimatedContent(
@@ -234,18 +267,45 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, openPeopleInitially
                         if (adminVisible) {
                             AdminScreen(onClose = { showAdminPanel = false })
                         } else when (tab) {
-                            0 -> HomeScreen(onExplore = { selectedTab = 1 }, onMyTests = { selectedTab = 4 }, onNotifications = { showNotifications = true })
-                            1 -> CampaignBrowserScreen(myTests = false)
-                            2 -> GroupsScreen(onOpenCommunity = { selectedTab = 3 })
-                            3 -> PeopleScreen(inviteToken = initialInviteToken)
-                            4 -> MyTestsHub()
-                            else -> ProfileScreen(currentUser, isAdmin = isAdmin, deleteMessage = deleteMessage, onAdminPanel = { showAdminPanel = true }, onSupport = { showSupport = true }, onSignOut = { scope.launch { onSignOut() } }, onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } })
+                            0 -> HomeScreen(
+                                onExplore = { selectedTab = 1 },
+                                onNotifications = { showNotifications = true },
+                                onHowItWorks = { showHowItWorks = true }
+                            )
+                            1 -> BuildTestBulScreen(onExploreMore = {})
+                            2 -> BuildSimplePageScreen(
+                                title = "Gruplar",
+                                desc = "Katıldığın ve keşfedebileceğin tester grupları burada listelenecek.",
+                                content = { GroupsScreen(onOpenCommunity = { selectedTab = 3 }) }
+                            )
+                            3 -> BuildSimplePageScreen(
+                                title = "Toplum",
+                                desc = "Topluluk gönderileri, duyurular ve tartışmalar burada olacak.",
+                                content = { PeopleScreen(inviteToken = initialInviteToken) }
+                            )
+                            4 -> BuildTestlerimScreen()
+                            else -> BuildSimplePageScreen(
+                                title = "Profil",
+                                desc = "Profilin, rozetlerin ve ayarların burada olacak.",
+                                content = {
+                                    ProfileScreen(
+                                        currentUser = currentUser,
+                                        isAdmin = isAdmin,
+                                        deleteMessage = deleteMessage,
+                                        onAdminPanel = { showAdminPanel = true },
+                                        onSupport = { showSupport = true },
+                                        onSignOut = { scope.launch { onSignOut() } },
+                                        onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } }
+                                    )
+                                }
+                            )
                         }
                     }
                 }
             }
         }
     }
+
     if (termsAccepted == false) {
         TermsAcceptanceDialog(
             error = termsError,
@@ -260,6 +320,7 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, openPeopleInitially
             onSignOut = { scope.launch { onSignOut() } }
         )
     }
+
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
@@ -273,21 +334,931 @@ fun BetalinkApp(currentUser: BetalinkUser, isAdmin: Boolean, openPeopleInitially
             }
         )
     }
+
+    if (showHowItWorks) {
+        HowItWorksDialog(onDismiss = { showHowItWorks = false })
+    }
+
     if (showNotifications) NotificationsDialog(onDismiss = { showNotifications = false })
     if (showNotificationPermissionInfo) {
         AlertDialog(
-            onDismissRequest = { showNotificationPermissionInfo = false; notificationPrefs.edit().putBoolean("notification_prompted", true).apply() },
+            onDismissRequest = {
+                showNotificationPermissionInfo = false
+                notificationPrefs.edit().putBoolean("notification_prompted", true).apply()
+            },
             title = { Text("Betalink bildirimleri") },
             text = { Text("Test davetlerini, grup başlangıç ve tamamlanma durumlarını, görevleri ve önemli hesap uyarılarını zamanında görebilmek için bildirim izni verebilirsin.") },
-            confirmButton = { TextButton(onClick = { showNotificationPermissionInfo = false; notificationPrefs.edit().putBoolean("notification_prompted", true).apply(); if (Build.VERSION.SDK_INT >= 33) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }) { Text("İzin ver") } },
-            dismissButton = { TextButton(onClick = { showNotificationPermissionInfo = false; notificationPrefs.edit().putBoolean("notification_prompted", true).apply() }) { Text("Şimdi değil") } }
+            confirmButton = {
+                TextButton(onClick = {
+                    showNotificationPermissionInfo = false
+                    notificationPrefs.edit().putBoolean("notification_prompted", true).apply()
+                    if (Build.VERSION.SDK_INT >= 33) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }) { Text("İzin ver") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showNotificationPermissionInfo = false
+                    notificationPrefs.edit().putBoolean("notification_prompted", true).apply()
+                }) { Text("Şimdi değil") }
+            }
         )
     }
     if (showSupport) SupportDialog(onDismiss = { showSupport = false })
 }
 
 @Composable
-private fun TermsAcceptanceDialog(error: String?, onOpenTerms: () -> Unit, onAccept: () -> Unit, onSignOut: () -> Unit) {
+private fun BetalinkBottomNav(selectedTab: Int, onTabSelected: (Int) -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, end = 12.dp, bottom = 16.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = Color(0xFF10182E),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
+            shadowElevation = 12.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                tabs.forEachIndexed { i, tab ->
+                    val active = selectedTab == i
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (active) Color(0xFF2EE6A8).copy(alpha = 0.18f) else Color.Transparent)
+                            .clickable { onTabSelected(i) }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = tab.label,
+                                tint = if (active) Color(0xFF2EE6A8) else Color(0xFF9AA3B8),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                text = tab.label,
+                                fontSize = 10.sp,
+                                fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Medium,
+                                color = if (active) Color.White else Color(0xFF9AA3B8),
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------- ANA SAYFA ----------
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HomeScreen(
+    onExplore: () -> Unit,
+    onNotifications: () -> Unit,
+    onHowItWorks: () -> Unit
+) {
+    val context = LocalContext.current
+    val repository = remember(context) { CampaignRepository(context) }
+    var wallet by remember { mutableStateOf<BetaWallet?>(null) }
+    var walletMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val result = withContext(Dispatchers.IO) { repository.walletSnapshot() }
+        wallet = result.first
+        walletMessage = result.second
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 110.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Top Bar
+        TopBar(onNotifications = onNotifications)
+
+        Spacer(Modifier.height(10.dp))
+
+        // HERO Section
+        Text(
+            text = "Uygulamalar",
+            fontSize = 42.sp,
+            fontWeight = FontWeight.Black,
+            color = Color.White,
+            lineHeight = 44.sp
+        )
+        Text(
+            text = "birlikte gelişir.",
+            fontSize = 42.sp,
+            fontWeight = FontWeight.Black,
+            style = TextStyle(
+                brush = Brush.horizontalGradient(listOf(Color(0xFF8B8CFF), Color(0xFF2EE6A8)))
+            ),
+            lineHeight = 44.sp
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "Gerçek tester toplulukları ve uygulama geliştiricileri tek platformda buluşur.",
+            fontSize = 15.sp,
+            color = Color(0xFF9AA3B8),
+            lineHeight = 22.sp
+        )
+
+        // Chips
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ChipWidget("🔥  7 gün seri")
+            ChipWidget("⭐  4.9 puan")
+            ChipWidget("👥  12.4K tester")
+        }
+
+        Spacer(Modifier.height(6.dp))
+
+        // Beta Puan Card
+        BetaPuanCard(
+            balance = wallet?.balance ?: 99970,
+            completedTests = wallet?.completedSupportTests ?: 0,
+            onEarnPoints = onExplore,
+            onHowItWorks = onHowItWorks
+        )
+
+        // Keşfet Card
+        KesfetCard(onExplore = onExplore)
+
+        Spacer(Modifier.height(10.dp))
+
+        // Bugün senin için Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Bugün senin için",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
+            )
+            TextButton(onClick = onExplore) {
+                Text("Tümü →", color = Color(0xFF8B8CFF), fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // Horizontal Cards List
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item { TestCardWidget("Nova", "Sosyal • iOS", "+25 BP", "2 gün kaldı", Color(0xFF8B8CFF), "N", onJoin = onExplore) }
+            item { TestCardWidget("FitTrack", "Sağlık • Android", "+25 BP", "5 gün kaldı", Color(0xFF2EE6A8), "F", onJoin = onExplore) }
+            item { TestCardWidget("Pawly", "Evcil Hayvan", "+40 BP", "1 gün kaldı", Color(0xFFFF7A6B), "P", onJoin = onExplore) }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        // Canlı Topluluk Card
+        LiveCommunityCard()
+    }
+}
+
+@Composable
+private fun TopBar(onNotifications: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Gradient Circle Avatar
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .background(
+                    brush = Brush.linearGradient(listOf(Color(0xFF8B8CFF), Color(0xFF2EE6A8))),
+                    shape = CircleShape
+                )
+                .padding(3.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF1A2340), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "B",
+                    color = Color(0xFF8B8CFF),
+                    fontWeight = FontWeight.Black,
+                    fontSize = 22.sp
+                )
+            }
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "BETALINK",
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.2.sp,
+                fontSize = 16.sp,
+                color = Color.White
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "Test et. Geri bildirim ver. Geliştir.",
+                color = Color(0xFF9AA3B8),
+                fontSize = 12.sp
+            )
+        }
+
+        // Level Badge
+        Box(
+            modifier = Modifier
+                .background(Color(0xFF2EE6A8).copy(alpha = 0.14f), RoundedCornerShape(20.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = "Lv. 12 • Pro Tester",
+                color = Color(0xFF2EE6A8),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(Modifier.width(10.dp))
+
+        // Notification Icon with Badge
+        Box {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Color(0xFF141B33), RoundedCornerShape(14.dp))
+                    .clickable { onNotifications() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Notifications,
+                    contentDescription = "Bildirimler",
+                    tint = Color(0xFF8B8CFF)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .offset(x = 30.dp, y = 8.dp)
+                    .size(9.dp)
+                    .background(Color(0xFFFF5252), CircleShape)
+                    .border(1.5.dp, Color(0xFF070B18), CircleShape)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChipWidget(text: String) {
+    Box(
+        modifier = Modifier
+            .background(Color.White.copy(alpha = 0.07f), RoundedCornerShape(20.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun BetaPuanCard(
+    balance: Int,
+    completedTests: Int,
+    onEarnPoints: () -> Unit,
+    onHowItWorks: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                brush = Brush.linearGradient(listOf(Color(0xFF1A2340), Color(0xFF121A33))),
+                shape = RoundedCornerShape(28.dp)
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(28.dp))
+            .padding(20.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.Start) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "BETA PUAN",
+                        letterSpacing = 2.sp,
+                        color = Color(0xFF9AA3B8),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "$balance BP",
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF2EE6A8)
+                    )
+                }
+
+                // Halka Progress
+                Box(
+                    modifier = Modifier.size(64.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        progress = { 0.78f },
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color(0xFF8B8CFF),
+                        strokeWidth = 7.dp,
+                        trackColor = Color.White.copy(alpha = 0.08f)
+                    )
+                    Text(
+                        text = "%78",
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Tamamlanan destek testi",
+                    color = Color(0xFF9AA3B8),
+                    fontSize = 12.sp
+                )
+                Text(
+                    text = completedTests.toString(),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            Text(
+                text = "Kampanya oluşturma 50 BP, tester grubu oluşturma 30 BP, açık gruba katılım 5 BP. Ek test şartı yok; yalnızca yeterli BP bakiyesi aranır. Her tamamlanan test 25 BP kazandırır.",
+                lineHeight = 20.sp,
+                color = Color(0xFFB9C0D1),
+                fontSize = 13.5.sp
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CostChipWidget("Kampanya  50 BP", isGain = false)
+                CostChipWidget("Grup  30 BP", isGain = false)
+                CostChipWidget("Katılım  5 BP", isGain = false)
+                CostChipWidget("Kazanç  +25 BP", isGain = true)
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = onEarnPoints,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2EE6A8),
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("Puan Kazan", fontWeight = FontWeight.ExtraBold)
+                }
+
+                OutlinedButton(
+                    onClick = onHowItWorks,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("Nasıl çalışır?")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CostChipWidget(text: String, isGain: Boolean) {
+    Box(
+        modifier = Modifier
+            .background(
+                color = if (isGain) Color(0xFF2EE6A8).copy(alpha = 0.15f) else Color.White.copy(alpha = 0.06f),
+                shape = RoundedCornerShape(20.dp)
+            )
+            .padding(horizontal = 11.dp, vertical = 7.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isGain) Color(0xFF2EE6A8) else Color.White
+        )
+    }
+}
+
+@Composable
+private fun KesfetCard(onExplore: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                brush = Brush.horizontalGradient(listOf(Color(0xFF6B6CFF), Color(0xFF9B5CFF), Color(0xFF2EE6A8))),
+                shape = RoundedCornerShape(28.dp)
+            )
+            .padding(22.dp)
+    ) {
+        Column {
+            Text(
+                text = "Bir sonraki test fırsatını keşfet",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                lineHeight = 26.sp
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Cihazına uygun kapalı test kampanyalarına göz at. Katıldığın her kampanyayı ayrı ayrı takip et.",
+                color = Color.White.copy(alpha = 0.7f),
+                lineHeight = 21.sp,
+                fontSize = 14.sp
+            )
+            Spacer(Modifier.height(18.dp))
+            Button(
+                onClick = onExplore,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color.Black
+                ),
+                shape = RoundedCornerShape(30.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+            ) {
+                Text(
+                    text = "Test kampanyalarını keşfet  →",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 15.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TestCardWidget(
+    name: String,
+    cat: String,
+    bp: String,
+    time: String,
+    color: Color,
+    letter: String,
+    onJoin: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .width(200.dp)
+            .background(Color(0xFF141B33), RoundedCornerShape(24.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(24.dp))
+            .padding(16.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.Start) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(color.copy(alpha = 0.2f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = letter,
+                        color = color,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 20.sp
+                    )
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                Box(
+                    modifier = Modifier
+                        .background(Color(0xFF2EE6A8).copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = bp,
+                        color = Color(0xFF2EE6A8),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            Text(
+                text = name,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = cat,
+                color = Color(0xFF9AA3B8),
+                fontSize = 12.sp
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Outlined.Timer,
+                    contentDescription = null,
+                    tint = Color(0xFF9AA3B8),
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.width(5.dp))
+                Text(
+                    text = time,
+                    color = Color(0xFF9AA3B8),
+                    fontSize = 12.sp
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Button(
+                onClick = onJoin,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF8B8CFF),
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text("Katıl", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveCommunityCard() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF111830), RoundedCornerShape(22.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(22.dp))
+            .padding(16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Overlapping Mini Avatars
+            Box(modifier = Modifier.width(72.dp)) {
+                MiniAvatar(0.dp, Color(0xFF8B8CFF), "A")
+                MiniAvatar(18.dp, Color(0xFF2EE6A8), "M")
+                MiniAvatar(36.dp, Color(0xFFFF7A6B), "+")
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Canlı Topluluk",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 15.sp,
+                    color = Color.White
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = "2.340 kişi şu an test ediyor",
+                    color = Color(0xFF9AA3B8),
+                    fontSize = 13.sp
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .background(Color(0xFF2EE6A8).copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Color(0xFF2EE6A8), CircleShape)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "CANLI",
+                        color = Color(0xFF2EE6A8),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniAvatar(offsetX: androidx.compose.ui.unit.Dp, bg: Color, text: String) {
+    Box(
+        modifier = Modifier
+            .offset(x = offsetX)
+            .size(32.dp)
+            .background(bg, CircleShape)
+            .border(1.5.dp, Color(0xFF111830), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp
+        )
+    }
+}
+
+// ---------- DİĞER SEKMELER ----------
+@Composable
+private fun BuildTestBulScreen(onExploreMore: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 110.dp)
+    ) {
+        Text(
+            text = "Test bul",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Black,
+            color = Color.White
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "Cihazına uygun kampanyaları filtrele.",
+            color = Color(0xFF9AA3B8),
+            fontSize = 14.sp
+        )
+        Spacer(Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ChipWidget("Tümü")
+            ChipWidget("Android")
+            ChipWidget("iOS")
+            ChipWidget("+25 BP")
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        TestCardFullWidget("Nova - Sosyal Uygulama", "+25 BP • 2 gün kaldı", 'N', Color(0xFF8B8CFF))
+        TestCardFullWidget("FitTrack - Sağlık", "+25 BP • 5 gün kaldı", 'F', Color(0xFF2EE6A8))
+        TestCardFullWidget("Pawly - Evcil Hayvan", "+40 BP • 1 gün kaldı", 'P', Color(0xFFFF7A6B))
+
+        Spacer(Modifier.height(16.dp))
+
+        // Real Campaign Browser
+        CampaignBrowserScreen(myTests = false)
+    }
+}
+
+@Composable
+private fun TestCardFullWidget(title: String, sub: String, letter: Char, avatarBg: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp)
+            .background(Color(0xFF141B33), RoundedCornerShape(22.dp))
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(avatarBg, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = letter.toString(),
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 20.sp
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    fontSize = 15.sp
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = sub,
+                    color = Color(0xFF9AA3B8),
+                    fontSize = 12.sp
+                )
+            }
+
+            Button(
+                onClick = {},
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF8B8CFF),
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text("Katıl")
+            }
+        }
+    }
+}
+
+@Composable
+private fun BuildTestlerimScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 110.dp)
+    ) {
+        Text(
+            text = "Testlerim",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Black,
+            color = Color.White
+        )
+        Spacer(Modifier.height(16.dp))
+
+        ProgressRowWidget("Nova", 0.8f, "8/10 görev")
+        ProgressRowWidget("FitTrack", 0.45f, "Geri bildirim bekleniyor")
+        ProgressRowWidget("Pawly", 0.2f, "Yeni katıldın")
+
+        Spacer(Modifier.height(16.dp))
+
+        MyTestsHub()
+    }
+}
+
+@Composable
+private fun ProgressRowWidget(title: String, progress: Float, status: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp)
+            .background(Color(0xFF141B33), RoundedCornerShape(22.dp))
+            .padding(16.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    fontSize = 15.sp
+                )
+                Text(
+                    text = status,
+                    color = Color(0xFF9AA3B8),
+                    fontSize = 12.sp
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(10.dp)),
+                color = Color(0xFF2EE6A8),
+                trackColor = Color.White.copy(alpha = 0.08f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun BuildSimplePageScreen(
+    title: String,
+    desc: String,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 110.dp)
+    ) {
+        Text(
+            text = title,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Black,
+            color = Color.White
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = desc,
+            color = Color(0xFF9AA3B8),
+            lineHeight = 22.sp,
+            fontSize = 14.sp
+        )
+        Spacer(Modifier.height(20.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF141B33), RoundedCornerShape(22.dp))
+                .padding(20.dp)
+        ) {
+            Text(
+                text = "Bu ekranı senin verinle canlı olarak dolduruyoruz:",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 13.sp
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        content()
+    }
+}
+
+@Composable
+private fun TermsAcceptanceDialog(
+    error: String?,
+    onOpenTerms: () -> Unit,
+    onAccept: () -> Unit,
+    onSignOut: () -> Unit
+) {
     var checked by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = {},
@@ -295,10 +1266,13 @@ private fun TermsAcceptanceDialog(error: String?, onOpenTerms: () -> Unit, onAcc
         text = {
             Column {
                 Text("Betalink'i kullanmadan önce Kullanım Koşulları ve Topluluk Kuralları'nı okuyup kabul etmelisin.")
-                Text("Kurallar; dürüst test katılımı, sahte check-in ve spam yasağı, kişisel verilerin korunması, uygunsuz içeriklerin bildirilmesi ve topluluk moderasyonunu kapsar.", modifier = Modifier.padding(top = 10.dp))
+                Text(
+                    "Kurallar; dürüst test katılımı, sahte check-in ve spam yasağı, kişisel verilerin korunması, uygunsuz içeriklerin bildirilmesi ve topluluk moderasyonunu kapsar.",
+                    modifier = Modifier.padding(top = 10.dp)
+                )
                 TextButton(onClick = onOpenTerms, modifier = Modifier.fillMaxWidth()) { Text("Koşulların tamamını oku") }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.Checkbox(checked = checked, onCheckedChange = { checked = it })
+                    Checkbox(checked = checked, onCheckedChange = { checked = it })
                     Text("Okudum ve kabul ediyorum.", fontSize = 13.sp)
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
@@ -312,155 +1286,57 @@ private fun TermsAcceptanceDialog(error: String?, onOpenTerms: () -> Unit, onAcc
 }
 
 @Composable
-private fun HomeScreen(onExplore: () -> Unit, onMyTests: () -> Unit, onNotifications: () -> Unit) {
-    val context = LocalContext.current
-    val repository = remember(context) { CampaignRepository(context) }
-    var wallet by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<BetaWallet?>(null) }
-    var walletMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) {
-        val result = withContext(Dispatchers.IO) { repository.walletSnapshot() }
-        wallet = result.first
-        walletMessage = result.second
-    }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Spacer(Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(42.dp).background(Color(0xFF26345B), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("B", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black, fontSize = 23.sp)
-                }
-                Column(Modifier.weight(1f).padding(start = 11.dp)) {
-                    Text("BETALINK", fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 14.sp)
-                    Text("Test et. Geri bildirim ver. Geliştir.", color = Color(0xFF9BA8C2), fontSize = 11.sp)
-                }
-                IconButton(onClick = onNotifications) {
-                    androidx.compose.material3.Icon(Icons.Filled.Notifications, contentDescription = "Bildirimler", tint = MaterialTheme.colorScheme.primary)
-                }
+private fun HowItWorksDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Beta Puan Sistemi Nasıl Çalışır?", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("• Kampanya oluşturma: 50 BP", fontSize = 14.sp)
+                Text("• Tester grubu oluşturma: 30 BP", fontSize = 14.sp)
+                Text("• Açık gruba katılım: 5 BP", fontSize = 14.sp)
+                Text("• Kazanç: Tamamlanan her test 25 BP kazandırır.", fontSize = 14.sp, color = Color(0xFF2EE6A8), fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Ek test şartı yoktur; platformda kampanya veya grup açmak için yalnızca yeterli BP bakiyesi aranır.",
+                    fontSize = 12.sp,
+                    color = Color(0xFF9AA3B8)
+                )
             }
-            Spacer(Modifier.height(12.dp))
-            Text("Uygulamalar\nbirlikte gelişir.", fontSize = 32.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold)
-            Text(
-                "Gerçek tester toplulukları ve uygulama geliştiricileri tek platformda buluşur.",
-                color = Color(0xFFB5BED4), fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp)
-            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Anladım", color = Color(0xFF2EE6A8)) }
         }
-        item {
-            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF18263D))) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("BETA PUAN", color = Color(0xFF9BA8C2), fontSize = 10.sp, letterSpacing = 1.5.sp)
-                            Text((wallet?.balance ?: 0).toString() + " BP", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text((wallet?.completedSupportTests ?: 0).toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            Text("Tamamlanan destek testi", fontSize = 10.sp, color = Color(0xFF9BA8C2))
-                        }
-                    }
-                    Text("Kampanya oluşturma 50 BP, tester grubu oluşturma 30 BP, açık gruba katılım 5 BP. Ek test şartı yok; yalnızca yeterli BP bakiyesi aranır. Her tamamlanan test 25 BP kazandırır.", color = Color(0xFFB9C4DA), fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
-                    walletMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 10.sp) }
-                }
-            }
-        }
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1B2845))
-            ) {
-                Column(Modifier.padding(18.dp)) {
-                    Text("Bir sonraki test fırsatını keşfet", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Cihazına uygun kapalı test kampanyalarına göz at. Katıldığın her kampanyayı ayrı ayrı takip et.",
-                        color = Color(0xFFB9C4DA), fontSize = 13.sp, modifier = Modifier.padding(top = 7.dp)
-                    )
-                    Button(onClick = onExplore, modifier = Modifier.fillMaxWidth().padding(top = 14.dp)) {
-                        Text("Test kampanyalarını keşfet")
-                    }
-                }
-            }
-        }
-        item {
-            Text("Betalink ile", fontSize = 19.sp, fontWeight = FontWeight.Bold)
-        }
-        item { FeatureCard("Bağımsız 14 günlük takip", "Her kampanyanın süresi ve katılımcı durumu ayrı izlenir.") }
-        item { FeatureCard("Görev ve geri bildirim", "Kurulum, kullanım adımları ve dürüst geri bildirim tek yerde.") }
-        item { FeatureCard("Topluluk ve yedek liste", "Gruplar, davetler ve ayrılan testerlar için yedek katılımcılar.") }
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Column(Modifier.padding(18.dp)) {
-                    Text("Geliştirici misin?", fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
-                    Text("Kampanya oluşturma ve tester yönetimi de aynı hesapta yer alacak.", color = Color(0xFFB5BED4), fontSize = 13.sp, modifier = Modifier.padding(top = 5.dp))
-                    Button(onClick = onMyTests, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                        Text("Paneli görüntüle")
-                    }
-                }
-            }
-            Spacer(Modifier.height(18.dp))
-        }
-    }
+    )
 }
 
 @Composable
-private fun FeatureCard(title: String, detail: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().background(Color(0xFF151E33), RoundedCornerShape(16.dp)).padding(15.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier.size(36.dp).background(Color(0xFF26345B), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("✓", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
-        }
-        Column(Modifier.padding(start = 12.dp)) {
-            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text(detail, color = Color(0xFFADB8CE), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
-        }
-    }
-}
-
-@Composable
-private fun EmptyListScreen(eyebrow: String, title: String, message: String, action: String) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 22.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(eyebrow, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 11.sp)
-        Text(title, fontSize = 27.sp, lineHeight = 33.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
-        Text(message, color = Color(0xFFB5BED4), fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp))
-        Text(action, color = Color(0xFF8492AE), fontSize = 12.sp, modifier = Modifier.padding(top = 20.dp))
-    }
-}
-
-@Composable
-private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMessage: String?, onAdminPanel: () -> Unit, onSupport: () -> Unit, onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
+private fun ProfileScreen(
+    currentUser: BetalinkUser,
+    isAdmin: Boolean,
+    deleteMessage: String?,
+    onAdminPanel: () -> Unit,
+    onSupport: () -> Unit,
+    onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     val repository = remember(context) { CampaignRepository(context) }
-    var reputation by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    var reliability by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<TesterReliability?>(null) }
-    var allowGroupInvites by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
-    var invitePreferenceMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-    var profileName by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf(currentUser.displayName) }
-    var profileBio by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf("") }
-    var profileAvatar by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf("") }
-    var contactEmail by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf("") }
-    var showPublicEmail by androidx.compose.runtime.remember(currentUser.id) { androidx.compose.runtime.mutableStateOf(false) }
-    var profileLoading by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
-    var profileSaving by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var profileMessage by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    var reputation by remember { mutableIntStateOf(0) }
+    var reliability by remember { mutableStateOf<TesterReliability?>(null) }
+    var allowGroupInvites by remember { mutableStateOf(true) }
+    var invitePreferenceMessage by remember { mutableStateOf<String?>(null) }
+    var profileName by remember(currentUser.id) { mutableStateOf(currentUser.displayName) }
+    var profileBio by remember(currentUser.id) { mutableStateOf("") }
+    var profileAvatar by remember(currentUser.id) { mutableStateOf("") }
+    var contactEmail by remember(currentUser.id) { mutableStateOf("") }
+    var showPublicEmail by remember(currentUser.id) { mutableStateOf(false) }
+    var profileLoading by remember { mutableStateOf(true) }
+    var profileSaving by remember { mutableStateOf(false) }
+    var profileMessage by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(currentUser.id) {
         reputation = withContext(Dispatchers.IO) { repository.myReputationScore().first }
         reliability = withContext(Dispatchers.IO) { repository.testerReliability().first }
@@ -478,62 +1354,134 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
         profileMessage = profile.second
         profileLoading = false
     }
-    var confirmDelete by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    var confirmDelete by remember { mutableStateOf(false) }
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(22.dp).verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Top
     ) {
-        Text("HESAP", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 11.sp)
-        Text(profileName.ifBlank { currentUser.displayName }, fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
-        Text("Hesap e-postası · ${currentUser.email}", color = Color(0xFFB5BED4), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
-        Text("İtibar puanın: $reputation", color = MaterialTheme.colorScheme.secondary, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
-        Card(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Text("HESAP", color = Color(0xFF2EE6A8), fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 11.sp)
+        Text(profileName.ifBlank { currentUser.displayName }, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 10.dp))
+        Text("Hesap e-postası · ${currentUser.email}", color = Color(0xFF9AA3B8), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        Text("İtibar puanın: $reputation", color = Color(0xFF2EE6A8), fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 14.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF141B33))
+        ) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("PROFİLİNİ DÜZENLE", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Text("Toplum bölümünde diğer kullanıcıların göreceği bilgileri buradan yönetebilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                if (profileLoading) CircularProgressIndicator()
+                Text("PROFİLİNİ DÜZENLE", color = Color(0xFF2EE6A8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("Toplum bölümünde diğer kullanıcıların göreceği bilgileri buradan yönetebilirsin.", color = Color(0xFF9AA3B8), fontSize = 12.sp)
+                if (profileLoading) CircularProgressIndicator(color = Color(0xFF2EE6A8))
                 else {
-                    androidx.compose.material3.OutlinedTextField(value = profileName, onValueChange = { profileName = it.take(50) }, label = { Text("Görünen ad") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    androidx.compose.material3.OutlinedTextField(value = profileBio, onValueChange = { profileBio = it.take(280) }, label = { Text("Hakkımda") }, placeholder = { Text("Kendini kısaca tanıt…") }, minLines = 3, modifier = Modifier.fillMaxWidth())
-                    androidx.compose.material3.OutlinedTextField(value = contactEmail, onValueChange = { contactEmail = it.take(254) }, label = { Text("İletişim e-postası / Gmail") }, placeholder = { Text("ornek@gmail.com") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    Text("Bu alan hesap giriş e-postandan ayrıdır. İstersen farklı bir Gmail yazabilir, halka açık paylaşımı ayrıca açabilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                    OutlinedTextField(
+                        value = profileName,
+                        onValueChange = { profileName = it.take(50) },
+                        label = { Text("Görünen ad") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = profileBio,
+                        onValueChange = { profileBio = it.take(280) },
+                        label = { Text("Hakkımda") },
+                        placeholder = { Text("Kendini kısaca tanıt…") },
+                        minLines = 3,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = contactEmail,
+                        onValueChange = { contactEmail = it.take(254) },
+                        label = { Text("İletişim e-postası / Gmail") },
+                        placeholder = { Text("ornek@gmail.com") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        "Bu alan hesap giriş e-postandan ayrıdır. İstersen farklı bir Gmail yazabilir, halka açık paylaşımı ayrıca açabilirsin.",
+                        color = Color(0xFF9AA3B8),
+                        fontSize = 11.sp
+                    )
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Halka açık göster", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                            Text(if (showPublicEmail) "İletişim e-postan Toplum bölümünde görünür." else "E-posta adresin diğer kullanıcılardan gizli kalır.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            Text("Halka açık göster", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.White)
+                            Text(
+                                if (showPublicEmail) "İletişim e-postan Toplum bölümünde görünür." else "E-posta adresin diğer kullanıcılardan gizli kalır.",
+                                color = Color(0xFF9AA3B8),
+                                fontSize = 11.sp
+                            )
                         }
-                        androidx.compose.material3.Switch(checked = showPublicEmail, onCheckedChange = { showPublicEmail = it })
+                        Switch(checked = showPublicEmail, onCheckedChange = { showPublicEmail = it })
                     }
-                    androidx.compose.material3.OutlinedTextField(value = profileAvatar, onValueChange = { profileAvatar = it.take(1000) }, label = { Text("Profil fotoğrafı bağlantısı (isteğe bağlı)") }, placeholder = { Text("https://...") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    Text("Profil fotoğrafı için doğrudan https:// ile başlayan bir görsel bağlantısı kullanabilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
-                    Button(onClick = {
-                        scope.launch {
-                            profileSaving = true
-                            val error = withContext(Dispatchers.IO) { repository.saveMyProfile(profileName, profileBio, profileAvatar, contactEmail, showPublicEmail) }
-                            profileMessage = error ?: "Profilin kaydedildi."
-                            profileSaving = false
-                        }
-                    }, enabled = !profileSaving, modifier = Modifier.fillMaxWidth()) { Text(if (profileSaving) "Kaydediliyor…" else "Profili kaydet") }
+                    OutlinedTextField(
+                        value = profileAvatar,
+                        onValueChange = { profileAvatar = it.take(1000) },
+                        label = { Text("Profil fotoğrafı bağlantısı (isteğe bağlı)") },
+                        placeholder = { Text("https://...") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text("Profil fotoğrafı için doğrudan https:// ile başlayan bir görsel bağlantısı kullanabilirsin.", color = Color(0xFF9AA3B8), fontSize = 10.sp)
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                profileSaving = true
+                                val error = withContext(Dispatchers.IO) { repository.saveMyProfile(profileName, profileBio, profileAvatar, contactEmail, showPublicEmail) }
+                                profileMessage = error ?: "Profilin kaydedildi."
+                                profileSaving = false
+                            }
+                        },
+                        enabled = !profileSaving,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B8CFF), contentColor = Color.White),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (profileSaving) "Kaydediliyor…" else "Profili kaydet")
+                    }
                 }
-                profileMessage?.let { Text(it, color = if (it == "Profilin kaydedildi.") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error, fontSize = 11.sp) }
+                profileMessage?.let {
+                    Text(
+                        text = it,
+                        color = if (it == "Profilin kaydedildi.") Color(0xFF2EE6A8) else MaterialTheme.colorScheme.error,
+                        fontSize = 11.sp
+                    )
+                }
             }
         }
-        Card(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 14.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF141B33))
+        ) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text("TESTER GÜVENİLİRLİK PROFİLİ", color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                Text("Katıldığın test: ${reliability?.testsJoined ?: 0} · Tamamlanan: ${reliability?.testsCompleted ?: 0}", fontSize = 13.sp)
-                Text("Devamsızlık nedeniyle ayrıldığın: ${reliability?.testsDropped ?: 0}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Günlük test bildirimleri: ${reliability?.dailyCheckins ?: 0} · Kaçırılan gün: ${reliability?.missedDays ?: 0}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Katılım güvenilirliği: ${reliability?.attendancePercent ?: 100}%", fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
+                Text("TESTER GÜVENİLİRLİK PROFİLİ", color = Color(0xFF2EE6A8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("Katıldığın test: ${reliability?.testsJoined ?: 0} · Tamamlanan: ${reliability?.testsCompleted ?: 0}", fontSize = 13.sp, color = Color.White)
+                Text("Devamsızlık nedeniyle ayrıldığın: ${reliability?.testsDropped ?: 0}", fontSize = 12.sp, color = Color(0xFF9AA3B8))
+                Text("Günlük test bildirimleri: ${reliability?.dailyCheckins ?: 0} · Kaçırılan gün: ${reliability?.missedDays ?: 0}", fontSize = 12.sp, color = Color(0xFF9AA3B8))
+                Text("Katılım güvenilirliği: ${reliability?.attendancePercent ?: 100}%", fontSize = 13.sp, color = Color(0xFF2EE6A8), fontWeight = FontWeight.SemiBold)
             }
         }
-        Card(modifier = Modifier.fillMaxWidth().padding(top = 14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 14.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF141B33))
+        ) {
             Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Grup davetleri", fontWeight = FontWeight.SemiBold)
-                    Text(if (allowGroupInvites) "Diğer kullanıcılar seni gruplarına davet edebilir." else "Grup davetleri kapalı. Toplum bölümünde davet alamazsın.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                    Text("Grup davetleri", fontWeight = FontWeight.SemiBold, color = Color.White)
+                    Text(
+                        if (allowGroupInvites) "Diğer kullanıcılar seni gruplarına davet edebilir." else "Grup davetleri kapalı. Toplum bölümünde davet alamazsın.",
+                        color = Color(0xFF9AA3B8),
+                        fontSize = 11.sp
+                    )
                 }
-                androidx.compose.material3.Switch(checked = allowGroupInvites, onCheckedChange = { enabled ->
+                Switch(checked = allowGroupInvites, onCheckedChange = { enabled ->
                     scope.launch {
                         val error = withContext(Dispatchers.IO) { repository.setGroupInvitePreference(enabled) }
                         if (error == null) allowGroupInvites = enabled
@@ -541,24 +1489,63 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
                     }
                 })
             }
-            invitePreferenceMessage?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp)) }
+            invitePreferenceMessage?.let {
+                Text(it, color = Color(0xFF9AA3B8), fontSize = 10.sp, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp))
+            }
         }
+
         Text(
             "Tek hesapla tester ve geliştirici olarak yer alabilirsin. Hesabını silersen profilin ve ilişkili kişisel kayıtların veritabanından kaldırılır.",
-            color = Color(0xFFB5BED4), fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp)
+            color = Color(0xFF9AA3B8),
+            fontSize = 14.sp,
+            modifier = Modifier.padding(top = 10.dp)
         )
-        deleteMessage?.let { Text(it, color = Color(0xFFFF8A8A), fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
+        deleteMessage?.let { Text(it, color = Color(0xFFFF7B86), fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
+
         Spacer(Modifier.height(18.dp))
-        Button(onClick = onSupport, modifier = Modifier.fillMaxWidth()) { Text("Destek taleplerim") }
-        TextButton(onClick = { uriHandler.openUri(CampaignRepository.TERMS_URL) }, modifier = Modifier.fillMaxWidth()) { Text("Kullanım koşulları ve topluluk kuralları") }
-        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy") }, modifier = Modifier.fillMaxWidth()) { Text("Gizlilik politikası") }
-        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion") }, modifier = Modifier.fillMaxWidth()) { Text("Hesap ve veri silme sayfası") }
-        if (isAdmin) Button(onClick = onAdminPanel, modifier = Modifier.fillMaxWidth()) { Text("Yönetici paneli") }
-        Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Text("Güvenli çıkış yap") }
+
+        Button(
+            onClick = onSupport,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF141B33), contentColor = Color.White),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Destek taleplerim")
+        }
+
+        TextButton(onClick = { uriHandler.openUri(CampaignRepository.TERMS_URL) }, modifier = Modifier.fillMaxWidth()) {
+            Text("Kullanım koşulları ve topluluk kuralları", color = Color(0xFF8B8CFF))
+        }
+        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy") }, modifier = Modifier.fillMaxWidth()) {
+            Text("Gizlilik politikası", color = Color(0xFF8B8CFF))
+        }
+        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion") }, modifier = Modifier.fillMaxWidth()) {
+            Text("Hesap ve veri silme sayfası", color = Color(0xFF8B8CFF))
+        }
+        if (isAdmin) {
+            Button(
+                onClick = onAdminPanel,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2EE6A8), contentColor = Color.Black),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Yönetici paneli", fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        Button(
+            onClick = onSignOut,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF141B33), contentColor = Color.White),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Güvenli çıkış yap")
+        }
         TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
-            Text("Hesabımı ve verilerimi sil", color = Color(0xFFFF8A8A))
+            Text("Hesabımı ve verilerimi sil", color = Color(0xFFFF7B86))
         }
     }
+
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
@@ -566,7 +1553,7 @@ private fun ProfileScreen(currentUser: BetalinkUser, isAdmin: Boolean, deleteMes
             text = { Text("Profilin, kampanya kayıtların ve hesabına bağlı kişisel verilerin silinir. Bu işlem geri alınamaz.") },
             confirmButton = {
                 TextButton(onClick = { confirmDelete = false; onDeleteAccount() }) {
-                    Text("Kalıcı olarak sil", color = Color(0xFFFF8A8A))
+                    Text("Kalıcı olarak sil", color = Color(0xFFFF7B86))
                 }
             },
             dismissButton = {
