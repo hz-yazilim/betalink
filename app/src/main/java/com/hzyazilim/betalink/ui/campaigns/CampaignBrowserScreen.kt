@@ -180,6 +180,7 @@ private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myT
     var tracking by remember(campaign.id) { mutableStateOf<CampaignTracking?>(null) }
     var checkinDates by remember(campaign.id) { mutableStateOf<Set<String>>(emptySet()) }
     var shareAccountEmail by remember(campaign.id) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(campaign.id, refreshKey, myTests) {
         if (myTests && campaign.membershipStatus != null) {
             shareAccountEmail = withContext(Dispatchers.IO) { repository.campaignAccountEmailConsent(campaign.id) }.first
@@ -225,7 +226,7 @@ private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myT
                     }
                     TextButton(onClick = {
                         val selected = shareAccountEmail
-                        kotlinx.coroutines.CoroutineScope(kotlin.coroutines.coroutineContext).launch {
+                        scope.launch {
                             val error = withContext(Dispatchers.IO) { repository.setCampaignAccountEmailConsent(campaign.id, selected) }
                             if (error != null) shareAccountEmail = !selected
                         }
