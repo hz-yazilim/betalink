@@ -57,6 +57,7 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
     var testGroup by remember { mutableStateOf<TesterGroup?>(null) }
     var groupSnapshot by remember { mutableStateOf<GroupSnapshot?>(null) }
     var shareEmail by remember { mutableStateOf(false) }
+    var shareAccountEmail by remember { mutableStateOf(false) }
     var playTestEmail by remember { mutableStateOf("") }
     var snapshotLoading by remember { mutableStateOf(false) }
     var groupCheckins by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -122,6 +123,7 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
                                         groupCheckins = withContext(Dispatchers.IO) { repository.groupCheckinDates(group.id) }.first
                                         shareEmail = result.first?.myEmailShared ?: false
                                         playTestEmail = result.first?.myPlayTestEmail ?: ""
+                                        shareAccountEmail = withContext(Dispatchers.IO) { repository.groupAccountEmailConsent(group.id) }.first
                                         message = result.second
                                         testGroup = if (result.first != null) group else null
                                         snapshotLoading = false
@@ -155,7 +157,8 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
                     items(members, key = { it.id }) { member ->
                         Column {
                             Text(member.displayName.ifBlank { "Betalink kullanıcısı" }, style = MaterialTheme.typography.titleSmall)
-                            Text(if (member.sharesPlayTestEmail && member.playTestEmail.isNotBlank()) "Play test Gmail: ${member.playTestEmail}" else member.email.ifBlank { "İletişim e-postası paylaşılmamış" }, color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                            Text("Hesap Gmail\u0027i: " + member.accountEmail.ifBlank { "Kullanıcı paylaşmamış" }, color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                            Text(if (member.sharesPlayTestEmail && member.playTestEmail.isNotBlank()) "Play test e-postası: ${member.playTestEmail}" else member.email.ifBlank { "Ayrıca paylaşılmış iletişim e-postası yok" }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                             Text("Durum: " + when(member.status) { "approved" -> "Onaylandı"; "pending" -> "Onay bekliyor"; else -> member.status }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             if (member.status == "approved") {
                                 TextButton(onClick = {
@@ -268,10 +271,19 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
                                 Text("İstediğin zaman izni geri alabilirsin.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
+                        Row {
+                            Checkbox(checked = shareAccountEmail, onCheckedChange = { shareAccountEmail = it })
+                            Column(Modifier.padding(top = 8.dp)) {
+                                Text("Betalink hesap Gmail adresimi grup kurucusuyla paylaş", fontSize = 12.sp)
+                                Text("Hesap Gmail'in yalnızca grup kurucusuna gösterilir; izni istediğin zaman geri alabilirsin.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
                         TextButton(onClick = {
                             scope.launch {
-                                val error = withContext(Dispatchers.IO) { repository.setGroupEmailConsent(group.id, shareEmail, playTestEmail) }
-                                message = error ?: "E-posta paylaşım tercihin kaydedildi."
+                                val emailError = withContext(Dispatchers.IO) { repository.setGroupEmailConsent(group.id, shareEmail, playTestEmail) }
+                                val accountError = if (emailError == null) withContext(Dispatchers.IO) { repository.setGroupAccountEmailConsent(group.id, shareAccountEmail) } else null
+                                val error = emailError ?: accountError
+                                message = error ?: "E-posta paylaşım tercihlerin kaydedildi."
                                 if (error == null) {
                                     val result = withContext(Dispatchers.IO) { repository.groupSnapshot(group.id) }
                                     groupSnapshot = result.first
