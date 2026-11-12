@@ -12,7 +12,7 @@ import java.net.URLEncoder
 
 data class CampaignMember(val id: String, val testerId: String, val status: String, val displayName: String = "", val email: String = "")
 data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?, val isCreator: Boolean)
-data class GroupMember(val id: String, val userId: String, val status: String, val displayName: String = "", val email: String = "", val playTestEmail: String = "", val sharesPlayTestEmail: Boolean = false)
+data class GroupMember(val id: String, val userId: String, val status: String, val displayName: String = "", val email: String = "", val playTestEmail: String = "", val sharesPlayTestEmail: Boolean = false, val accountEmail: String = "")
 data class DirectoryPerson(val id: String, val displayName: String, val canReceiveInvites: Boolean, val publicEmail: String = "", val bio: String = "", val avatarUrl: String = "")
 data class EditableProfile(val displayName: String, val bio: String, val avatarUrl: String, val contactEmail: String, val showPublicEmail: Boolean)
 data class GroupInvitation(
@@ -204,7 +204,26 @@ class CampaignRepository(context: Context) {
         val names = if (profileStatus in 200..299) { val rows = JSONArray(profileBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("display_name") } } else emptyMap()
         val (emailStatus, emailBody) = call("/rest/v1/rpc/betalink_public_contact_emails", "POST", token, JSONObject())
         val emails = if (emailStatus in 200..299) { val rows = JSONArray(emailBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("contact_email") } } else emptyMap()
-        return base.map { it.copy(displayName = names[it.userId].orEmpty(), email = emails[it.userId].orEmpty()) } to null
+        val accountResponse = call("/rest/v1/rpc/betalink_group_member_account_emails", "POST", token, JSONObject().put("p_group_id", groupId))
+        val accountEmails = if (accountResponse.first in 200..299) {
+            val rows = JSONArray(accountResponse.second)
+            (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("account_email") }
+        } else emptyMap()
+        return base.map { it.copy(displayName = names[it.userId].orEmpty(), email = emails[it.userId].orEmpty(), accountEmail = accountEmails[it.userId].orEmpty()) } to null
+    }
+
+    fun groupAccountEmailConsent(groupId: String): Pair<Boolean, String?> {
+        val token = sessions.read()?.first ?: return false to "Oturum bulunamadı."
+        val (status, body) = call("/rest/v1/rpc/betalink_group_account_email_consent", "POST", token, JSONObject().put("p_group_id", groupId))
+        if (status !in 200..299) return false to message(body)
+        return body.trim().toBoolean() to null
+    }
+
+    fun setGroupAccountEmailConsent(groupId: String, share: Boolean): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val (status, body) = call("/rest/v1/rpc/betalink_group_set_account_email_consent", "POST", token,
+            JSONObject().put("p_group_id", groupId).put("p_share", share))
+        return if (status in 200..299) null else message(body)
     }
 
     fun reviewGroupMember(memberId: String, approved: Boolean): String? {
