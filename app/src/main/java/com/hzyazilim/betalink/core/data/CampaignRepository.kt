@@ -10,7 +10,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-data class CampaignMember(val id: String, val testerId: String, val status: String, val displayName: String = "", val email: String = "")
+data class CampaignMember(val id: String, val testerId: String, val status: String, val displayName: String = "", val email: String = "", val accountEmail: String = "")
 data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?, val isCreator: Boolean)
 data class GroupMember(val id: String, val userId: String, val status: String, val displayName: String = "", val email: String = "", val playTestEmail: String = "", val sharesPlayTestEmail: Boolean = false, val accountEmail: String = "")
 data class DirectoryPerson(val id: String, val displayName: String, val canReceiveInvites: Boolean, val publicEmail: String = "", val bio: String = "", val avatarUrl: String = "")
@@ -567,7 +567,26 @@ class CampaignRepository(context: Context) {
         val names = if (profileStatus in 200..299) { val rows = JSONArray(profileBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("display_name") } } else emptyMap()
         val (emailStatus, emailBody) = call("/rest/v1/rpc/betalink_public_contact_emails", "POST", token, JSONObject())
         val emails = if (emailStatus in 200..299) { val rows = JSONArray(emailBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("contact_email") } } else emptyMap()
-        return base.map { it.copy(displayName = names[it.testerId].orEmpty(), email = emails[it.testerId].orEmpty()) } to null
+        val accountResponse = call("/rest/v1/rpc/betalink_campaign_member_account_emails", "POST", token, JSONObject().put("p_campaign_id", campaignId))
+        val accountEmails = if (accountResponse.first in 200..299) {
+            val rows = JSONArray(accountResponse.second)
+            (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("tester_id") to row.optString("account_email") }
+        } else emptyMap()
+        return base.map { it.copy(displayName = names[it.testerId].orEmpty(), email = emails[it.testerId].orEmpty(), accountEmail = accountEmails[it.testerId].orEmpty()) } to null
+    }
+
+    fun campaignAccountEmailConsent(campaignId: String): Pair<Boolean, String?> {
+        val token = sessions.read()?.first ?: return false to "Oturum bulunamadı."
+        val (status, body) = call("/rest/v1/rpc/betalink_campaign_account_email_consent", "POST", token, JSONObject().put("p_campaign_id", campaignId))
+        if (status !in 200..299) return false to message(body)
+        return body.trim().toBoolean() to null
+    }
+
+    fun setCampaignAccountEmailConsent(campaignId: String, share: Boolean): String? {
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val (status, body) = call("/rest/v1/rpc/betalink_campaign_set_account_email_consent", "POST", token,
+            JSONObject().put("p_campaign_id", campaignId).put("p_share", share))
+        return if (status in 200..299) null else message(body)
     }
 
     fun reviewApplicant(memberId: String, statusValue: String): String? {
