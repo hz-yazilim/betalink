@@ -181,8 +181,8 @@ private fun AuthScreen(
             Button(
                 onClick = {
                     if (busy) return@Button
-                    if (email.isBlank() || password.length < 6 || (isSignUp && name.isBlank())) {
-                        message = "E-posta, ad ve en az 6 karakterli şifre bilgilerini kontrol et."
+                    if (email.isBlank() || password.length < (if (isSignUp) 8 else 6) || (isSignUp && name.isBlank())) {
+                        message = "Gmail adresini, adını ve şifreni kontrol et. Kayıtta şifre en az 8 karakter olmalı."
                     } else {
                         scope.launch {
                             busy = true
