@@ -150,7 +150,7 @@ private fun AuthScreen(
                 }
             } catch (error: ApiException) {
                 message = when (error.statusCode) {
-                    10 -> "Google girişi yapılandırma hatası (Kod 10: DEVELOPER_ERROR).\nKullanılan Web Client ID: $googleClientId\n\nKontrol adımları:\n1. Uygulamayı Android Studio'dan çalıştırıyorsanız DEBUG SHA-1 (63:8A:2F...) eklenmiş olmalı.\n2. SHA-1 anahtarının tam olarak bu Web Client ID'nin bulunduğu Google Cloud / Firebase projesinde tanımlı olduğunu doğrulayın."
+                    10 -> "Google girişi yapılandırma hatası (Kod 10: DEVELOPER_ERROR).\nKullanılan Web Client ID: $googleClientId\n\nKontrol adımları:\n1. Uygulamayı Android Studio'dan çalıştırıyorsanız DEBUG SHA-1 (63:8A:2F...) eklenmiş olmalı.\n2. SHA-1 anahtarının tam olarak bu Web Client ID'nin bulunduğu Google Cloud projesinde tanımlı olduğunu doğrulayın."
                     12500 -> "Google hesabıyla oturum açılamadı (Kod 12500). Lütfen cihazdaki Google Play Hizmetlerini ve aktif hesabı kontrol edin."
                     12501 -> "Google giriş penceresi kapatıldı veya iptal edildi."
                     else -> "Google girişi başarısız oldu (kod: ${error.statusCode})."
