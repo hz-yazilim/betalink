@@ -777,7 +777,7 @@ private fun DeveloperCampaignsScreen() {
                     TextButton(onClick = {
                         scope.launch {
                             val result = withContext(Dispatchers.IO) { repository.processCampaignAttendance(campaign.id) }
-                            message = result.second ?: "Devamsızlık kontrolü tamamlandı. Katılımcı durumları güncellendi."
+                            message = result.second ?: result.first ?: "Devamsızlık kontrolü tamamlandı."
                             selectedReportCampaign = campaign
                         }
                     }, modifier = Modifier.fillMaxWidth()) { Text("Devamsızlık kontrolü ve test raporu") }
