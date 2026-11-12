@@ -284,7 +284,17 @@ class CampaignRepository(context: Context) {
         val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
         val (status, body) = call("/rest/v1/rpc/betalink_process_campaign_attendance", "POST", token, JSONObject().put("p_campaign_id",campaignId))
         if (status !in 200..299) return null to message(body)
-        return body to null
+        return try {
+            val result = JSONObject(body)
+            val checked = result.optInt("checked")
+            val dropped = result.optInt("dropped")
+            val promoted = result.optInt("promoted")
+            val date = result.optString("processed_date")
+            val dateText = if (date.isBlank() || date == "null") "" else " ($date)"
+            "Kontrol tamamlandı$dateText · $checked eksik bildirim · $dropped kampanyadan çıkarıldı · $promoted yedek tester aktif edildi." to null
+        } catch (_: Exception) {
+            "Devamsızlık kontrolü tamamlandı. Katılımcı durumları güncellendi." to null
+        }
     }
 
     fun setGroupEmailConsent(groupId: String, consent: Boolean, playTestEmail: String): String? {
