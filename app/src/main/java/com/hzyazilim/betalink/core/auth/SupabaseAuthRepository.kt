@@ -49,15 +49,32 @@ class SupabaseAuthRepository(context: Context) {
     }
 
     fun signIn(email: String, password: String): AuthResult {
-        val body = JSONObject().put("email", email.trim()).put("password", password)
-        val response = request("/auth/v1/token?grant_type=password", "POST", body)
-        if (response.first !in 200..299) return AuthResult(message = errorMessage(response.second))
-        val json = JSONObject(response.second)
+        val rawEmail = email.trim()
+        val canonicalEmail = canonicalGmail(rawEmail) ?: rawEmail
+        val candidates = listOf(canonicalEmail, rawEmail).distinct()
+        var response: Pair<Int, String>? = null
+        for (candidate in candidates) {
+            val body = JSONObject().put("email", candidate).put("password", password)
+            val attempt = request("/auth/v1/token?grant_type=password", "POST", body)
+            if (attempt.first in 200..299) {
+                response = attempt
+                break
+            }
+            response = attempt
+        }
+        val result = response ?: return AuthResult(message = "Giriş bilgileri kontrol edilemedi.")
+        if (result.first !in 200..299) return AuthResult(message = errorMessage(result.second))
+        val json = JSONObject(result.second)
+        val userJson = json.optJSONObject("user") ?: JSONObject()
+        if (userJson.optString("email_confirmed_at").isBlank()) {
+            sessions.clear()
+            return AuthResult(message = "Devam etmek için Gmail adresini gelen doğrulama bağlantısıyla onaylamalısın.")
+        }
         val access = json.optString("access_token")
         val refresh = json.optString("refresh_token")
         if (access.isBlank() || refresh.isBlank()) return AuthResult(message = "Oturum bilgileri alınamadı.")
         sessions.save(access, refresh)
-        return AuthResult(user = parseUser(json.optJSONObject("user") ?: JSONObject()))
+        return AuthResult(user = parseUser(userJson))
     }
 
     fun signInWithGoogleIdToken(idToken: String): AuthResult {
@@ -73,9 +90,12 @@ class SupabaseAuthRepository(context: Context) {
     }
 
     fun signUp(email: String, password: String, displayName: String): AuthResult {
+        val normalizedEmail = canonicalGmail(email)
+            ?: return AuthResult(message = "Kayıt için geçerli bir @gmail.com adresi kullanmalısın. Nokta ve +etiket varyasyonları aynı Gmail hesabı olarak kabul edilir.")
+        if (password.length < 8) return AuthResult(message = "Şifren en az 8 karakter olmalı.")
         val metadata = JSONObject().put("display_name", displayName.trim())
         val body = JSONObject()
-            .put("email", email.trim())
+            .put("email", normalizedEmail)
             .put("password", password)
             .put("data", metadata)
         val redirect = URLEncoder.encode("betalink://auth-callback", "UTF-8")
@@ -85,10 +105,15 @@ class SupabaseAuthRepository(context: Context) {
         val access = json.optString("access_token")
         val refresh = json.optString("refresh_token")
         if (access.isNotBlank() && refresh.isNotBlank()) {
+            val userJson = json.optJSONObject("user") ?: JSONObject()
+            if (userJson.optString("email_confirmed_at").isBlank()) {
+                sessions.clear()
+                return AuthResult(message = "Kayıt isteğin alındı. Hesabın açılmadan önce Gmail adresine gönderilen bağlantıyı doğrulamalısın.")
+            }
             sessions.save(access, refresh)
-            return AuthResult(user = parseUser(json.optJSONObject("user") ?: JSONObject()))
+            return AuthResult(user = parseUser(userJson))
         }
-        return AuthResult(message = "Kayıt oluşturuldu. E-posta doğrulama bağlantısını kontrol et; doğruladıktan sonra giriş yap.")
+        return AuthResult(message = "Kayıt isteğin alındı. Gmail adresine gönderilen doğrulama bağlantısını açmadan hesabın kullanıma açılamaz.")
     }
 
     fun completeEmailConfirmation(callbackUri: String): AuthResult {
@@ -120,8 +145,10 @@ class SupabaseAuthRepository(context: Context) {
 
     fun resendSignupConfirmation(email: String): AuthResult {
         if (email.isBlank()) return AuthResult(message = "Önce kayıt e-posta adresini yaz.")
+        val normalizedEmail = canonicalGmail(email)
+            ?: return AuthResult(message = "Doğrulama için kayıtlı @gmail.com adresini yaz.")
         val redirect = URLEncoder.encode("betalink://auth-callback", "UTF-8")
-        val body = JSONObject().put("type", "signup").put("email", email.trim())
+        val body = JSONObject().put("type", "signup").put("email", normalizedEmail)
         val response = request("/auth/v1/resend?redirect_to=$redirect", "POST", body)
         return if (response.first in 200..299) {
             AuthResult(message = "Yeni doğrulama e-postası gönderildi. Gelen kutunu ve spam klasörünü kontrol et.")
@@ -144,6 +171,17 @@ class SupabaseAuthRepository(context: Context) {
         val saved = sessions.read()
         if (saved != null) request("/auth/v1/logout", "POST", token = saved.first)
         sessions.clear()
+    }
+
+    // Gmail ignores dots and everything after '+' in consumer @gmail.com addresses.
+    // Canonicalizing before sign-up prevents creating multiple Betalink accounts for aliases
+    // that all deliver to the same Gmail inbox.
+    private fun canonicalGmail(value: String): String? {
+        val email = value.trim().lowercase(java.util.Locale.ROOT)
+        if (!email.matches(Regex("^[a-z0-9][a-z0-9._+-]{4,29}@gmail\\.com$"))) return null
+        val local = email.substringBefore("@").substringBefore("+").replace(".", "")
+        if (local.length !in 6..30 || local.isBlank()) return null
+        return "$local@gmail.com"
     }
 
     private fun parseUser(json: JSONObject): BetalinkUser? {
