@@ -25,6 +25,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -178,7 +179,11 @@ fun CampaignBrowserScreen(myTests: Boolean) {
 private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myTests: Boolean, refreshKey: Int, onApply: () -> Unit, onConfirmOptIn: () -> Unit, onCheckIn: () -> Unit, onOpenTasks: () -> Unit) {
     var tracking by remember(campaign.id) { mutableStateOf<CampaignTracking?>(null) }
     var checkinDates by remember(campaign.id) { mutableStateOf<Set<String>>(emptySet()) }
+    var shareAccountEmail by remember(campaign.id) { mutableStateOf(false) }
     LaunchedEffect(campaign.id, refreshKey, myTests) {
+        if (myTests && campaign.membershipStatus != null) {
+            shareAccountEmail = withContext(Dispatchers.IO) { repository.campaignAccountEmailConsent(campaign.id) }.first
+        }
         if (myTests && campaign.membershipStatus in listOf("opted_in", "active", "completed")) {
             tracking = withContext(Dispatchers.IO) { repository.trackingSnapshot(campaign.id) }.first
             checkinDates = withContext(Dispatchers.IO) { repository.campaignCheckinDates(campaign.id) }.first
@@ -213,6 +218,19 @@ private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myT
                 }
             } else {
                 Text("Başvuru durumu: ${campaign.membershipStatus ?: "bilinmiyor"}", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
+                if (campaign.membershipStatus != null) {
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(checked = shareAccountEmail, onCheckedChange = { shareAccountEmail = it })
+                        Text("Hesap Gmail adresimi kampanya geliştiricisiyle paylaş", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    TextButton(onClick = {
+                        val selected = shareAccountEmail
+                        kotlinx.coroutines.CoroutineScope(kotlin.coroutines.coroutineContext).launch {
+                            val error = withContext(Dispatchers.IO) { repository.setCampaignAccountEmailConsent(campaign.id, selected) }
+                            if (error != null) shareAccountEmail = !selected
+                        }
+                    }, modifier = Modifier.fillMaxWidth()) { Text("Gmail paylaşım iznini kaydet") }
+                }
                 if (campaign.membershipStatus == "accepted") {
                     Button(onClick = onConfirmOptIn, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                         Text("Play testine katıldım")
@@ -803,7 +821,8 @@ private fun DeveloperCampaignsScreen() {
                     items(applicants, key = { it.id }) { applicant ->
                         Column {
                             Text(applicant.displayName.ifBlank { "Betalink kullanıcısı" }, style = MaterialTheme.typography.titleSmall)
-                            Text(applicant.email.ifBlank { "İletişim e-postası paylaşılmamış" }, color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                            Text("Hesap Gmail\u0027i: " + applicant.accountEmail.ifBlank { "Kullanıcı paylaşmamış" }, color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                            Text("İletişim e-postası: " + applicant.email.ifBlank { "Paylaşılmamış" }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                             Text("Durum: " + when(applicant.status) { "applied" -> "Başvurdu"; "accepted" -> "Kabul edildi"; "waitlisted" -> "Yedek listede"; "rejected" -> "Reddedildi"; else -> applicant.status }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             TextButton(onClick = { reliabilityTesterId = applicant.testerId }) { Text("Güvenilirlik profilini görüntüle") }
                             if (applicant.status == "applied" || applicant.status == "waitlisted") {
