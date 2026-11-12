@@ -15,7 +15,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 19
-        versionName = "0.9.2"
+        versionName = "0.9.3"
         buildConfigField("String", "SUPABASE_URL", "\"https://lwloymjcnmzobjmgvlnp.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_iafVZ3uELvqqUKYaMfYwgA_kEu5LACD\"")
         // Resolve the public Google Web OAuth client ID for Android Studio and CI builds.
