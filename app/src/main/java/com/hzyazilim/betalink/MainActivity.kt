@@ -107,6 +107,7 @@ import com.hzyazilim.betalink.ui.groups.GroupsScreen
 import com.hzyazilim.betalink.ui.notifications.NotificationsDialog
 import com.hzyazilim.betalink.ui.people.PeopleScreen
 import com.hzyazilim.betalink.ui.support.SupportDialog
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -223,9 +224,11 @@ fun BetalinkApp(
 
     LaunchedEffect(currentUser.id) {
         termsAccepted = null
-        val result = runCatching {
+        val result = try {
             withContext(Dispatchers.IO) { termsRepository.currentTermsAccepted() }
-        }.getOrElse {
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
             null to "Kullanım koşulları kontrol edilemedi. İnternet bağlantını kontrol edip tekrar dene."
         }
         termsAccepted = result.first ?: false
