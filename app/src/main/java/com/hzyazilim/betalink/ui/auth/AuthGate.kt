@@ -62,7 +62,7 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
     var restoreRetryable by remember { mutableStateOf(false) }
     var continueToLogin by remember { mutableStateOf(false) }
     var restoreAttempt by remember { mutableIntStateOf(0) }
-    LaunchedEffect(restoreAttempt) {
+    LaunchedEffect(restoreAttempt, authCallbackUri) {
         checking = true
         // An email-confirmation callback carries a newer, verified session.
         // Skip restoring an older local session so it cannot overwrite the callback.
