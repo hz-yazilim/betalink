@@ -1142,8 +1142,7 @@ private fun BuildTestlerimScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 110.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp)
     ) {
         Text(
             text = "Testlerim",
@@ -1157,9 +1156,14 @@ private fun BuildTestlerimScreen() {
         ProgressRowWidget("FitTrack", 0.45f, "Geri bildirim bekleniyor")
         ProgressRowWidget("Pawly", 0.2f, "Yeni katıldın")
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
 
-        MyTestsHub()
+        // DeveloperCampaignsScreen owns a LazyColumn. Give it a bounded viewport;
+        // wrapping it in this screen's verticalScroll caused Compose to measure it
+        // with infinite height constraints and crash when opening Testlerim.
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            MyTestsHub()
+        }
     }
 }
 
@@ -1215,8 +1219,7 @@ private fun BuildSimplePageScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 110.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp)
     ) {
         Text(
             text = title,
@@ -1231,13 +1234,13 @@ private fun BuildSimplePageScreen(
             lineHeight = 22.sp,
             fontSize = 14.sp
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(12.dp))
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color(0xFF141B33), RoundedCornerShape(22.dp))
-                .padding(20.dp)
+                .padding(16.dp)
         ) {
             Text(
                 text = "Bu ekranı senin verinle canlı olarak dolduruyoruz:",
@@ -1246,9 +1249,13 @@ private fun BuildSimplePageScreen(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
 
-        content()
+        // Child screens manage their own scrolling (PeopleScreen uses LazyColumn).
+        // Keep them inside a finite-height viewport to avoid nested-scroll crashes.
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            content()
+        }
     }
 }
 
