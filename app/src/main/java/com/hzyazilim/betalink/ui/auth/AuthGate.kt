@@ -57,13 +57,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import com.hzyazilim.betalink.BetalinkApp
 import com.hzyazilim.betalink.core.auth.BetalinkUser
 import com.hzyazilim.betalink.core.auth.SupabaseAuthRepository
 import com.hzyazilim.betalink.core.auth.SessionRestoreResult
 import com.hzyazilim.betalink.core.data.CampaignRepository
 import com.hzyazilim.betalink.core.admin.AdminApiRepository
+import com.hzyazilim.betalink.ui.legal.LegalDocument
+import com.hzyazilim.betalink.ui.legal.LegalDocumentsDialog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -233,7 +234,7 @@ private fun AuthScreen(
     LaunchedEffect(initialPasswordRecovery) { isPasswordRecovery = initialPasswordRecovery }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
+    var legalDocument by remember { mutableStateOf<LegalDocument?>(null) }
     val googleClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
 
     val googleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -612,11 +613,11 @@ private fun AuthScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy") }) {
-                        Text("Gizlilik politikası", color = accent, fontSize = 10.sp)
+                    TextButton(onClick = { legalDocument = LegalDocument.PRIVACY }) {
+                        Text("Gizlilik politikası · KVKK", color = accent, fontSize = 10.sp)
                     }
                     Text("•", color = muted, fontSize = 10.sp)
-                    TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion") }) {
+                    TextButton(onClick = { legalDocument = LegalDocument.ACCOUNT_DELETION }) {
                         Text("Hesap ve veri silme", color = accent, fontSize = 10.sp)
                     }
                 }
@@ -627,5 +628,8 @@ private fun AuthScreen(
                 )
             }
         }
+    }
+    legalDocument?.let { document ->
+        LegalDocumentsDialog(initialDocument = document, onDismiss = { legalDocument = null })
     }
 }
