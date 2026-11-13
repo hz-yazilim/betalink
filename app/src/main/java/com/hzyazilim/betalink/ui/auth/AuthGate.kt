@@ -64,6 +64,12 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
     var restoreAttempt by remember { mutableIntStateOf(0) }
     LaunchedEffect(restoreAttempt) {
         checking = true
+        // An email-confirmation callback carries a newer, verified session.
+        // Skip restoring an older local session so it cannot overwrite the callback.
+        if (!authCallbackUri.isNullOrBlank()) {
+            checking = false
+            return@LaunchedEffect
+        }
         // A temporary network outage must not erase the encrypted refresh token
         // or force the user to sign in again.
         val result = runCatching {
