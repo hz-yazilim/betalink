@@ -488,6 +488,14 @@ private fun HomeScreen(
             onHowItWorks = onHowItWorks
         )
 
+        walletMessage?.let {
+            Text(
+                text = "BetaPuan bilgisi alınamadı: $it",
+                color = Color(0xFFFF7A6B),
+                fontSize = 11.sp
+            )
+        }
+
         // Keşfet Card
         KesfetCard(onExplore = onExplore)
     }
