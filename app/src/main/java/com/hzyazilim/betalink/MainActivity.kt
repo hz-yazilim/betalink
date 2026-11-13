@@ -482,8 +482,8 @@ private fun HomeScreen(
 
         // Beta Puan Card
         BetaPuanCard(
-            balance = wallet?.balance ?: 0,
-            completedTests = wallet?.completedSupportTests ?: 0,
+            balance = wallet?.balance,
+            completedTests = wallet?.completedSupportTests,
             onEarnPoints = onExplore,
             onHowItWorks = onHowItWorks
         )
@@ -582,8 +582,8 @@ private fun ChipWidget(text: String) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BetaPuanCard(
-    balance: Int,
-    completedTests: Int,
+    balance: Int?,
+    completedTests: Int?,
     onEarnPoints: () -> Unit,
     onHowItWorks: () -> Unit
 ) {
@@ -613,7 +613,7 @@ private fun BetaPuanCard(
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "$balance BP",
+                        text = balance?.let { "$it BP" } ?: "—",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Black,
                         color = Color(0xFF2EE6A8)
@@ -635,7 +635,7 @@ private fun BetaPuanCard(
                     fontSize = 12.sp
                 )
                 Text(
-                    text = completedTests.toString(),
+                    text = completedTests?.toString() ?: "—",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Black,
                     color = Color.White
