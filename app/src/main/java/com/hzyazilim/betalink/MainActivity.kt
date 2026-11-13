@@ -147,6 +147,7 @@ private val tabs = listOf(
 
 class MainActivity : ComponentActivity() {
     private var authCallbackUri by mutableStateOf<String?>(null)
+    private var groupInviteToken by mutableStateOf<String?>(null)
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
@@ -155,11 +156,13 @@ class MainActivity : ComponentActivity() {
         if (data?.scheme == "betalink" && data.host == "auth-callback") {
             authCallbackUri = data.toString()
         }
+        groupInviteToken = data?.takeIf { it.scheme == "betalink" && it.host == "group-invite" }?.lastPathSegment
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         intent?.data?.takeIf { it.scheme == "betalink" && it.host == "auth-callback" }?.let { authCallbackUri = it.toString() }
+        groupInviteToken = intent?.data?.takeIf { it.scheme == "betalink" && it.host == "group-invite" }?.lastPathSegment
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel("betalink_updates", "Betalink bildirimleri", NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = "Test davetleri, grup durumu ve görev bildirimleri"
@@ -182,7 +185,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     AuthGate(
-                        initialInviteToken = intent?.data?.takeIf { it.scheme == "betalink" && it.host == "group-invite" }?.lastPathSegment,
+                        initialInviteToken = groupInviteToken,
                         authCallbackUri = authCallbackUri
                     )
                 }
@@ -202,6 +205,9 @@ fun BetalinkApp(
 ) {
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableIntStateOf(if (openPeopleInitially) 3 else 0) }
+    LaunchedEffect(initialInviteToken) {
+        if (!initialInviteToken.isNullOrBlank()) selectedTab = 3
+    }
     var deleteMessage by remember { mutableStateOf<String?>(null) }
     var showNotifications by remember { mutableStateOf(false) }
     var showAdminPanel by remember { mutableStateOf(false) }
