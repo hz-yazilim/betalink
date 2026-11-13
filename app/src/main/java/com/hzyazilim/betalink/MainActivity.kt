@@ -356,7 +356,7 @@ fun BetalinkApp(
             title = { Text("Betalink'ten çıkılsın mı?") },
             text = { Text("Uygulamadan çıkmak istediğine emin misin?") },
             confirmButton = {
-                TextButton(onClick = { showExitDialog = false; activity?.finish() }) { Text("Çıkış yap") }
+                TextButton(onClick = { showExitDialog = false; activity?.finish() }) { Text("Uygulamadan çık") }
             },
             dismissButton = {
                 TextButton(onClick = { showExitDialog = false }) { Text("Uygulamaya dön") }
