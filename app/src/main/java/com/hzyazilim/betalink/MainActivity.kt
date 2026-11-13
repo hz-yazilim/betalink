@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -371,20 +372,20 @@ private fun BetalinkBottomNav(selectedTab: Int, onTabSelected: (Int) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, bottom = 24.dp)
+            .padding(start = 18.dp, end = 18.dp, bottom = 36.dp)
     ) {
         Surface(
             shape = RoundedCornerShape(28.dp),
             color = Color(0xFF10182E),
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
             shadowElevation = 12.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().widthIn(max = 460.dp).align(Alignment.Center)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 6.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 tabs.forEachIndexed { i, tab ->
@@ -951,13 +952,24 @@ private fun ProfileScreen(
     var confirmDelete by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = 28.dp),
         verticalArrangement = Arrangement.Top
     ) {
         Text("HESAP", color = Color(0xFF2EE6A8), fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontSize = 11.sp)
         Text(profileName.ifBlank { currentUser.displayName }, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 10.dp))
         Text("Hesap e-postası · ${currentUser.email}", color = Color(0xFF9AA3B8), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         Text("İtibar puanın: $reputation", color = Color(0xFF2EE6A8), fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp))
+        if (isAdmin) {
+            Button(
+                onClick = onAdminPanel,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2EE6A8), contentColor = Color.Black),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
+            ) { Text("Yönetici panelini aç", fontWeight = FontWeight.Bold) }
+        }
 
         Card(
             modifier = Modifier
@@ -1106,26 +1118,6 @@ private fun ProfileScreen(
             Text("Destek taleplerim")
         }
 
-        TextButton(onClick = { uriHandler.openUri(CampaignRepository.TERMS_URL) }, modifier = Modifier.fillMaxWidth()) {
-            Text("Kullanım koşulları ve topluluk kuralları", color = Color(0xFF8B8CFF))
-        }
-        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy") }, modifier = Modifier.fillMaxWidth()) {
-            Text("Gizlilik politikası", color = Color(0xFF8B8CFF))
-        }
-        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion") }, modifier = Modifier.fillMaxWidth()) {
-            Text("Hesap ve veri silme sayfası", color = Color(0xFF8B8CFF))
-        }
-        if (isAdmin) {
-            Button(
-                onClick = onAdminPanel,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2EE6A8), contentColor = Color.Black),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Yönetici paneli", fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.height(8.dp))
-        }
         Button(
             onClick = onSignOut,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF141B33), contentColor = Color.White),
@@ -1136,6 +1128,18 @@ private fun ProfileScreen(
         }
         TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
             Text("Hesabımı ve verilerimi sil", color = Color(0xFFFF7B86))
+        }
+
+        Spacer(Modifier.height(18.dp))
+        Text("YASAL BİLGİLER VE GİZLİLİK", color = Color(0xFF2EE6A8), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
+        TextButton(onClick = { uriHandler.openUri(CampaignRepository.TERMS_URL) }, modifier = Modifier.fillMaxWidth()) {
+            Text("Kullanım koşulları ve topluluk kuralları", color = Color(0xFF8B8CFF))
+        }
+        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy") }, modifier = Modifier.fillMaxWidth()) {
+            Text("Gizlilik politikası ve KVKK", color = Color(0xFF8B8CFF))
+        }
+        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion") }, modifier = Modifier.fillMaxWidth()) {
+            Text("Hesap ve veri silme sayfası", color = Color(0xFF8B8CFF))
         }
     }
 
