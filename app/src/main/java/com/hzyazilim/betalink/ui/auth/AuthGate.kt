@@ -388,6 +388,15 @@ private fun AuthScreen(
                             modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)
                         )
 
+                        if (isSignUp || isPasswordRecovery) {
+                            Text(
+                                "En az 12 karakter; büyük ve küçük harf, rakam ve desteklenen özel karakter içermeli.",
+                                color = muted,
+                                fontSize = 10.sp,
+                                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 6.dp)
+                            )
+                        }
+
                         if (isPasswordRecovery) {
                             Spacer(Modifier.height(10.dp))
                             OutlinedTextField(
