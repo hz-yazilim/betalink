@@ -54,7 +54,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.offset
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -79,6 +79,7 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
     var authMessage by remember { mutableStateOf<String?>(null) }
     var restoreRetryable by remember { mutableStateOf(false) }
     var continueToLogin by remember { mutableStateOf(false) }
+    var passwordRecovery by remember { mutableStateOf(false) }
     var restoreAttempt by remember { mutableIntStateOf(0) }
     LaunchedEffect(restoreAttempt, authCallbackUri) {
         checking = true
@@ -107,6 +108,7 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
     }
     LaunchedEffect(authCallbackUri) {
         if (!authCallbackUri.isNullOrBlank()) {
+            val isRecovery = repository.isPasswordRecovery(authCallbackUri)
             val result = try {
                 withContext(Dispatchers.IO) { repository.completeEmailConfirmation(authCallbackUri) }
             } catch (cancelled: CancellationException) {
@@ -114,7 +116,10 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
             } catch (_: Exception) {
                 null
             }
-            if (result?.user != null) {
+            if (result?.user != null && isRecovery) {
+                passwordRecovery = true
+                authMessage = "Şifre sıfırlama bağlantın doğrulandı. Yeni şifreni belirle."
+            } else if (result?.user != null) {
                 user = result.user
                 authMessage = "E-posta adresin doğrulandı. Betalink'e hoş geldin!"
             } else {
@@ -177,7 +182,9 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
             onResendConfirmation = { email -> withContext(Dispatchers.IO) { repository.resendSignupConfirmation(email) } },
             onPasswordReset = { email -> withContext(Dispatchers.IO) { repository.sendPasswordReset(email) } },
             initialMessage = authMessage,
-            onAuthenticated = { user = it }
+            onAuthenticated = { user = it; passwordRecovery = false },
+            initialPasswordRecovery = passwordRecovery,
+            onUpdatePassword = { password -> withContext(Dispatchers.IO) { repository.updatePassword(password) } }
         )
     } else {
         BetalinkApp(
@@ -206,9 +213,13 @@ private fun AuthScreen(
     onResendConfirmation: suspend (String) -> com.hzyazilim.betalink.core.auth.AuthResult,
     onPasswordReset: suspend (String) -> com.hzyazilim.betalink.core.auth.AuthResult,
     initialMessage: String?,
+    initialPasswordRecovery: Boolean,
+    onUpdatePassword: suspend (String) -> com.hzyazilim.betalink.core.auth.AuthResult,
     onAuthenticated: (BetalinkUser) -> Unit
 ) {
     var isSignUp by remember { mutableStateOf(false) }
+    var isPasswordRecovery by remember { mutableStateOf(initialPasswordRecovery) }
+    var confirmPassword by remember { mutableStateOf("") }
     var selectedRole by remember { mutableStateOf("dev") }
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -219,6 +230,7 @@ private fun AuthScreen(
     var message by remember { mutableStateOf<String?>(initialMessage) }
     var messageIsSuccess by remember { mutableStateOf(false) }
     LaunchedEffect(initialMessage) { if (!initialMessage.isNullOrBlank()) message = initialMessage }
+    LaunchedEffect(initialPasswordRecovery) { isPasswordRecovery = initialPasswordRecovery }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -339,14 +351,15 @@ private fun AuthScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
                 ) {
                     Column(Modifier.padding(20.dp)) {
-                        Text(if (isSignUp) "Aramıza katıl" else "Tekrar hoş geldin", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.align(Alignment.CenterHorizontally))
+                        Text(if (isPasswordRecovery) "Yeni şifreni belirle" else if (isSignUp) "Aramıza katıl" else "Tekrar hoş geldin", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.align(Alignment.CenterHorizontally))
                         Text(
-                            if (isSignUp) "Betalink hesabını birkaç adımda oluştur."
+                            if (isPasswordRecovery) "Hesabın için yeni ve güçlü bir şifre oluştur."
+                            else if (isSignUp) "Betalink hesabını birkaç adımda oluştur."
                             else "Kaldığın yerden güvenle devam et.",
                             color = muted, fontSize = 12.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 5.dp, bottom = 18.dp)
                         )
 
-                        if (isSignUp) {
+                        if (isSignUp && !isPasswordRecovery) {
                             OutlinedTextField(
                                 value = name, onValueChange = { name = it.take(50) },
                                 label = { Text("Adın veya görünen adın") }, singleLine = true,
@@ -355,13 +368,13 @@ private fun AuthScreen(
                             )
                             Spacer(Modifier.height(10.dp))
                         }
-                        OutlinedTextField(
+                        if (!isPasswordRecovery) OutlinedTextField(
                             value = email, onValueChange = { email = it.take(254) },
                             label = { Text("E-posta") }, placeholder = { Text("ornek@gmail.com") },
                             singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)
                         )
-                        Spacer(Modifier.height(10.dp))
+                        if (!isPasswordRecovery) Spacer(Modifier.height(10.dp))
                         OutlinedTextField(
                             value = password, onValueChange = { password = it },
                             label = { Text("Şifre") }, placeholder = { Text("Şifreni gir") },
@@ -375,7 +388,18 @@ private fun AuthScreen(
                             modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)
                         )
 
-                        if (!isSignUp) {
+                        if (isPasswordRecovery) {
+                            Spacer(Modifier.height(10.dp))
+                            OutlinedTextField(
+                                value = confirmPassword, onValueChange = { confirmPassword = it },
+                                label = { Text("Yeni şifreyi tekrar yaz") }, singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)
+                            )
+                        }
+
+                        if (!isSignUp && !isPasswordRecovery) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -420,23 +444,29 @@ private fun AuthScreen(
                         Button(
                             onClick = {
                                 if (busy) return@Button
-                                val emailValid = android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()
-                                val passwordValid = if (isSignUp) password.length >= 12 &&
-                                    password.any(Char::isUpperCase) && password.any(Char::isLowerCase) &&
-                                    password.any(Char::isDigit) && password.any { !it.isLetterOrDigit() }
-                                else password.isNotBlank()
-                                if (!emailValid || !passwordValid || (isSignUp && name.isBlank())) {
-                                    message = if (isSignUp)
-                                        "Geçerli e-posta ve ad gir. Şifre en az 12 karakter; büyük/küçük harf, rakam ve özel karakter içermeli."
-                                    else "Geçerli e-posta adresini ve şifreni gir."
+                                val emailValid = isPasswordRecovery || android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()
+                                val strongPassword = password.length >= 12 && password.any(Char::isUpperCase) &&
+                                    password.any(Char::isLowerCase) && password.any(Char::isDigit) &&
+                                    password.any { !it.isLetterOrDigit() }
+                                val passwordValid = if (isSignUp || isPasswordRecovery) strongPassword else password.isNotBlank()
+                                if (!emailValid || !passwordValid || (isSignUp && name.isBlank()) ||
+                                    (isPasswordRecovery && password != confirmPassword)) {
+                                    message = when {
+                                        isPasswordRecovery && password != confirmPassword -> "Yazdığın iki şifre birbiriyle aynı değil."
+                                        isSignUp || isPasswordRecovery -> "Şifre en az 12 karakter; büyük/küçük harf, rakam ve özel karakter içermeli."
+                                        else -> "Geçerli e-posta adresini ve şifreni gir."
+                                    }
                                     messageIsSuccess = false
                                 } else {
                                     scope.launch {
                                         busy = true
                                         message = null
                                         val result = try {
-                                            if (isSignUp) onSignUp(name, email, password)
-                                            else onSignIn(email, password, rememberMe)
+                                            when {
+                                                isPasswordRecovery -> onUpdatePassword(password)
+                                                isSignUp -> onSignUp(name, email, password)
+                                                else -> onSignIn(email, password, rememberMe)
+                                            }
                                         } catch (cancelled: CancellationException) {
                                             throw cancelled
                                         } catch (_: Exception) {
@@ -455,15 +485,22 @@ private fun AuthScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color(0xFF0B0B16))
                         ) {
                             if (busy) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp), color = Color(0xFF0B0B16))
-                            else Text(if (isSignUp) "Ücretsiz hesap oluştur" else "Giriş yap", fontWeight = FontWeight.ExtraBold)
+                            else Text(
+                                when {
+                                    isPasswordRecovery -> "Yeni şifreyi kaydet"
+                                    isSignUp -> "Ücretsiz hesap oluştur"
+                                    else -> "Giriş yap"
+                                },
+                                fontWeight = FontWeight.ExtraBold
+                            )
                         }
 
-                        Row(Modifier.fillMaxWidth().padding(vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (!isPasswordRecovery) Row(Modifier.fillMaxWidth().padding(vertical = 15.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.weight(1f).height(1.dp).background(Color(0x26FFFFFF)))
                             Text("  veya  ", color = muted, fontSize = 11.sp)
                             Box(Modifier.weight(1f).height(1.dp).background(Color(0x26FFFFFF)))
                         }
-                        Button(
+                        if (!isPasswordRecovery) Button(
                             onClick = {
                                 if (googleClientId.isBlank()) {
                                     message = "Google girişi yapılandırılmadı. Google Web Client ID tanımlanmalı."
@@ -483,7 +520,7 @@ private fun AuthScreen(
                             Text("  Google ile devam et", fontWeight = FontWeight.Bold)
                         }
 
-                        TextButton(
+                        if (!isPasswordRecovery) TextButton(
                             onClick = {
                                 isSignUp = !isSignUp
                                 message = null
@@ -496,7 +533,7 @@ private fun AuthScreen(
                                 color = accent, fontWeight = FontWeight.SemiBold, fontSize = 12.sp
                             )
                         }
-                        TextButton(
+                        if (!isPasswordRecovery) TextButton(
                             onClick = {
                                 if (email.isBlank()) {
                                     message = "Önce kayıt e-posta adresini yaz."
@@ -516,6 +553,16 @@ private fun AuthScreen(
                             enabled = !busy,
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Doğrulama e-postasını yeniden gönder", color = muted, fontSize = 11.sp) }
+                        if (isPasswordRecovery) {
+                            TextButton(onClick = {
+                                isPasswordRecovery = false
+                                password = ""
+                                confirmPassword = ""
+                                message = null
+                            }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Giriş ekranına dön", color = accent, fontSize = 11.sp)
+                            }
+                        }
                     }
                 }
 
