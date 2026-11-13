@@ -8,7 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Dialog
+import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,7 +42,7 @@ fun LegalDocumentsDialog(initialDocument: LegalDocument, onDismiss: () -> Unit) 
                 }
                 Spacer(Modifier.height(14.dp))
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    LegalDocument.values().forEach { item ->
+                    LegalDocument.entries.forEach { item ->
                         val active = selected == item
                         Button(
                             onClick = { selected = item },
