@@ -90,9 +90,13 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
     }
     LaunchedEffect(authCallbackUri) {
         if (!authCallbackUri.isNullOrBlank()) {
-            val result = runCatching {
+            val result = try {
                 withContext(Dispatchers.IO) { repository.completeEmailConfirmation(authCallbackUri) }
-            }.getOrNull()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                null
+            }
             if (result?.user != null) {
                 user = result.user
                 authMessage = "E-posta adresin doğrulandı. Betalink'e hoş geldin!"
