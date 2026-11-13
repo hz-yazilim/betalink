@@ -42,10 +42,10 @@ fun WalletStatusCard() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("BETA PUAN BAKİYESİ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text((wallet?.balance?.toString() ?: if (loading) "…" else "0") + " BP", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.secondary)
+                    Text((wallet?.balance?.toString() ?: if (loading) "…" else if (error != null) "—" else "0") + " BP", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.secondary)
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text((wallet?.completedSupportTests?.toString() ?: if (loading) "…" else "0"), style = MaterialTheme.typography.titleMedium)
+                    Text((wallet?.completedSupportTests?.toString() ?: if (loading) "…" else if (error != null) "—" else "0"), style = MaterialTheme.typography.titleMedium)
                     Text("Tamamlanan test", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
