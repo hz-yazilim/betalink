@@ -109,8 +109,10 @@ class CampaignRepository(context: Context) {
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
-        val body = JSONObject()
-            .put("user_id", userId)
+        // UPDATE grants intentionally exclude user_id. Sending it in a PATCH, even
+        // unchanged, makes PostgREST require UPDATE privilege on that protected column.
+        // Only include user_id when inserting a new self-owned tester profile.
+        val deviceFields = JSONObject()
             .put("device_model", Build.MANUFACTURER + " " + Build.MODEL)
             .put("android_version", Build.VERSION.RELEASE.substringBefore(".").toIntOrNull() ?: Build.VERSION.SDK_INT)
             .put("available_for_testing", true)
@@ -119,7 +121,8 @@ class CampaignRepository(context: Context) {
         if (existing.first !in 200..299) return message(existing.second)
         val exists = JSONArray(existing.second).length() > 0
         val path = if (exists) "/rest/v1/tester_profiles?user_id=eq.$userId" else "/rest/v1/tester_profiles"
-        val (status, response) = call(path, if (exists) "PATCH" else "POST", token, body)
+        val requestBody = if (exists) deviceFields else JSONObject(deviceFields.toString()).put("user_id", userId)
+        val (status, response) = call(path, if (exists) "PATCH" else "POST", token, requestBody)
         return if (status in 200..299) null else message(response)
     }
 
