@@ -67,7 +67,15 @@ class CampaignRepository(context: Context) {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val body = JSONObject().put("p_version", CURRENT_TERMS_VERSION)
         val (status, response) = call("/rest/v1/rpc/betalink_accept_current_terms", "POST", token, body)
-        return if (status in 200..299) null else message(response)
+        if (status !in 200..299) return message(response)
+        if (!response.trim().equals("true", ignoreCase = true)) {
+            return "Kullanım koşulları sunucuya kaydedilemedi. Lütfen tekrar dene."
+        }
+        val (verifyStatus, verifyBody) = call("/rest/v1/rpc/betalink_current_terms", "POST", token, JSONObject())
+        if (verifyStatus !in 200..299) return "Kabul kaydedildi ancak doğrulanamadı. İnternet bağlantını kontrol edip tekrar dene."
+        val verifiedVersion = try { JSONObject(verifyBody).optString("terms_version") } catch (_: Exception) { "" }
+        return if (verifiedVersion == CURRENT_TERMS_VERSION) null
+        else "Kullanım koşulları kabulü doğrulanamadı. Lütfen tekrar dene."
     }
 
     fun listOpenCampaigns(): Pair<List<Campaign>, String?> {
