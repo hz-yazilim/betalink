@@ -190,8 +190,13 @@ private fun AuthScreen(
                     scope.launch {
                         busy = true
                         message = null
-                        val authResult = onGoogleSignIn(token)
-                        busy = false
+                        val authResult = try {
+                            onGoogleSignIn(token)
+                        } catch (_: Exception) {
+                            com.hzyazilim.betalink.core.auth.AuthResult(message = "Google girişi tamamlanamadı. İnternet bağlantını kontrol edip tekrar dene.")
+                        } finally {
+                            busy = false
+                        }
                         if (authResult.user != null) onAuthenticated(authResult.user)
                         else message = authResult.message ?: "Google ile giriş tamamlanamadı."
                     }
@@ -235,8 +240,13 @@ private fun AuthScreen(
                         scope.launch {
                             busy = true
                             message = null
-                            val result = if (isSignUp) onSignUp(name, email, password) else onSignIn(email, password)
-                            busy = false
+                            val result = try {
+                                if (isSignUp) onSignUp(name, email, password) else onSignIn(email, password)
+                            } catch (_: Exception) {
+                                com.hzyazilim.betalink.core.auth.AuthResult(message = "İşlem tamamlanamadı. İnternet bağlantını kontrol edip tekrar dene.")
+                            } finally {
+                                busy = false
+                            }
                             if (result.user != null) onAuthenticated(result.user)
                             else message = result.message ?: "İşlem tamamlanamadı."
                         }
@@ -256,8 +266,13 @@ private fun AuthScreen(
                     } else {
                         scope.launch {
                             busy = true
-                            val result = onResendConfirmation(email)
-                            busy = false
+                            val result = try {
+                                onResendConfirmation(email)
+                            } catch (_: Exception) {
+                                com.hzyazilim.betalink.core.auth.AuthResult(message = "E-posta gönderilemedi. İnternet bağlantını kontrol edip tekrar dene.")
+                            } finally {
+                                busy = false
+                            }
                             message = result.message ?: "Doğrulama e-postası gönderilemedi."
                         }
                     }
