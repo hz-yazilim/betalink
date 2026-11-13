@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -43,6 +44,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import com.hzyazilim.betalink.BetalinkApp
 import com.hzyazilim.betalink.core.auth.BetalinkUser
 import com.hzyazilim.betalink.core.auth.SupabaseAuthRepository
+import com.hzyazilim.betalink.core.auth.SessionRestoreResult
 import com.hzyazilim.betalink.core.data.CampaignRepository
 import com.hzyazilim.betalink.core.admin.AdminApiRepository
 import kotlinx.coroutines.Dispatchers
@@ -57,12 +59,24 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
     var isAdmin by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(true) }
     var authMessage by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) {
-        // A malformed/stale encrypted session or an unexpected auth response must
-        // never terminate the Activity during startup.
-        user = runCatching {
+    var restoreRetryable by remember { mutableStateOf(false) }
+    var continueToLogin by remember { mutableStateOf(false) }
+    var restoreAttempt by remember { mutableIntStateOf(0) }
+    LaunchedEffect(restoreAttempt) {
+        checking = true
+        // A temporary network outage must not erase the encrypted refresh token
+        // or force the user to sign in again.
+        val result = runCatching {
             withContext(Dispatchers.IO) { repository.restoreSession() }
-        }.getOrNull()
+        }.getOrElse {
+            SessionRestoreResult(
+                message = "Oturum kontrol edilemedi. İnternet bağlantını kontrol edip tekrar dene.",
+                retryable = true
+            )
+        }
+        user = result.user
+        authMessage = result.message
+        restoreRetryable = result.retryable
         checking = false
     }
     LaunchedEffect(authCallbackUri) {
@@ -95,6 +109,26 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator()
                 Text("Betalink hazırlanıyor…", modifier = Modifier.padding(top = 12.dp))
+            }
+        }
+    } else if (user == null && restoreRetryable && !continueToLogin) {
+        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(28.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Oturum bağlantısı kurulamadı", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    authMessage ?: "İnternet bağlantını kontrol edip tekrar dene.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+                Button(
+                    onClick = { restoreAttempt++ },
+                    modifier = Modifier.fillMaxWidth().padding(top = 18.dp)
+                ) { Text("Tekrar dene") }
+                TextButton(onClick = { continueToLogin = true }) { Text("Giriş ekranına geç") }
             }
         }
     } else if (user == null) {
