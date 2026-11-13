@@ -58,7 +58,11 @@ class CampaignRepository(context: Context) {
         val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
         val (status, body) = call("/rest/v1/rpc/betalink_current_terms", "POST", token, JSONObject())
         if (status !in 200..299) return null to message(body)
-        val terms = JSONObject(body)
+        val terms = try {
+            JSONObject(body)
+        } catch (_: Exception) {
+            return null to "Kullanım koşulları durumu okunamadı. Lütfen tekrar dene."
+        }
         val accepted = terms.optString("terms_version") == CURRENT_TERMS_VERSION
         return accepted to null
     }
