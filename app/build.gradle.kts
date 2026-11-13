@@ -14,8 +14,8 @@ android {
         applicationId = "com.hzyazilim.betalink"
         minSdk = 24
         targetSdk = 36
-        versionCode = 28
-        versionName = "0.9.12"
+        versionCode = 29
+        versionName = "0.9.13"
         buildConfigField("String", "SUPABASE_URL", "\"https://lwloymjcnmzobjmgvlnp.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_iafVZ3uELvqqUKYaMfYwgA_kEu5LACD\"")
         // Resolve the public Google Web OAuth client ID for Android Studio and CI builds.
