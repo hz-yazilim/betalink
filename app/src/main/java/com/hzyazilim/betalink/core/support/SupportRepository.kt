@@ -31,11 +31,15 @@ class SupportRepository(context: Context) {
     }
 
     fun createTicket(subject: String, message: String, ticketType: String): String? {
+        val cleanSubject = subject.trim()
+        val cleanMessage = message.trim()
+        if (cleanSubject.length !in 3..120) return "Konu 3-120 karakter olmalı."
+        if (cleanMessage.length !in 5..5000) return "Mesaj 5-5000 karakter olmalı."
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
-        val body = JSONObject().put("user_id", userId).put("subject", subject.trim()).put("message", message.trim()).put("ticket_type", if (ticketType == "complaint") "complaint" else "support")
+        val body = JSONObject().put("user_id", userId).put("subject", cleanSubject).put("message", cleanMessage).put("ticket_type", if (ticketType == "complaint") "complaint" else "support")
         val (status, response) = call("/rest/v1/support_tickets", "POST", token, body)
         return if (status in 200..299) null else error(response)
     }
