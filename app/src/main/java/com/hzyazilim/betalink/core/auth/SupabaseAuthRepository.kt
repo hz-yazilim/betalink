@@ -300,6 +300,13 @@ class SupabaseAuthRepository(context: Context) {
     private fun errorMessage(raw: String): String {
         return try {
             val json = JSONObject(raw)
+            val errorCode = json.optString("code").ifBlank { json.optString("error_code") }
+            if (errorCode.equals("weak_password", ignoreCase = true) ||
+                json.optString("message").contains("weak password", ignoreCase = true) ||
+                json.optString("msg").contains("weak password", ignoreCase = true)
+            ) {
+                return "Şifren güncel güvenlik kurallarını karşılamıyor. Giriş yapmak için önce Şifremi unuttum bölümünden yeni bir şifre belirle."
+            }
             json.optString("msg").ifBlank {
                 json.optString("message").ifBlank {
                     json.optString("error_description").ifBlank { "İşlem tamamlanamadı. Bilgilerini kontrol edip tekrar dene." }
