@@ -56,24 +56,36 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
     var checking by remember { mutableStateOf(true) }
     var authMessage by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        user = withContext(Dispatchers.IO) { repository.restoreSession() }
+        // A malformed/stale encrypted session or an unexpected auth response must
+        // never terminate the Activity during startup.
+        user = runCatching {
+            withContext(Dispatchers.IO) { repository.restoreSession() }
+        }.getOrNull()
         checking = false
     }
     LaunchedEffect(authCallbackUri) {
         if (!authCallbackUri.isNullOrBlank()) {
-            val result = withContext(Dispatchers.IO) { repository.completeEmailConfirmation(authCallbackUri) }
-            if (result.user != null) {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { repository.completeEmailConfirmation(authCallbackUri) }
+            }.getOrNull()
+            if (result?.user != null) {
                 user = result.user
                 authMessage = "E-posta adresin doğrulandı. Betalink'e hoş geldin!"
             } else {
-                authMessage = result.message
+                authMessage = result?.message ?: "E-posta doğrulaması tamamlanamadı. Tekrar giriş yapmayı dene."
             }
         }
     }
     LaunchedEffect(user?.id) {
         if (user != null) {
-            withContext(Dispatchers.IO) { CampaignRepository(context).syncTesterDevice() }
-            isAdmin = withContext(Dispatchers.IO) { AdminApiRepository(context).isAdmin() }
+            // These are background profile/permission checks. A transient API or
+            // JSON parsing error should not crash the signed-in application.
+            runCatching {
+                withContext(Dispatchers.IO) { CampaignRepository(context).syncTesterDevice() }
+            }
+            isAdmin = runCatching {
+                withContext(Dispatchers.IO) { AdminApiRepository(context).isAdmin() }
+            }.getOrDefault(false)
         } else isAdmin = false
     }
     if (checking) {
