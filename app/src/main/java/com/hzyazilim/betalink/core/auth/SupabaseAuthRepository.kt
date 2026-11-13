@@ -97,7 +97,7 @@ class SupabaseAuthRepository(context: Context) {
     private fun isTransientStatus(status: Int): Boolean =
         status == 0 || status == 408 || status == 425 || status == 429 || status >= 500
 
-    fun signIn(email: String, password: String): AuthResult {
+    fun signIn(email: String, password: String, rememberMe: Boolean = true): AuthResult {
         val rawEmail = email.trim()
         val canonicalEmail = canonicalGmail(rawEmail) ?: rawEmail
         val candidates = listOf(canonicalEmail, rawEmail).distinct()
@@ -122,11 +122,11 @@ class SupabaseAuthRepository(context: Context) {
         val access = json.optString("access_token")
         val refresh = json.optString("refresh_token")
         if (access.isBlank() || refresh.isBlank()) return AuthResult(message = "Oturum bilgileri alınamadı.")
-        sessions.save(access, refresh)
+        sessions.save(access, refresh, rememberMe)
         return AuthResult(user = parseUser(userJson))
     }
 
-    fun signInWithGoogleIdToken(idToken: String): AuthResult {
+    fun signInWithGoogleIdToken(idToken: String, rememberMe: Boolean = true): AuthResult {
         val body = JSONObject().put("provider", "google").put("id_token", idToken)
         val response = request("/auth/v1/token?grant_type=id_token", "POST", body)
         if (response.first !in 200..299) return AuthResult(message = errorMessage(response.second))
@@ -134,7 +134,7 @@ class SupabaseAuthRepository(context: Context) {
         val access = json.optString("access_token")
         val refresh = json.optString("refresh_token")
         if (access.isBlank() || refresh.isBlank()) return AuthResult(message = "Google oturumu Supabase tarafından doğrulanamadı.")
-        sessions.save(access, refresh)
+        sessions.save(access, refresh, rememberMe)
         return AuthResult(user = parseUser(json.optJSONObject("user") ?: JSONObject()))
     }
 
@@ -204,6 +204,17 @@ class SupabaseAuthRepository(context: Context) {
         } else {
             AuthResult(message = errorMessage(response.second))
         }
+    }
+
+    fun sendPasswordReset(email: String): AuthResult {
+        val normalizedEmail = canonicalGmail(email)
+            ?: return AuthResult(message = "Şifre sıfırlama için kayıtlı @gmail.com adresini yaz.")
+        val redirect = URLEncoder.encode("betalink://auth-callback", "UTF-8")
+        val body = JSONObject().put("email", normalizedEmail)
+        val response = request("/auth/v1/recover?redirect_to=$redirect", "POST", body)
+        return if (response.first in 200..299) {
+            AuthResult(message = "Şifre sıfırlama bağlantısı gönderildi. Gelen kutunu ve spam klasörünü kontrol et.")
+        } else AuthResult(message = errorMessage(response.second))
     }
 
     fun deleteAccount(): String? {
