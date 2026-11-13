@@ -67,6 +67,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -166,7 +167,16 @@ class MainActivity : ComponentActivity() {
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
         setContent {
-            MaterialTheme(colorScheme = BetalinkColors) {
+            MaterialTheme(
+                colorScheme = BetalinkColors,
+                shapes = Shapes(
+                    extraSmall = RoundedCornerShape(10.dp),
+                    small = RoundedCornerShape(16.dp),
+                    medium = RoundedCornerShape(20.dp),
+                    large = RoundedCornerShape(26.dp),
+                    extraLarge = RoundedCornerShape(30.dp)
+                )
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -765,19 +775,21 @@ private fun BuildTestBulScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp)
+            .padding(top = 16.dp, bottom = 12.dp)
     ) {
         Text(
             text = "Test bul",
             fontSize = 28.sp,
             fontWeight = FontWeight.Black,
-            color = Color.White
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 20.dp)
         )
         Spacer(Modifier.height(6.dp))
         Text(
             text = "Cihazına uygun kampanyaları filtrele.",
             color = Color(0xFF9AA3B8),
-            fontSize = 14.sp
+            fontSize = 14.sp,
+            modifier = Modifier.padding(horizontal = 20.dp)
         )
         Spacer(Modifier.height(16.dp))
 
@@ -793,13 +805,14 @@ private fun BuildTestlerimScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp)
+            .padding(top = 16.dp, bottom = 12.dp)
     ) {
         Text(
             text = "Testlerim",
             fontSize = 28.sp,
             fontWeight = FontWeight.Black,
-            color = Color.White
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 20.dp)
         )
         Spacer(Modifier.height(16.dp))
 
@@ -821,20 +834,22 @@ private fun BuildSimplePageScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp)
+            .padding(top = 16.dp, bottom = 12.dp)
     ) {
         Text(
             text = title,
             fontSize = 28.sp,
             fontWeight = FontWeight.Black,
-            color = Color.White
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 20.dp)
         )
         Spacer(Modifier.height(10.dp))
         Text(
             text = desc,
             color = Color(0xFF9AA3B8),
             lineHeight = 22.sp,
-            fontSize = 14.sp
+            fontSize = 14.sp,
+            modifier = Modifier.padding(horizontal = 20.dp)
         )
         Spacer(Modifier.height(12.dp))
 
@@ -954,6 +969,7 @@ private fun ProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(horizontal = 18.dp)
             .verticalScroll(rememberScrollState())
             .padding(bottom = 28.dp),
         verticalArrangement = Arrangement.Top
