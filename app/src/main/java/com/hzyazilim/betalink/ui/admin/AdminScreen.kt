@@ -53,6 +53,7 @@ fun AdminScreen(onClose: () -> Unit) {
     var showAnnouncement by remember { mutableStateOf(false) }
     var bpAmount by remember { mutableStateOf("25") }
     var pointType by remember { mutableStateOf("bp") }
+    var userSearch by remember { mutableStateOf("") }
     var selectedDeleteUser by remember { mutableStateOf<AdminUser?>(null) }
     var selectedDeleteGroup by remember { mutableStateOf<AdminGroup?>(null) }
     var bpReason by remember { mutableStateOf("Yönetici puan düzenlemesi") }
@@ -75,7 +76,10 @@ fun AdminScreen(onClose: () -> Unit) {
                 Text("BETALINK", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
                 Text("Yönetici paneli", style = MaterialTheme.typography.headlineSmall)
             }
-            TextButton(onClick = onClose) { Text("Kapat") }
+            Row {
+                TextButton(enabled = !loading, onClick = { refresh++ }) { Text("Yenile") }
+                TextButton(onClick = onClose) { Text("Kapat") }
+            }
         }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
         if (loading) CircularProgressIndicator(Modifier.padding(20.dp))
@@ -92,6 +96,13 @@ fun AdminScreen(onClose: () -> Unit) {
                 Text("Tüm kullanıcılara duyuru gönder")
             }
 
+            OutlinedTextField(
+                value = userSearch,
+                onValueChange = { userSearch = it.take(120) },
+                label = { Text("Kullanıcı ara (ad veya Gmail)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
+            )
             Text("Puan yönetimi", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { pointType = "bp" }) { Text(if (pointType == "bp") "✓ BetaPuan (BP)" else "BetaPuan (BP)") }
@@ -115,7 +126,10 @@ fun AdminScreen(onClose: () -> Unit) {
                 }
             }, enabled = data.usersList.isNotEmpty() && !pointActionBusy, modifier = Modifier.fillMaxWidth()) { Text(if (pointActionBusy) "İşleniyor…" else "Tüm kullanıcılara uygula") }
             if (data.usersList.isEmpty()) Text("Henüz kayıtlı kullanıcı yok.")
-            else data.usersList.forEach { target ->
+            else data.usersList.filter { target ->
+                val query = userSearch.trim().lowercase()
+                query.isBlank() || target.displayName.lowercase().contains(query) || target.email.lowercase().contains(query)
+            }.forEach { target ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(Modifier.weight(1f)) {
                         Text(target.displayName.ifBlank { "Kullanıcı" }, style = MaterialTheme.typography.bodyMedium)
