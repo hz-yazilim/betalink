@@ -169,7 +169,7 @@ class CampaignRepository(context: Context) {
         return (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
             val id = row.getString("id")
-            TesterGroup(id, row.getString("name"), row.optString("description"), false, statuses[id], row.optString("created_by") == userId)
+            TesterGroup(id, row.getString("name"), row.optString("description"), row.optBoolean("is_private"), statuses[id], row.optString("created_by") == userId)
         } to null
     }
 
