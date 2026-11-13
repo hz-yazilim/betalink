@@ -51,6 +51,7 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
+    var creatingGroup by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     var selectedGroup by remember { mutableStateOf<TesterGroup?>(null) }
     var members by remember { mutableStateOf<List<GroupMember>>(emptyList()) }
@@ -308,14 +309,21 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
 
     if (showCreate) {
         CreateGroupDialog(
-            onDismiss = { showCreate = false },
+            isCreating = creatingGroup,
+            onDismiss = { if (!creatingGroup) showCreate = false },
             onCreate = { name, description, privateGroup ->
                 scope.launch {
-                    val error = withContext(Dispatchers.IO) { repository.createGroup(name, description, privateGroup) }
-                    message = error ?: "Grubun oluşturuldu."
-                    if (error == null) {
-                        showCreate = false
-                        refresh++
+                    if (creatingGroup) return@launch
+                    creatingGroup = true
+                    try {
+                        val error = withContext(Dispatchers.IO) { repository.createGroup(name, description, privateGroup) }
+                        message = error ?: "Grubun oluşturuldu."
+                        if (error == null) {
+                            showCreate = false
+                            refresh++
+                        }
+                    } finally {
+                        creatingGroup = false
                     }
                 }
             }
@@ -325,6 +333,7 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
 
 @Composable
 private fun CreateGroupDialog(
+    isCreating: Boolean,
     onDismiss: () -> Unit,
     onCreate: (String, String, Boolean) -> Unit
 ) {
@@ -332,7 +341,7 @@ private fun CreateGroupDialog(
     var description by remember { mutableStateOf("") }
     var isPrivate by remember { mutableStateOf(false) }
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isCreating) onDismiss() },
         title = { Text("Yeni tester grubu") },
         text = {
             Column {
@@ -348,8 +357,8 @@ private fun CreateGroupDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (name.trim().length >= 2) onCreate(name, description, isPrivate) }) { Text("Oluştur") }
+            TextButton(enabled = !isCreating && name.trim().length >= 2, onClick = { onCreate(name, description, isPrivate) }) { Text(if (isCreating) "Oluşturuluyor…" else "Oluştur") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Vazgeç") } }
+        dismissButton = { TextButton(enabled = !isCreating, onClick = onDismiss) { Text("Vazgeç") } }
     )
 }
