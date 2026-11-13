@@ -19,34 +19,83 @@ data class AuthResult(
     val message: String? = null
 )
 
+data class SessionRestoreResult(
+    val user: BetalinkUser? = null,
+    val message: String? = null,
+    val retryable: Boolean = false
+)
+
 class SupabaseAuthRepository(context: Context) {
     private val sessions = SecureSessionStore(context.applicationContext)
 
-    fun restoreSession(): BetalinkUser? {
-        val saved = sessions.read() ?: return null
+    fun restoreSession(): SessionRestoreResult {
+        val saved = sessions.read() ?: return SessionRestoreResult()
         val response = request("/auth/v1/user", "GET", token = saved.first)
-        if (response.first in 200..299) return parseUser(JSONObject(response.second))
-        // Supabase may report an expired access token as either 401 or 403.
-        // Keep the encrypted refresh token and renew the session before showing login.
-        if (response.first !in setOf(401, 403)) return null
+        if (response.first in 200..299) {
+            val user = runCatching { parseUser(JSONObject(response.second)) }.getOrNull()
+            return if (user != null) SessionRestoreResult(user = user)
+            else SessionRestoreResult(message = "Hesap bilgileri okunamadı. Yeniden giriş yap.")
+        }
+
+        // Do not destroy a valid refresh token because of a temporary network outage.
+        if (response.first !in setOf(401, 403)) {
+            if (isTransientStatus(response.first)) {
+                return SessionRestoreResult(
+                    message = "Oturum kontrol edilemedi. İnternet bağlantını kontrol edip tekrar dene.",
+                    retryable = true
+                )
+            }
+            sessions.clear()
+            return SessionRestoreResult()
+        }
 
         val refreshBody = JSONObject().put("refresh_token", saved.second)
         val refreshed = request("/auth/v1/token?grant_type=refresh_token", "POST", refreshBody)
         if (refreshed.first !in 200..299) {
-            sessions.clear()
-            return null
+            if (isTransientStatus(refreshed.first)) {
+                return SessionRestoreResult(
+                    message = "Oturum yenilenemedi. İnternet bağlantını kontrol edip tekrar dene.",
+                    retryable = true
+                )
+            }
+            if (refreshed.first in 400..499) sessions.clear()
+            return SessionRestoreResult()
         }
-        val json = JSONObject(refreshed.second)
+
+        val json = runCatching { JSONObject(refreshed.second) }.getOrNull()
+            ?: return SessionRestoreResult(
+                message = "Sunucudan geçersiz oturum yanıtı alındı. Tekrar dene.",
+                retryable = true
+            )
         val access = json.optString("access_token")
         val refresh = json.optString("refresh_token")
         if (access.isBlank() || refresh.isBlank()) {
-            sessions.clear()
-            return null
+            return SessionRestoreResult(
+                message = "Oturum yenileme bilgileri eksik. Tekrar dene.",
+                retryable = true
+            )
         }
         sessions.save(access, refresh)
-        val userJson = json.optJSONObject("user") ?: return null
-        return parseUser(userJson)
+        val user = runCatching { json.optJSONObject("user")?.let(::parseUser) }.getOrNull()
+        if (user != null) return SessionRestoreResult(user = user)
+
+        val verified = request("/auth/v1/user", "GET", token = access)
+        if (verified.first in 200..299) {
+            val verifiedUser = runCatching { parseUser(JSONObject(verified.second)) }.getOrNull()
+            if (verifiedUser != null) return SessionRestoreResult(user = verifiedUser)
+        }
+        if (isTransientStatus(verified.first)) {
+            return SessionRestoreResult(
+                message = "Oturum yenilendi ancak hesap doğrulanamadı. Tekrar dene.",
+                retryable = true
+            )
+        }
+        sessions.clear()
+        return SessionRestoreResult()
     }
+
+    private fun isTransientStatus(status: Int): Boolean =
+        status == 0 || status == 408 || status == 425 || status == 429 || status >= 500
 
     fun signIn(email: String, password: String): AuthResult {
         val rawEmail = email.trim()
