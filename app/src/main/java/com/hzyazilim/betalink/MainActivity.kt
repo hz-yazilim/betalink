@@ -223,7 +223,11 @@ fun BetalinkApp(
 
     LaunchedEffect(currentUser.id) {
         termsAccepted = null
-        val result = withContext(Dispatchers.IO) { termsRepository.currentTermsAccepted() }
+        val result = runCatching {
+            withContext(Dispatchers.IO) { termsRepository.currentTermsAccepted() }
+        }.getOrElse {
+            null to "Kullanım koşulları kontrol edilemedi. İnternet bağlantını kontrol edip tekrar dene."
+        }
         termsAccepted = result.first ?: false
         termsError = result.second
     }
