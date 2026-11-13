@@ -15,7 +15,14 @@ import javax.crypto.spec.GCMParameterSpec
 class SecureSessionStore(context: Context) {
     private val preferences = context.getSharedPreferences("betalink_secure_session", Context.MODE_PRIVATE)
 
-    fun save(accessToken: String, refreshToken: String) {
+    @Volatile private var memorySession: Pair<String, String>? = null
+
+    fun save(accessToken: String, refreshToken: String, persist: Boolean = true) {
+        memorySession = accessToken to refreshToken
+        if (!persist) {
+            preferences.edit().remove(SESSION_KEY).apply()
+            return
+        }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
         val payload = JSONObject()
@@ -29,6 +36,7 @@ class SecureSessionStore(context: Context) {
     }
 
     fun read(): Pair<String, String>? {
+        memorySession?.let { return it }
         val encoded = preferences.getString(SESSION_KEY, null) ?: return null
         return try {
             val combined = Base64.decode(encoded, Base64.NO_WRAP)
@@ -47,6 +55,7 @@ class SecureSessionStore(context: Context) {
     }
 
     fun clear() {
+        memorySession = null
         preferences.edit().remove(SESSION_KEY).apply()
     }
 
