@@ -56,26 +56,17 @@ class CampaignRepository(context: Context) {
 
     fun currentTermsAccepted(): Pair<Boolean?, String?> {
         val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
-        val user = call("/auth/v1/user", "GET", token)
-        if (user.first !in 200..299) return null to "Oturum doğrulanamadı."
-        val userId = JSONObject(user.second).optString("id")
-        val (status, body) = call("/rest/v1/profiles?select=terms_version&user_id=eq.$userId", "GET", token)
+        val (status, body) = call("/rest/v1/rpc/betalink_current_terms", "POST", token, JSONObject())
         if (status !in 200..299) return null to message(body)
-        val rows = JSONArray(body)
-        if (rows.length() == 0) return false to null
-        val accepted = rows.getJSONObject(0).optString("terms_version") == CURRENT_TERMS_VERSION
+        val terms = JSONObject(body)
+        val accepted = terms.optString("terms_version") == CURRENT_TERMS_VERSION
         return accepted to null
     }
 
     fun acceptCurrentTerms(): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
-        val user = call("/auth/v1/user", "GET", token)
-        if (user.first !in 200..299) return "Oturum doğrulanamadı."
-        val userId = JSONObject(user.second).optString("id")
-        val body = JSONObject()
-            .put("terms_version", CURRENT_TERMS_VERSION)
-            .put("terms_accepted_at", utcNow())
-        val (status, response) = call("/rest/v1/profiles?user_id=eq.$userId", "PATCH", token, body)
+        val body = JSONObject().put("p_version", CURRENT_TERMS_VERSION)
+        val (status, response) = call("/rest/v1/rpc/betalink_accept_current_terms", "POST", token, body)
         return if (status in 200..299) null else message(response)
     }
 
@@ -189,14 +180,14 @@ class CampaignRepository(context: Context) {
     fun groupMembers(groupId: String): Pair<List<GroupMember>, String?> {
         val token = sessions.read()?.first ?: return emptyList<GroupMember>() to "Oturum bulunamadı."
         val (status, body) = call(
-            "/rest/v1/group_members?select=id,user_id,status,share_test_email,play_test_email&group_id=eq.$groupId&order=joined_at.asc",
+            "/rest/v1/group_members?select=id,group_id,user_id,status,share_test_email&group_id=eq.$groupId&order=joined_at.asc",
             "GET", token
         )
         if (status !in 200..299) return emptyList<GroupMember>() to message(body)
         val array = JSONArray(body)
         val base = (0 until array.length()).map { i ->
             val row = array.getJSONObject(i)
-            GroupMember(row.getString("id"), row.getString("user_id"), row.optString("status"), playTestEmail = row.optString("play_test_email"), sharesPlayTestEmail = row.optBoolean("share_test_email"))
+            GroupMember(row.getString("id"), row.getString("user_id"), row.optString("status"), sharesPlayTestEmail = row.optBoolean("share_test_email"))
         }
         if (base.isEmpty()) return emptyList<GroupMember>() to null
         val ids = base.map { it.userId }.distinct().joinToString(",")
@@ -204,12 +195,24 @@ class CampaignRepository(context: Context) {
         val names = if (profileStatus in 200..299) { val rows = JSONArray(profileBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("display_name") } } else emptyMap()
         val (emailStatus, emailBody) = call("/rest/v1/rpc/betalink_public_contact_emails", "POST", token, JSONObject())
         val emails = if (emailStatus in 200..299) { val rows = JSONArray(emailBody); (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("contact_email") } } else emptyMap()
+        val testEmailResponse = call("/rest/v1/rpc/betalink_group_member_test_emails", "POST", token, JSONObject().put("p_group_id", groupId))
+        val testEmails = if (testEmailResponse.first in 200..299) {
+            val rows = JSONArray(testEmailResponse.second)
+            (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("play_test_email") }
+        } else emptyMap()
         val accountResponse = call("/rest/v1/rpc/betalink_group_member_account_emails", "POST", token, JSONObject().put("p_group_id", groupId))
         val accountEmails = if (accountResponse.first in 200..299) {
             val rows = JSONArray(accountResponse.second)
             (0 until rows.length()).associate { val row = rows.getJSONObject(it); row.optString("user_id") to row.optString("account_email") }
         } else emptyMap()
-        return base.map { it.copy(displayName = names[it.userId].orEmpty(), email = emails[it.userId].orEmpty(), accountEmail = accountEmails[it.userId].orEmpty()) } to null
+        return base.map {
+            it.copy(
+                displayName = names[it.userId].orEmpty(),
+                email = emails[it.userId].orEmpty(),
+                playTestEmail = testEmails[it.userId].orEmpty(),
+                accountEmail = accountEmails[it.userId].orEmpty()
+            )
+        } to null
     }
 
     fun groupAccountEmailConsent(groupId: String): Pair<Boolean, String?> {
@@ -389,13 +392,13 @@ class CampaignRepository(context: Context) {
         val existing = call("/rest/v1/task_completions?select=id&task_id=eq.$taskId&tester_id=eq.$userId", "GET", token)
         if (existing.first !in 200..299) return message(existing.second)
         val rows = JSONArray(existing.second)
-        val body = JSONObject().put("status", "submitted").put("notes", note)
-            .put("submitted_at", utcNow()).put("reviewed_at", JSONObject.NULL)
         val (status, response) = if (rows.length() > 0) {
             val id = rows.getJSONObject(0).getString("id")
+            val body = JSONObject().put("status", "submitted").put("notes", note)
+                .put("submitted_at", utcNow()).put("reviewed_at", JSONObject.NULL)
             call("/rest/v1/task_completions?id=eq.$id", "PATCH", token, body)
         } else {
-            body.put("task_id", taskId).put("tester_id", userId)
+            val body = JSONObject().put("task_id", taskId).put("tester_id", userId).put("notes", note)
             call("/rest/v1/task_completions", "POST", token, body)
         }
         return if (status in 200..299) null else message(response)
