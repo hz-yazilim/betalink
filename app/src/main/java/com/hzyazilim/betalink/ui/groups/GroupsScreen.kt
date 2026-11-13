@@ -299,9 +299,9 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
     if (showCreate) {
         CreateGroupDialog(
             onDismiss = { showCreate = false },
-            onCreate = { name, description, _ ->
+            onCreate = { name, description, privateGroup ->
                 scope.launch {
-                    val error = withContext(Dispatchers.IO) { repository.createGroup(name, description, isPrivate) }
+                    val error = withContext(Dispatchers.IO) { repository.createGroup(name, description, privateGroup) }
                     message = error ?: "Grubun oluşturuldu."
                     if (error == null) {
                         showCreate = false
