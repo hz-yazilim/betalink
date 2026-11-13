@@ -1042,8 +1042,7 @@ private fun BuildTestBulScreen(onExploreMore: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 110.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp)
     ) {
         Text(
             text = "Test bul",
@@ -1069,16 +1068,18 @@ private fun BuildTestBulScreen(onExploreMore: () -> Unit) {
             ChipWidget("+25 BP")
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
         TestCardFullWidget("Nova - Sosyal Uygulama", "+25 BP • 2 gün kaldı", 'N', Color(0xFF8B8CFF))
         TestCardFullWidget("FitTrack - Sağlık", "+25 BP • 5 gün kaldı", 'F', Color(0xFF2EE6A8))
         TestCardFullWidget("Pawly - Evcil Hayvan", "+40 BP • 1 gün kaldı", 'P', Color(0xFFFF7A6B))
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
 
-        // Real Campaign Browser
-        CampaignBrowserScreen(myTests = false)
+        // CampaignBrowserScreen owns its own vertical scrolling; keep it bounded.
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            CampaignBrowserScreen(myTests = false)
+        }
     }
 }
 
