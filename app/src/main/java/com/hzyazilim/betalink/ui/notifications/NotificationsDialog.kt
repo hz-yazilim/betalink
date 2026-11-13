@@ -55,7 +55,8 @@ fun NotificationsDialog(onDismiss: () -> Unit) {
             Column {
                 message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
                 if (loading) CircularProgressIndicator()
-                else if (notifications.isEmpty()) Text("Henüz bildirimin yok.")
+                else if (notifications.isEmpty() && message == null) Text("Henüz bildirimin yok.")
+                else if (notifications.isEmpty()) TextButton(onClick = { refresh++ }) { Text("Bildirimler yüklenemedi · Tekrar dene") }
                 else LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(notifications, key = { it.id }) { notification ->
                         Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
