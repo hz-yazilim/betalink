@@ -210,6 +210,7 @@ fun BetalinkApp(
     var showHowItWorks by remember { mutableStateOf(false) }
     var termsAccepted by remember(currentUser.id) { mutableStateOf<Boolean?>(null) }
     var termsError by remember { mutableStateOf<String?>(null) }
+    var termsAccepting by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val termsRepository = remember(context) { CampaignRepository(context) }
     val uriHandler = LocalUriHandler.current
@@ -321,11 +322,18 @@ fun BetalinkApp(
         TermsAcceptanceDialog(
             error = termsError,
             onOpenTerms = { uriHandler.openUri(CampaignRepository.TERMS_URL) },
+            isAccepting = termsAccepting,
             onAccept = {
                 scope.launch {
-                    val error = withContext(Dispatchers.IO) { termsRepository.acceptCurrentTerms() }
-                    termsError = error
-                    if (error == null) termsAccepted = true
+                    if (termsAccepting) return@launch
+                    termsAccepting = true
+                    try {
+                        val error = withContext(Dispatchers.IO) { termsRepository.acceptCurrentTerms() }
+                        termsError = error
+                        if (error == null) termsAccepted = true
+                    } finally {
+                        termsAccepting = false
+                    }
                 }
             },
             onSignOut = { scope.launch { onSignOut() } }
@@ -864,6 +872,7 @@ private fun BuildSimplePageScreen(
 @Composable
 private fun TermsAcceptanceDialog(
     error: String?,
+    isAccepting: Boolean,
     onOpenTerms: () -> Unit,
     onAccept: () -> Unit,
     onSignOut: () -> Unit
@@ -888,7 +897,17 @@ private fun TermsAcceptanceDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onAccept, enabled = checked) { Text("Kabul et ve devam et") }
+            TextButton(onClick = onAccept, enabled = checked && !isAccepting) {
+                if (isAccepting) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Kaydediliyor...")
+                    }
+                } else {
+                    Text("Kabul et ve devam et")
+                }
+            }
         },
         dismissButton = { TextButton(onClick = onSignOut) { Text("Çıkış yap") } }
     )
