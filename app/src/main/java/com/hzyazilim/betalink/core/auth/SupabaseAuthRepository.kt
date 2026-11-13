@@ -213,7 +213,7 @@ class SupabaseAuthRepository(context: Context) {
     }
 
     fun updatePassword(newPassword: String): AuthResult {
-        if (!isStrongPassword(newPassword)) return AuthResult(message = "Şifre en az 12 karakter; büyük/küçük harf, rakam ve özel karakter içermeli.")
+        if (!PasswordPolicy.isValid(newPassword)) return AuthResult(message = PasswordPolicy.ERROR_MESSAGE)
         val saved = sessions.read() ?: return AuthResult(message = "Şifre sıfırlama oturumu bulunamadı. Yeni bağlantı iste.")
         val response = request("/auth/v1/user", "PUT", JSONObject().put("password", newPassword), saved.first)
         if (response.first !in 200..299) return AuthResult(message = errorMessage(response.second))
