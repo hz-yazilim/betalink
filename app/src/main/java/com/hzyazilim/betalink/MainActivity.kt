@@ -379,7 +379,7 @@ private fun BetalinkBottomNav(selectedTab: Int, onTabSelected: (Int) -> Unit) {
             color = Color(0xFF10182E),
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
             shadowElevation = 12.dp,
-            modifier = Modifier.fillMaxWidth().widthIn(max = 460.dp).align(Alignment.Center)
+            modifier = Modifier.widthIn(max = 460.dp).fillMaxWidth().align(Alignment.Center)
         ) {
             Row(
                 modifier = Modifier
