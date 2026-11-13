@@ -106,12 +106,16 @@ fun CampaignBrowserScreen(myTests: Boolean) {
         if (loading) {
             CircularProgressIndicator(modifier = Modifier.padding(24.dp))
         } else if (campaigns.isEmpty()) {
-            Text(
-                if (myTests) "Henüz katıldığın kampanya yok. İstersen geliştirici olarak ilk kampanyanı oluşturabilirsin."
-                else "Şu anda açık kampanya bulunmuyor. Daha sonra tekrar kontrol et.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 20.dp)
-            )
+            if (message == null) {
+                Text(
+                    if (myTests) "Henüz katıldığın kampanya yok. İstersen geliştirici olarak ilk kampanyanı oluşturabilirsin."
+                    else "Şu anda açık kampanya bulunmuyor. Daha sonra tekrar kontrol et.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 20.dp)
+                )
+            } else {
+                TextButton(onClick = { refresh++ }) { Text("Kampanyalar yüklenemedi · Tekrar dene") }
+            }
         } else {
             val filteredCampaigns = campaigns.filter {
                 it.appName.contains(searchQuery, ignoreCase = true) ||
@@ -750,11 +754,15 @@ private fun DeveloperCampaignsScreen() {
             if (loading) {
                 CircularProgressIndicator(Modifier.padding(20.dp))
             } else if (campaigns.isEmpty()) {
-                Text(
-                    "Henüz kampanya oluşturmadın.",
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (message == null) {
+                    Text(
+                        "Henüz kampanya oluşturmadın.",
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    TextButton(onClick = { refresh++ }) { Text("Kampanyalar yüklenemedi · Tekrar dene") }
+                }
             }
         }
         items(campaigns, key = { it.id }) { campaign ->
