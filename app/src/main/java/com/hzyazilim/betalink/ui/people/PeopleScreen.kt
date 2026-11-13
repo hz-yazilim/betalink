@@ -107,20 +107,28 @@ fun PeopleScreen(inviteToken: String? = null) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(enabled = !busy, onClick = {
                                     scope.launch {
+                                        if (busy) return@launch
                                         busy = true
-                                        val error = withContext(Dispatchers.IO) { repository.respondGroupInvitation(invite.id, true) }
-                                        message = error ?: "Davet kabul edildi. Gruba katıldın."
-                                        busy = false
-                                        if (error == null) refresh++
+                                        try {
+                                            val error = withContext(Dispatchers.IO) { repository.respondGroupInvitation(invite.id, true) }
+                                            message = error ?: "Davet kabul edildi. Gruba katıldın."
+                                            if (error == null) refresh++
+                                        } finally {
+                                            busy = false
+                                        }
                                     }
                                 }) { Text("Kabul et") }
                                 TextButton(enabled = !busy, onClick = {
                                     scope.launch {
+                                        if (busy) return@launch
                                         busy = true
-                                        val error = withContext(Dispatchers.IO) { repository.respondGroupInvitation(invite.id, false) }
-                                        message = error ?: "Davet reddedildi."
-                                        busy = false
-                                        if (error == null) refresh++
+                                        try {
+                                            val error = withContext(Dispatchers.IO) { repository.respondGroupInvitation(invite.id, false) }
+                                            message = error ?: "Davet reddedildi."
+                                            if (error == null) refresh++
+                                        } finally {
+                                            busy = false
+                                        }
                                     }
                                 }) { Text("Reddet") }
                             }
@@ -164,14 +172,18 @@ fun PeopleScreen(inviteToken: String? = null) {
                 if (canLoadMore) item {
                     TextButton(enabled = !busy, onClick = {
                         scope.launch {
+                            if (busy) return@launch
                             busy = true
-                            val next = withContext(Dispatchers.IO) { repository.listPeople(people.size) }
-                            message = next.second
-                            if (next.second == null) {
-                                people = people + next.first
-                                canLoadMore = next.first.size == 50
+                            try {
+                                val next = withContext(Dispatchers.IO) { repository.listPeople(people.size) }
+                                message = next.second
+                                if (next.second == null) {
+                                    people = people + next.first
+                                    canLoadMore = next.first.size == 50
+                                }
+                            } finally {
+                                busy = false
                             }
-                            busy = false
                         }
                     }, modifier = Modifier.fillMaxWidth()) { Text("Daha fazla kişi yükle") }
                 }
@@ -219,15 +231,16 @@ fun PeopleScreen(inviteToken: String? = null) {
             confirmButton = {
                 TextButton(enabled = !busy && selectedGroup != null, onClick = {
                     scope.launch {
+                        if (busy) return@launch
+                        val group = selectedGroup ?: return@launch
                         busy = true
-                        val result = withContext(Dispatchers.IO) {
-                            repository.sendGroupInvitation(selectedGroup!!.id, person.id, customMessage)
-                        }
-                        val error = result.second
-                        message = error ?: "Davet gönderildi. Paylaşım menüsünden grup bilgilerini de iletebilirsin."
-                        busy = false
-                        if (error == null) {
-                            val group = selectedGroup!!
+                        try {
+                            val result = withContext(Dispatchers.IO) {
+                                repository.sendGroupInvitation(group.id, person.id, customMessage)
+                            }
+                            val error = result.second
+                            message = error ?: "Davet gönderildi. Paylaşım menüsünden grup bilgilerini de iletebilirsin."
+                            if (error == null) {
                             val shareText = buildString {
                                 append("Betalink grup daveti\n\n")
                                 append("${group.name}\n")
@@ -247,6 +260,9 @@ fun PeopleScreen(inviteToken: String? = null) {
                             personToInvite = null
                             customMessage = ""
                             refresh++
+                            }
+                        } finally {
+                            busy = false
                         }
                     }
                 }) { Text(if (busy) "Gönderiliyor…" else "Davet gönder ve paylaş") }
