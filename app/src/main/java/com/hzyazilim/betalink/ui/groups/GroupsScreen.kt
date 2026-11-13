@@ -72,10 +72,7 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
     }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 18.dp).verticalScroll(rememberScrollState())) {
-        Spacer(Modifier.height(18.dp))
-        Text("TOPLULUK", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
-        Text("Tester grupları", style = MaterialTheme.typography.headlineSmall)
-        Text("Açık tester gruplarını görüntüle ve katıl.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        Spacer(Modifier.height(8.dp))
         WalletStatusCard()
         Text("Grup oluşturma: 30 BP · Açık gruba katılım: 5 BP. İşlemler için yalnızca yeterli BP bakiyesi gerekir.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
