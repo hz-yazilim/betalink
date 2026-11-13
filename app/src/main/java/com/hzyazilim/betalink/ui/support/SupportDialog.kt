@@ -44,6 +44,7 @@ fun SupportDialog(onDismiss: () -> Unit) {
     var message by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
     var showNewTicket by remember { mutableStateOf(false) }
+    var submitting by remember { mutableStateOf(false) }
 
     LaunchedEffect(refresh) {
         loading = true
@@ -59,7 +60,7 @@ fun SupportDialog(onDismiss: () -> Unit) {
         text = {
             Column {
                 message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
-                Button(onClick = { showNewTicket = true }, modifier = Modifier.fillMaxWidth()) { Text("Yeni destek talebi / şikayet") }
+                Button(onClick = { showNewTicket = true }, enabled = !submitting, modifier = Modifier.fillMaxWidth()) { Text("Yeni destek talebi / şikayet") }
                 if (loading) CircularProgressIndicator()
                 else if (tickets.isEmpty()) Text("Henüz destek talebin yok.", modifier = Modifier.padding(top = 10.dp))
                 else LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -83,14 +84,21 @@ fun SupportDialog(onDismiss: () -> Unit) {
 
     if (showNewTicket) {
         NewSupportTicketDialog(
-            onDismiss = { showNewTicket = false },
+            onDismiss = { if (!submitting) showNewTicket = false },
+            isSubmitting = submitting,
             onSubmit = { subject, body, ticketType ->
                 scope.launch {
-                    val error = withContext(Dispatchers.IO) { repository.createTicket(subject, body, ticketType) }
-                    message = error ?: "Destek talebin oluşturuldu."
-                    if (error == null) {
-                        showNewTicket = false
-                        refresh++
+                    if (submitting) return@launch
+                    submitting = true
+                    try {
+                        val error = withContext(Dispatchers.IO) { repository.createTicket(subject, body, ticketType) }
+                        message = error ?: "Destek talebin oluşturuldu."
+                        if (error == null) {
+                            showNewTicket = false
+                            refresh++
+                        }
+                    } finally {
+                        submitting = false
                     }
                 }
             }
@@ -99,12 +107,12 @@ fun SupportDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun NewSupportTicketDialog(onDismiss: () -> Unit, onSubmit: (String, String, String) -> Unit) {
+private fun NewSupportTicketDialog(onDismiss: () -> Unit, isSubmitting: Boolean, onSubmit: (String, String, String) -> Unit) {
     var subject by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
     var ticketType by remember { mutableStateOf("support") }
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isSubmitting) onDismiss() },
         title = { Text(if (ticketType == "complaint") "Yeni şikayet" else "Yeni destek talebi") },
         text = {
             Column {
@@ -118,8 +126,8 @@ private fun NewSupportTicketDialog(onDismiss: () -> Unit, onSubmit: (String, Str
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (subject.trim().length >= 3 && body.trim().length >= 5) onSubmit(subject, body, ticketType) }) { Text("Gönder") }
+            TextButton(enabled = !isSubmitting && subject.trim().length in 3..120 && body.trim().length in 5..5000, onClick = { onSubmit(subject, body, ticketType) }) { Text(if (isSubmitting) "Gönderiliyor…" else "Gönder") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Vazgeç") } }
+        dismissButton = { TextButton(enabled = !isSubmitting, onClick = onDismiss) { Text("Vazgeç") } }
     )
 }
