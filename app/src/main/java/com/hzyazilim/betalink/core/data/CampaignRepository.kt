@@ -166,7 +166,7 @@ class CampaignRepository(context: Context) {
 
     fun createGroup(name: String, description: String, privateGroup: Boolean): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
-        val body = JSONObject().put("p_name", name.trim()).put("p_description", description.trim()).put("p_is_private", false)
+        val body = JSONObject().put("p_name", name.trim()).put("p_description", description.trim()).put("p_is_private", privateGroup)
         val (status, response) = call("/rest/v1/rpc/betalink_create_group", "POST", token, body)
         return if (status in 200..299) null else message(response)
     }
