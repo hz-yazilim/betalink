@@ -89,7 +89,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -105,6 +104,8 @@ import com.hzyazilim.betalink.ui.campaigns.CampaignBrowserScreen
 import com.hzyazilim.betalink.ui.campaigns.MyTestsHub
 import com.hzyazilim.betalink.ui.groups.GroupsScreen
 import com.hzyazilim.betalink.ui.notifications.NotificationsDialog
+import com.hzyazilim.betalink.ui.legal.LegalDocument
+import com.hzyazilim.betalink.ui.legal.LegalDocumentsDialog
 import com.hzyazilim.betalink.ui.people.PeopleScreen
 import com.hzyazilim.betalink.ui.support.SupportDialog
 import kotlinx.coroutines.CancellationException
@@ -215,12 +216,12 @@ fun BetalinkApp(
     var showSupport by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
     var showHowItWorks by remember { mutableStateOf(false) }
+    var legalDocument by remember { mutableStateOf<LegalDocument?>(null) }
     var termsAccepted by remember(currentUser.id) { mutableStateOf<Boolean?>(null) }
     var termsError by remember { mutableStateOf<String?>(null) }
     var termsAccepting by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val termsRepository = remember(context) { CampaignRepository(context) }
-    val uriHandler = LocalUriHandler.current
 
     LaunchedEffect(currentUser.id) {
         termsAccepted = null
@@ -254,6 +255,7 @@ fun BetalinkApp(
             showSupport -> showSupport = false
             showAdminPanel -> showAdminPanel = false
             showHowItWorks -> showHowItWorks = false
+            legalDocument != null -> legalDocument = null
             selectedTab != 0 -> selectedTab = 0
             else -> showExitDialog = true
         }
@@ -319,6 +321,7 @@ fun BetalinkApp(
                                         deleteMessage = deleteMessage,
                                         onAdminPanel = { showAdminPanel = true },
                                         onSupport = { showSupport = true },
+                                        onOpenLegal = { legalDocument = it },
                                         onSignOut = { scope.launch { onSignOut() } },
                                         onDeleteAccount = { scope.launch { deleteMessage = onDeleteAccount() ?: "Hesap silme işlemi tamamlandı." } }
                                     )
@@ -334,7 +337,7 @@ fun BetalinkApp(
     if (termsAccepted == false) {
         TermsAcceptanceDialog(
             error = termsError,
-            onOpenTerms = { uriHandler.openUri(CampaignRepository.TERMS_URL) },
+            onOpenTerms = { legalDocument = LegalDocument.TERMS },
             isAccepting = termsAccepting,
             onAccept = {
                 scope.launch {
@@ -396,6 +399,7 @@ fun BetalinkApp(
         )
     }
     if (showSupport) SupportDialog(onDismiss = { showSupport = false })
+    legalDocument?.let { document -> LegalDocumentsDialog(initialDocument = document, onDismiss = { legalDocument = null }) }
 }
 
 @Composable
@@ -958,12 +962,12 @@ private fun ProfileScreen(
     deleteMessage: String?,
     onAdminPanel: () -> Unit,
     onSupport: () -> Unit,
+    onOpenLegal: (LegalDocument) -> Unit,
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val uriHandler = LocalUriHandler.current
     val repository = remember(context) { CampaignRepository(context) }
     var reputation by remember { mutableIntStateOf(0) }
     var reliability by remember { mutableStateOf<TesterReliability?>(null) }
@@ -1180,13 +1184,13 @@ private fun ProfileScreen(
 
         Spacer(Modifier.height(18.dp))
         Text("YASAL BİLGİLER VE GİZLİLİK", color = Color(0xFF2EE6A8), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
-        TextButton(onClick = { uriHandler.openUri(CampaignRepository.TERMS_URL) }, modifier = Modifier.fillMaxWidth()) {
+        TextButton(onClick = { onOpenLegal(LegalDocument.TERMS) }, modifier = Modifier.fillMaxWidth()) {
             Text("Kullanım koşulları ve topluluk kuralları", color = Color(0xFF8B8CFF))
         }
-        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/privacy") }, modifier = Modifier.fillMaxWidth()) {
+        TextButton(onClick = { onOpenLegal(LegalDocument.PRIVACY) }, modifier = Modifier.fillMaxWidth()) {
             Text("Gizlilik politikası ve KVKK", color = Color(0xFF8B8CFF))
         }
-        TextButton(onClick = { uriHandler.openUri("https://lwloymjcnmzobjmgvlnp.supabase.co/functions/v1/legal-pages/account-deletion") }, modifier = Modifier.fillMaxWidth()) {
+        TextButton(onClick = { onOpenLegal(LegalDocument.ACCOUNT_DELETION) }, modifier = Modifier.fillMaxWidth()) {
             Text("Hesap ve veri silme sayfası", color = Color(0xFF8B8CFF))
         }
     }
