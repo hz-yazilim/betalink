@@ -480,21 +480,9 @@ private fun HomeScreen(
             lineHeight = 22.sp
         )
 
-        // Chips
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ChipWidget("🔥  7 gün seri")
-            ChipWidget("⭐  4.9 puan")
-            ChipWidget("👥  12.4K tester")
-        }
-
-        Spacer(Modifier.height(6.dp))
-
         // Beta Puan Card
         BetaPuanCard(
-            balance = wallet?.balance ?: 99970,
+            balance = wallet?.balance ?: 0,
             completedTests = wallet?.completedSupportTests ?: 0,
             onEarnPoints = onExplore,
             onHowItWorks = onHowItWorks
@@ -502,39 +490,6 @@ private fun HomeScreen(
 
         // Keşfet Card
         KesfetCard(onExplore = onExplore)
-
-        Spacer(Modifier.height(10.dp))
-
-        // Bugün senin için Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Bugün senin için",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White
-            )
-            TextButton(onClick = onExplore) {
-                Text("Tümü →", color = Color(0xFF8B8CFF), fontWeight = FontWeight.Bold)
-            }
-        }
-
-        // Horizontal Cards List
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            item { TestCardWidget("Nova", "Sosyal • iOS", "+25 BP", "2 gün kaldı", Color(0xFF8B8CFF), "N", onJoin = onExplore) }
-            item { TestCardWidget("FitTrack", "Sağlık • Android", "+25 BP", "5 gün kaldı", Color(0xFF2EE6A8), "F", onJoin = onExplore) }
-            item { TestCardWidget("Pawly", "Evcil Hayvan", "+40 BP", "1 gün kaldı", Color(0xFFFF7A6B), "P", onJoin = onExplore) }
-        }
-
-        Spacer(Modifier.height(4.dp))
-
-        // Canlı Topluluk Card
-        LiveCommunityCard()
     }
 }
 
@@ -588,22 +543,6 @@ private fun TopBar(onNotifications: () -> Unit) {
             )
         }
 
-        // Level Badge
-        Box(
-            modifier = Modifier
-                .background(Color(0xFF2EE6A8).copy(alpha = 0.14f), RoundedCornerShape(20.dp))
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            Text(
-                text = "Lv. 12 • Pro Tester",
-                color = Color(0xFF2EE6A8),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Spacer(Modifier.width(10.dp))
-
         // Notification Icon with Badge
         Box {
             Box(
@@ -619,13 +558,6 @@ private fun TopBar(onNotifications: () -> Unit) {
                     tint = Color(0xFF8B8CFF)
                 )
             }
-            Box(
-                modifier = Modifier
-                    .offset(x = 30.dp, y = 8.dp)
-                    .size(9.dp)
-                    .background(Color(0xFFFF5252), CircleShape)
-                    .border(1.5.dp, Color(0xFF070B18), CircleShape)
-            )
         }
     }
 }
@@ -688,25 +620,6 @@ private fun BetaPuanCard(
                     )
                 }
 
-                // Halka Progress
-                Box(
-                    modifier = Modifier.size(64.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        progress = { 0.78f },
-                        modifier = Modifier.fillMaxSize(),
-                        color = Color(0xFF8B8CFF),
-                        strokeWidth = 7.dp,
-                        trackColor = Color.White.copy(alpha = 0.08f)
-                    )
-                    Text(
-                        text = "%78",
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
-                        fontSize = 14.sp
-                    )
-                }
             }
 
             Spacer(Modifier.height(4.dp))
