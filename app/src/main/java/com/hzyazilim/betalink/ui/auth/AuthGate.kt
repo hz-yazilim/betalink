@@ -445,15 +445,14 @@ private fun AuthScreen(
                             onClick = {
                                 if (busy) return@Button
                                 val emailValid = isPasswordRecovery || android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()
-                                val strongPassword = password.length >= 12 && password.any(Char::isUpperCase) &&
-                                    password.any(Char::isLowerCase) && password.any(Char::isDigit) &&
-                                    password.any { !it.isLetterOrDigit() }
-                                val passwordValid = if (isSignUp || isPasswordRecovery) strongPassword else password.isNotBlank()
+                                val passwordValid = if (isSignUp || isPasswordRecovery) {
+                                    com.hzyazilim.betalink.core.auth.PasswordPolicy.isValid(password)
+                                } else password.isNotBlank()
                                 if (!emailValid || !passwordValid || (isSignUp && name.isBlank()) ||
                                     (isPasswordRecovery && password != confirmPassword)) {
                                     message = when {
                                         isPasswordRecovery && password != confirmPassword -> "Yazdığın iki şifre birbiriyle aynı değil."
-                                        isSignUp || isPasswordRecovery -> "Şifre en az 12 karakter; büyük/küçük harf, rakam ve özel karakter içermeli."
+                                        isSignUp || isPasswordRecovery -> com.hzyazilim.betalink.core.auth.PasswordPolicy.ERROR_MESSAGE
                                         else -> "Geçerli e-posta adresini ve şifreni gir."
                                     }
                                     messageIsSuccess = false
