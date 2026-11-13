@@ -88,7 +88,8 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
         )
         message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
         if (loading) CircularProgressIndicator(Modifier.padding(24.dp))
-        else if (groups.isEmpty()) Text("Henüz grup yok. İlk tester grubunu sen oluşturabilirsin.", modifier = Modifier.padding(top = 18.dp))
+        else if (groups.isEmpty() && message == null) Text("Henüz grup yok. İlk tester grubunu sen oluşturabilirsin.", modifier = Modifier.padding(top = 18.dp))
+        else if (groups.isEmpty()) TextButton(onClick = { refresh++ }) { Text("Gruplar yüklenemedi · Tekrar dene") }
         else Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 14.dp)) {
             groups.filter { it.name.contains(groupSearch, ignoreCase = true) || it.description.contains(groupSearch, ignoreCase = true) }.forEach { group ->
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
