@@ -1170,7 +1170,7 @@ private fun ProfileScreen(
                     fontSize = 13.sp
                 )
                 LinearProgressIndicator(
-                    progress = { levelProgress / 100f },
+                    progress = levelProgress / 100f,
                     modifier = Modifier.fillMaxWidth().height(7.dp),
                     color = Color(0xFF2EE6A8),
                     trackColor = Color(0xFF26324D)
@@ -1185,17 +1185,12 @@ private fun ProfileScreen(
                 if (earnedBadges.isEmpty()) {
                     Text("İlk testini tamamladığında ilk rozetin burada görünecek.", color = Color(0xFF9AA3B8), fontSize = 11.sp)
                 } else {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        earnedBadges.forEach { badge ->
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = Color(0xFF2EE6A8).copy(alpha = 0.12f),
-                                border = BorderStroke(1.dp, Color(0xFF2EE6A8).copy(alpha = 0.3f))
-                            ) {
-                                Text(badge, color = Color(0xFF2EE6A8), fontSize = 10.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
-                            }
-                        }
-                    }
+                    Text(
+                        earnedBadges.joinToString("  •  "),
+                        color = Color(0xFF2EE6A8),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
                 Text(
                     "Seviye ve rozetler yalnızca sunucudan gelen tamamlanmış test ve katılım kayıtlarına göre hesaplanır.",
