@@ -371,7 +371,7 @@ private fun BetalinkBottomNav(selectedTab: Int, onTabSelected: (Int) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, bottom = 16.dp)
+            .padding(start = 12.dp, end = 12.dp, bottom = 24.dp)
     ) {
         Surface(
             shape = RoundedCornerShape(28.dp),
