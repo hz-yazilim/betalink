@@ -47,6 +47,7 @@ import com.hzyazilim.betalink.core.auth.SupabaseAuthRepository
 import com.hzyazilim.betalink.core.auth.SessionRestoreResult
 import com.hzyazilim.betalink.core.data.CampaignRepository
 import com.hzyazilim.betalink.core.admin.AdminApiRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -72,9 +73,11 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
         }
         // A temporary network outage must not erase the encrypted refresh token
         // or force the user to sign in again.
-        val result = runCatching {
+        val result = try {
             withContext(Dispatchers.IO) { repository.restoreSession() }
-        }.getOrElse {
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
             SessionRestoreResult(
                 message = "Oturum kontrol edilemedi. İnternet bağlantını kontrol edip tekrar dene.",
                 retryable = true
@@ -102,12 +105,20 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
         if (user != null) {
             // These are background profile/permission checks. A transient API or
             // JSON parsing error should not crash the signed-in application.
-            runCatching {
+            try {
                 withContext(Dispatchers.IO) { CampaignRepository(context).syncTesterDevice() }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Device profile sync is non-blocking; continue to the app.
             }
-            isAdmin = runCatching {
+            isAdmin = try {
                 withContext(Dispatchers.IO) { AdminApiRepository(context).isAdmin() }
-            }.getOrDefault(false)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                false
+            }
         } else isAdmin = false
     }
     if (checking) {
@@ -198,6 +209,8 @@ private fun AuthScreen(
                         message = null
                         val authResult = try {
                             onGoogleSignIn(token)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
                         } catch (_: Exception) {
                             com.hzyazilim.betalink.core.auth.AuthResult(message = "Google girişi tamamlanamadı. İnternet bağlantını kontrol edip tekrar dene.")
                         } finally {
@@ -248,6 +261,8 @@ private fun AuthScreen(
                             message = null
                             val result = try {
                                 if (isSignUp) onSignUp(name, email, password) else onSignIn(email, password)
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
                             } catch (_: Exception) {
                                 com.hzyazilim.betalink.core.auth.AuthResult(message = "İşlem tamamlanamadı. İnternet bağlantını kontrol edip tekrar dene.")
                             } finally {
@@ -274,6 +289,8 @@ private fun AuthScreen(
                             busy = true
                             val result = try {
                                 onResendConfirmation(email)
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
                             } catch (_: Exception) {
                                 com.hzyazilim.betalink.core.auth.AuthResult(message = "E-posta gönderilemedi. İnternet bağlantını kontrol edip tekrar dene.")
                             } finally {
