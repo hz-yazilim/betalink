@@ -79,10 +79,7 @@ fun PeopleScreen(inviteToken: String? = null) {
     }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
-        Spacer(Modifier.height(18.dp))
-        Text("TOPLULUK", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
-        Text("Toplum", style = MaterialTheme.typography.headlineSmall)
-        Text("Betalink'e kayıtlı kişileri keşfet, gruplarına davet gönder ve gelen davetleri yönet.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        Spacer(Modifier.height(6.dp))
         message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
 
         if (loading) {
