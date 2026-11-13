@@ -141,7 +141,7 @@ class SupabaseAuthRepository(context: Context) {
     fun signUp(email: String, password: String, displayName: String): AuthResult {
         val normalizedEmail = canonicalGmail(email)
             ?: return AuthResult(message = "Kayıt için geçerli bir @gmail.com adresi kullanmalısın. Nokta ve +etiket varyasyonları aynı Gmail hesabı olarak kabul edilir.")
-        if (password.length < 8) return AuthResult(message = "Şifren en az 8 karakter olmalı.")
+        if (!isStrongPassword(password)) return AuthResult(message = "Şifre en az 12 karakter; büyük/küçük harf, rakam ve özel karakter içermeli.")
         val metadata = JSONObject().put("display_name", displayName.trim())
         val body = JSONObject()
             .put("email", normalizedEmail)
@@ -205,6 +205,28 @@ class SupabaseAuthRepository(context: Context) {
             AuthResult(message = errorMessage(response.second))
         }
     }
+
+    fun isPasswordRecovery(callbackUri: String): Boolean {
+        val uri = Uri.parse(callbackUri)
+        val params = Uri.parse("https://callback.invalid/?${uri.fragment.orEmpty()}")
+        return params.getQueryParameter("type") == "recovery"
+    }
+
+    fun updatePassword(newPassword: String): AuthResult {
+        if (!isStrongPassword(newPassword)) return AuthResult(message = "Şifre en az 12 karakter; büyük/küçük harf, rakam ve özel karakter içermeli.")
+        val saved = sessions.read() ?: return AuthResult(message = "Şifre sıfırlama oturumu bulunamadı. Yeni bağlantı iste.")
+        val response = request("/auth/v1/user", "PUT", JSONObject().put("password", newPassword), saved.first)
+        if (response.first !in 200..299) return AuthResult(message = errorMessage(response.second))
+        val user = runCatching { parseUser(JSONObject(response.second)) }.getOrNull()
+        if (user != null) return AuthResult(user = user)
+        val verified = request("/auth/v1/user", "GET", token = saved.first)
+        return if (verified.first in 200..299) AuthResult(user = parseUser(JSONObject(verified.second)))
+        else AuthResult(message = "Şifre güncellendi ancak oturum doğrulanamadı. Yeniden giriş yap.")
+    }
+
+    private fun isStrongPassword(password: String): Boolean =
+        password.length >= 12 && password.any(Char::isUpperCase) && password.any(Char::isLowerCase) &&
+            password.any(Char::isDigit) && password.any { !it.isLetterOrDigit() }
 
     fun sendPasswordReset(email: String): AuthResult {
         val normalizedEmail = canonicalGmail(email)
