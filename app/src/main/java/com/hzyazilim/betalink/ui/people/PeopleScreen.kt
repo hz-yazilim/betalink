@@ -64,7 +64,7 @@ fun PeopleScreen(inviteToken: String? = null) {
     var message by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
 
-    LaunchedEffect(refresh) {
+    LaunchedEffect(refresh, inviteToken) {
         loading = true
         val directory = withContext(Dispatchers.IO) { repository.listPeople(0) }
         val inbox = withContext(Dispatchers.IO) { repository.listIncomingGroupInvitations(inviteToken) }
@@ -164,8 +164,10 @@ fun PeopleScreen(inviteToken: String? = null) {
                             busy = true
                             val next = withContext(Dispatchers.IO) { repository.listPeople(people.size) }
                             message = next.second
-                            people = people + next.first
-                            canLoadMore = next.first.size == 50
+                            if (next.second == null) {
+                                people = people + next.first
+                                canLoadMore = next.first.size == 50
+                            }
                             busy = false
                         }
                     }, modifier = Modifier.fillMaxWidth()) { Text("Daha fazla kişi yükle") }
