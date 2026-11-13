@@ -129,14 +129,23 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
                                 }) { Text("14 günlük test süreci ve tester e-postaları") }
                             }
                             "pending" -> Text("Katılım isteğin bekliyor", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
-                            else -> Button(onClick = {
-                                scope.launch {
-                                    val error = withContext(Dispatchers.IO) { repository.joinGroup(group) }
-                                    message = error ?: "Gruba katıldın."
-                                    if (error == null) refresh++
+                            else -> if (group.isPrivate) {
+                                Text(
+                                    "Bu özel gruba yalnızca gelen daveti kabul ederek katılabilirsin.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+                            } else {
+                                Button(onClick = {
+                                    scope.launch {
+                                        val error = withContext(Dispatchers.IO) { repository.joinGroup(group) }
+                                        message = error ?: "Gruba katıldın."
+                                        if (error == null) refresh++
+                                    }
+                                }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                                    Text("Gruba katıl · 5 BP")
                                 }
-                            }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                                Text("Gruba katıl · 5 BP")
                             }
                         }
                     }
@@ -327,8 +336,8 @@ private fun CreateGroupDialog(
         title = { Text("Yeni tester grubu") },
         text = {
             Column {
-                OutlinedTextField(name, { name = it }, label = { Text("Grup adı") }, singleLine = true)
-                OutlinedTextField(description, { description = it }, label = { Text("Açıklama") }, minLines = 2)
+                OutlinedTextField(name, { name = it.take(80) }, label = { Text("Grup adı") }, singleLine = true)
+                OutlinedTextField(description, { description = it.take(1000) }, label = { Text("Açıklama") }, minLines = 2)
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Checkbox(checked = isPrivate, onCheckedChange = { isPrivate = it })
                     Column(Modifier.padding(top = 6.dp)) {
