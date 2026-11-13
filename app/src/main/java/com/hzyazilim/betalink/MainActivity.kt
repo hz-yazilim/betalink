@@ -272,21 +272,21 @@ fun BetalinkApp(
                                 onNotifications = { showNotifications = true },
                                 onHowItWorks = { showHowItWorks = true }
                             )
-                            1 -> BuildTestBulScreen(onExploreMore = {})
+                            1 -> BuildTestBulScreen()
                             2 -> BuildSimplePageScreen(
                                 title = "Gruplar",
-                                desc = "Katıldığın ve keşfedebileceğin tester grupları burada listelenecek.",
+                                desc = "Tester gruplarını keşfet, katılım isteklerini yönet ve 14 günlük test sürecini takip et.",
                                 content = { GroupsScreen(onOpenCommunity = { selectedTab = 3 }) }
                             )
                             3 -> BuildSimplePageScreen(
                                 title = "Toplum",
-                                desc = "Topluluk gönderileri, duyurular ve tartışmalar burada olacak.",
+                                desc = "Kayıtlı kullanıcıları keşfet, grup davetleri gönder ve gelen davetleri yönet.",
                                 content = { PeopleScreen(inviteToken = initialInviteToken) }
                             )
                             4 -> BuildTestlerimScreen()
                             else -> BuildSimplePageScreen(
                                 title = "Profil",
-                                desc = "Profilin, rozetlerin ve ayarların burada olacak.",
+                                desc = "Profil bilgilerini, tester güvenilirliğini, gizlilik tercihlerini ve hesap ayarlarını yönet.",
                                 content = {
                                     ProfileScreen(
                                         currentUser = currentUser,
@@ -1038,7 +1038,7 @@ private fun MiniAvatar(offsetX: androidx.compose.ui.unit.Dp, bg: Color, text: St
 
 // ---------- DİĞER SEKMELER ----------
 @Composable
-private fun BuildTestBulScreen(onExploreMore: () -> Unit) {
+private fun BuildTestBulScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1057,24 +1057,6 @@ private fun BuildTestBulScreen(onExploreMore: () -> Unit) {
             fontSize = 14.sp
         )
         Spacer(Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            ChipWidget("Tümü")
-            ChipWidget("Android")
-            ChipWidget("iOS")
-            ChipWidget("+25 BP")
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        TestCardFullWidget("Nova - Sosyal Uygulama", "+25 BP • 2 gün kaldı", 'N', Color(0xFF8B8CFF))
-        TestCardFullWidget("FitTrack - Sağlık", "+25 BP • 5 gün kaldı", 'F', Color(0xFF2EE6A8))
-        TestCardFullWidget("Pawly - Evcil Hayvan", "+40 BP • 1 gün kaldı", 'P', Color(0xFFFF7A6B))
-
-        Spacer(Modifier.height(8.dp))
 
         // CampaignBrowserScreen owns its own vertical scrolling; keep it bounded.
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -1153,12 +1135,6 @@ private fun BuildTestlerimScreen() {
         )
         Spacer(Modifier.height(16.dp))
 
-        ProgressRowWidget("Nova", 0.8f, "8/10 görev")
-        ProgressRowWidget("FitTrack", 0.45f, "Geri bildirim bekleniyor")
-        ProgressRowWidget("Pawly", 0.2f, "Yeni katıldın")
-
-        Spacer(Modifier.height(8.dp))
-
         // DeveloperCampaignsScreen owns a LazyColumn. Give it a bounded viewport;
         // wrapping it in this screen's verticalScroll caused Compose to measure it
         // with infinite height constraints and crash when opening Testlerim.
@@ -1236,21 +1212,6 @@ private fun BuildSimplePageScreen(
             fontSize = 14.sp
         )
         Spacer(Modifier.height(12.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF141B33), RoundedCornerShape(22.dp))
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Bu ekranı senin verinle canlı olarak dolduruyoruz:",
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 13.sp
-            )
-        }
-
-        Spacer(Modifier.height(8.dp))
 
         // Child screens manage their own scrolling (PeopleScreen uses LazyColumn).
         // Keep them inside a finite-height viewport to avoid nested-scroll crashes.
