@@ -62,7 +62,8 @@ fun SupportDialog(onDismiss: () -> Unit) {
                 message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
                 Button(onClick = { showNewTicket = true }, enabled = !submitting, modifier = Modifier.fillMaxWidth()) { Text("Yeni destek talebi / şikayet") }
                 if (loading) CircularProgressIndicator()
-                else if (tickets.isEmpty()) Text("Henüz destek talebin yok.", modifier = Modifier.padding(top = 10.dp))
+                else if (tickets.isEmpty() && message == null) Text("Henüz destek talebin yok.", modifier = Modifier.padding(top = 10.dp))
+                else if (tickets.isEmpty()) TextButton(onClick = { refresh++ }) { Text("Talepler yüklenemedi · Tekrar dene") }
                 else LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(tickets, key = { it.id }) { ticket ->
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
