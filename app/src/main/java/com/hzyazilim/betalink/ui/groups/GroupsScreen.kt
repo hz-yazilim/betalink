@@ -94,7 +94,7 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                     Column(Modifier.padding(15.dp)) {
                         Text(group.name, style = MaterialTheme.typography.titleMedium)
-                        Text("Herkese açık grup", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                        Text(if (group.isPrivate) "Özel grup · yalnızca davetle" else "Herkese açık grup", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
                         if (group.description.isNotBlank()) Text(group.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
                         if (group.isCreator) {
                             Row {
@@ -301,7 +301,7 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
             onDismiss = { showCreate = false },
             onCreate = { name, description, _ ->
                 scope.launch {
-                    val error = withContext(Dispatchers.IO) { repository.createGroup(name, description, false) }
+                    val error = withContext(Dispatchers.IO) { repository.createGroup(name, description, isPrivate) }
                     message = error ?: "Grubun oluşturuldu."
                     if (error == null) {
                         showCreate = false
@@ -320,6 +320,7 @@ private fun CreateGroupDialog(
 ) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+    var isPrivate by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Yeni tester grubu") },
@@ -327,10 +328,17 @@ private fun CreateGroupDialog(
             Column {
                 OutlinedTextField(name, { name = it }, label = { Text("Grup adı") }, singleLine = true)
                 OutlinedTextField(description, { description = it }, label = { Text("Açıklama") }, minLines = 2)
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Checkbox(checked = isPrivate, onCheckedChange = { isPrivate = it })
+                    Column(Modifier.padding(top = 6.dp)) {
+                        Text("Özel grup", fontSize = 13.sp)
+                        Text("Yalnızca davet gönderdiğin kişiler katılabilir.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (name.trim().length >= 2) onCreate(name, description, false) }) { Text("Oluştur") }
+            TextButton(onClick = { if (name.trim().length >= 2) onCreate(name, description, isPrivate) }) { Text("Oluştur") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Vazgeç") } }
     )
