@@ -413,12 +413,16 @@ class CampaignRepository(context: Context) {
     }
 
     fun sendFeedback(campaignId: String, bodyText: String, rating: Int): String? {
+        val cleanBody = bodyText.trim()
+        if (campaignId.isBlank()) return "Kampanya bilgisi bulunamadı."
+        if (cleanBody.length !in 5..5000) return "Geri bildirimin 5-5000 karakter olmalı."
+        if (rating !in 1..5) return "Puan 1-5 arasında olmalı."
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
         val body = JSONObject().put("campaign_id", campaignId).put("tester_id", userId)
-            .put("feedback_type", "experience").put("rating", rating).put("body", bodyText.trim())
+            .put("feedback_type", "experience").put("rating", rating).put("body", cleanBody)
         val (status, response) = call("/rest/v1/feedback", "POST", token, body)
         return if (status in 200..299) null else message(response)
     }
@@ -641,6 +645,7 @@ class CampaignRepository(context: Context) {
     }
 
     fun checkInToday(campaignId: String): String? {
+        if (campaignId.isBlank()) return "Kampanya bilgisi bulunamadı."
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return "Oturum doğrulanamadı."
@@ -652,7 +657,9 @@ class CampaignRepository(context: Context) {
         val body = JSONObject().put("campaign_id", campaignId).put("tester_id", userId)
             .put("note", "Uygulama içi günlük test onayı")
         val (status, response) = call("/rest/v1/campaign_daily_checkins", "POST", token, body)
-        return if (status in 200..299) null else message(response)
+        if (status in 200..299) return null
+        val errorCode = runCatching { JSONObject(response).optString("code") }.getOrDefault("")
+        return if (errorCode == "23505") null else message(response)
     }
 
     fun groupCheckinDates(groupId: String): Pair<Set<String>, String?> {
