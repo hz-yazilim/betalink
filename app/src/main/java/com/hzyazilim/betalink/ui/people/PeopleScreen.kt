@@ -80,7 +80,10 @@ fun PeopleScreen(inviteToken: String? = null) {
 
     Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         Spacer(Modifier.height(6.dp))
-        message?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
+        message?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            TextButton(onClick = { refresh++ }) { Text("Yeniden dene") }
+        }
 
         if (loading) {
             CircularProgressIndicator(Modifier.padding(24.dp))
