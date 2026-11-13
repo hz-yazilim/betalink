@@ -38,6 +38,7 @@ fun NotificationsDialog(onDismiss: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
+    var updatingNotificationId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(refresh) {
         loading = true
@@ -63,13 +64,19 @@ fun NotificationsDialog(onDismiss: () -> Unit) {
                             Row {
                                 Text(if (notification.read) "Okundu" else "Yeni", color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp, modifier = Modifier.padding(top = 8.dp))
                                 if (!notification.read) {
-                                    TextButton(onClick = {
+                                    TextButton(enabled = updatingNotificationId == null, onClick = {
                                         scope.launch {
-                                            val error = withContext(Dispatchers.IO) { repository.markNotificationRead(notification.id) }
-                                            message = error
-                                            if (error == null) refresh++
+                                            if (updatingNotificationId != null) return@launch
+                                            updatingNotificationId = notification.id
+                                            try {
+                                                val error = withContext(Dispatchers.IO) { repository.markNotificationRead(notification.id) }
+                                                message = error
+                                                if (error == null) refresh++
+                                            } finally {
+                                                updatingNotificationId = null
+                                            }
                                         }
-                                    }) { Text("Okundu işaretle") }
+                                    }) { Text(if (updatingNotificationId == notification.id) "Kaydediliyor…" else "Okundu işaretle") }
                                 }
                             }
                         }
