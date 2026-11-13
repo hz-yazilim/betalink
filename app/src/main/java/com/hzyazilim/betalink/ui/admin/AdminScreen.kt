@@ -48,6 +48,7 @@ fun AdminScreen(onClose: () -> Unit) {
     var dashboard by remember { mutableStateOf<AdminDashboard?>(null) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
+    var pointActionBusy by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     var showAnnouncement by remember { mutableStateOf(false) }
     var bpAmount by remember { mutableStateOf("25") }
@@ -102,11 +103,17 @@ fun AdminScreen(onClose: () -> Unit) {
                 val amount = bpAmount.toIntOrNull()
                 if (amount == null || amount == 0 || bpReason.trim().length < 3) message = "Puan miktarı ve açıklamayı kontrol et."
                 else scope.launch {
-                    val error = withContext(Dispatchers.IO) { if (pointType == "bp") repository.adjustBp(data.usersList.map { it.id }, amount, bpReason) else repository.adjustReputation(data.usersList.map { it.id }, amount, bpReason) }
-                    message = error ?: data.usersList.size.toString() + if (pointType == "bp") " kullanıcının BetaPuan bakiyesi güncellendi." else " kullanıcının itibar puanı güncellendi."
-                    if (error == null) refresh++
+                    if (pointActionBusy) return@launch
+                    pointActionBusy = true
+                    try {
+                        val error = withContext(Dispatchers.IO) { if (pointType == "bp") repository.adjustBp(data.usersList.map { it.id }, amount, bpReason) else repository.adjustReputation(data.usersList.map { it.id }, amount, bpReason) }
+                        message = error ?: data.usersList.size.toString() + if (pointType == "bp") " kullanıcının BetaPuan bakiyesi güncellendi." else " kullanıcının itibar puanı güncellendi."
+                        if (error == null) refresh++
+                    } finally {
+                        pointActionBusy = false
+                    }
                 }
-            }, enabled = data.usersList.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Tüm kullanıcılara uygula") }
+            }, enabled = data.usersList.isNotEmpty() && !pointActionBusy, modifier = Modifier.fillMaxWidth()) { Text(if (pointActionBusy) "İşleniyor…" else "Tüm kullanıcılara uygula") }
             if (data.usersList.isEmpty()) Text("Henüz kayıtlı kullanıcı yok.")
             else data.usersList.forEach { target ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -114,15 +121,21 @@ fun AdminScreen(onClose: () -> Unit) {
                         Text(target.displayName.ifBlank { "Kullanıcı" }, style = MaterialTheme.typography.bodyMedium)
                         Text(target.email.ifBlank { "E-posta bilgisi alınamadı" }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
-                    TextButton(onClick = {
+                    TextButton(enabled = !pointActionBusy, onClick = {
                         val amount = bpAmount.toIntOrNull()
                         if (amount == null || amount == 0 || bpReason.trim().length < 3) message = "Puan miktarı ve açıklamayı kontrol et."
                         else scope.launch {
-                            val error = withContext(Dispatchers.IO) { if (pointType == "bp") repository.adjustBp(listOf(target.id), amount, bpReason) else repository.adjustReputation(listOf(target.id), amount, bpReason) }
-                            message = error ?: target.displayName + " için " + if (pointType == "bp") "BetaPuan güncellendi." else "itibar puanı güncellendi."
-                            if (error == null) refresh++
+                            if (pointActionBusy) return@launch
+                            pointActionBusy = true
+                            try {
+                                val error = withContext(Dispatchers.IO) { if (pointType == "bp") repository.adjustBp(listOf(target.id), amount, bpReason) else repository.adjustReputation(listOf(target.id), amount, bpReason) }
+                                message = error ?: target.displayName + " için " + if (pointType == "bp") "BetaPuan güncellendi." else "itibar puanı güncellendi."
+                                if (error == null) refresh++
+                            } finally {
+                                pointActionBusy = false
+                            }
                         }
-                    }) { Text("Uygula") }
+                    }) { Text(if (pointActionBusy) "İşleniyor…" else "Uygula") }
                     TextButton(onClick = { selectedDeleteUser = target }) { Text("Kullanıcıyı sil", color = MaterialTheme.colorScheme.error) }
                 }
             }
