@@ -281,6 +281,7 @@ private fun CampaignTaskDialog(
     var tracking by remember { mutableStateOf<CampaignTracking?>(null) }
     var loading by remember { mutableStateOf(true) }
     var feedback by remember { mutableStateOf("") }
+    var feedbackSubmitting by remember { mutableStateOf(false) }
     var rating by remember { mutableStateOf(5) }
     LaunchedEffect(campaign.id) {
         val result = withContext(Dispatchers.IO) { repository.tasksForCampaign(campaign.id) }
@@ -321,7 +322,7 @@ private fun CampaignTaskDialog(
                     }
                     item {
                         Text("Genel geri bildirimin", style = MaterialTheme.typography.titleSmall)
-                        OutlinedTextField(feedback, { feedback = it }, label = { Text("Deneyimini ve sorunları yaz") }, minLines = 3)
+                        OutlinedTextField(feedback, { feedback = it.take(5000) }, label = { Text("Deneyimini ve sorunları yaz") }, minLines = 3, enabled = !feedbackSubmitting)
                         Text("Puan: $rating / 5")
                         Row {
                             (1..5).forEach { score ->
@@ -331,14 +332,20 @@ private fun CampaignTaskDialog(
                         Button(
                             onClick = {
                                 scope.launch {
-                                    val error = withContext(Dispatchers.IO) { repository.sendFeedback(campaign.id, feedback, rating) }
-                                    onMessage(error ?: "Geri bildirimin geliştiriciye iletildi.")
-                                    if (error == null) feedback = ""
+                                    if (feedbackSubmitting) return@launch
+                                    feedbackSubmitting = true
+                                    try {
+                                        val error = withContext(Dispatchers.IO) { repository.sendFeedback(campaign.id, feedback, rating) }
+                                        onMessage(error ?: "Geri bildirimin geliştiriciye iletildi.")
+                                        if (error == null) feedback = ""
+                                    } finally {
+                                        feedbackSubmitting = false
+                                    }
                                 }
                             },
-                            enabled = feedback.trim().length >= 5,
+                            enabled = !feedbackSubmitting && feedback.trim().length in 5..5000,
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("Geri bildirimi gönder") }
+                        ) { Text(if (feedbackSubmitting) "Gönderiliyor…" else "Geri bildirimi gönder") }
                     }
                 }
             }
