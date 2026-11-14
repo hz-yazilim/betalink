@@ -1038,6 +1038,19 @@ class CampaignRepository(context: Context) {
         return (BuildConfig.SUPABASE_URL + "/storage/v1/object/public/profile-avatars/$objectPath") to null
     }
 
+    fun deleteOwnProfileAvatar(avatarUrl: String) {
+        if (avatarUrl.isBlank()) return
+        val token = sessions.read()?.first ?: return
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return
+        val userId = JSONObject(user.second).optString("id")
+        val publicPrefix = BuildConfig.SUPABASE_URL + "/storage/v1/object/public/profile-avatars/"
+        if (!avatarUrl.startsWith(publicPrefix)) return
+        val objectPath = avatarUrl.removePrefix(publicPrefix)
+        if (!objectPath.startsWith("$userId/")) return
+        call("/storage/v1/object/profile-avatars/$objectPath", "DELETE", token)
+    }
+
     fun saveMyProfile(displayName: String, bio: String, avatarUrl: String, contactEmail: String, showPublicEmail: Boolean): String? {
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
