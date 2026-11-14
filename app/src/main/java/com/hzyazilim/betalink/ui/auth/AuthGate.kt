@@ -44,6 +44,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.GoogleApiClient
+import com.google.android.gms.tasks.Tasks
+import java.util.concurrent.TimeUnit
 import com.hzyazilim.betalink.BuildConfig
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -194,7 +197,16 @@ fun AuthGate(initialInviteToken: String? = null, authCallbackUri: String? = null
             openPeopleInitially = !initialInviteToken.isNullOrBlank(),
             initialInviteToken = initialInviteToken,
             onSignOut = {
-                withContext(Dispatchers.IO) { repository.signOut() }
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                            .requestEmail()
+                            .requestIdToken(BuildConfig.GOOGLE_WEB_CLIENT_ID)
+                            .build()
+                        Tasks.await(GoogleSignIn.getClient(context, options).signOut(), 10, TimeUnit.SECONDS)
+                    }
+                    repository.signOut()
+                }
                 user = null
             },
             onDeleteAccount = {
@@ -517,7 +529,11 @@ private fun AuthScreen(
                                 } else {
                                     val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                                         .requestEmail().requestIdToken(googleClientId).build()
-                                    googleLauncher.launch(GoogleSignIn.getClient(context, options).signInIntent)
+                                    val googleClient = GoogleSignIn.getClient(context, options)
+                                    // Clear the previous cached account so Google shows account selection.
+                                    googleClient.signOut().addOnCompleteListener {
+                                        googleLauncher.launch(googleClient.signInIntent)
+                                    }
                                 }
                             },
                             enabled = !busy,
