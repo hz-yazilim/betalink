@@ -1153,7 +1153,7 @@ private fun ProfileScreen(
                 profileMessage?.let {
                     Text(
                         text = it,
-                        color = if (it == "Profilin kaydedildi.") Color(0xFF2EE6A8) else MaterialTheme.colorScheme.error,
+                        color = if (it == "Profilin kaydedildi." || it == "Profil fotoğrafın kaydedildi.") Color(0xFF2EE6A8) else MaterialTheme.colorScheme.error,
                         fontSize = 11.sp
                     )
                 }
