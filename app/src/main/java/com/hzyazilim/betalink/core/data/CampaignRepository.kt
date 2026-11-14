@@ -35,6 +35,7 @@ data class TesterReliability(val testsJoined: Int, val testsCompleted: Int, val 
 data class CampaignReport(val activeTesters: Int, val backupTesters: Int, val droppedTesters: Int, val totalCheckins: Int, val feedbackCount: Int, val averageRating: Double?, val bugReports: Int, val suggestions: Int, val acceptedTesters: Int)
 data class FeedbackSummary(val feedbackCount: Int, val averageRating: Double?, val bugs: Int, val experiences: Int, val suggestions: Int, val resolved: Int)
 data class BugReport(val id: String, val reporterId: String, val description: String, val deviceModel: String, val androidVersion: String, val appVersion: String, val attachmentUrl: String?, val status: String, val createdAt: String)
+data class CommunityPost(val id: String, val authorId: String, val authorName: String, val body: String, val createdAt: String)
 
 data class Campaign(
     val id: String,
@@ -598,6 +599,39 @@ class CampaignRepository(context: Context) {
         val row = try { JSONArray(body).optJSONObject(0) } catch (_: Exception) { null }
             ?: return null to "BetaPuan bakiyesi okunamadı."
         return BetaWallet(row.optInt("balance"), row.optInt("lifetime_earned"), row.optInt("completed_support_tests")) to null
+    }
+
+    fun listCommunityPosts(): Pair<List<CommunityPost>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<CommunityPost>() to "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/community_posts?select=id,author_id,body,created_at,profiles(display_name)&order=created_at.desc&limit=30",
+            "GET", token
+        )
+        if (status !in 200..299) return emptyList<CommunityPost>() to message(body)
+        val rows = JSONArray(body)
+        return (0 until rows.length()).map { i ->
+            val row = rows.getJSONObject(i)
+            val profile = row.optJSONObject("profiles") ?: JSONObject()
+            CommunityPost(
+                row.optString("id"), row.optString("author_id"),
+                profile.optString("display_name").ifBlank { "Betalink kullanıcısı" },
+                row.optString("body"), row.optString("created_at")
+            )
+        } to null
+    }
+
+    fun createCommunityPost(bodyText: String): String? {
+        val clean = bodyText.trim()
+        if (clean.length !in 1..280) return "Paylaşımın 1-280 karakter olmalı."
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val (status, response) = call(
+            "/rest/v1/community_posts", "POST", token,
+            JSONObject().put("author_id", userId).put("body", clean)
+        )
+        return if (status in 200..299) null else message(response)
     }
 
     fun listNotifications(): Pair<List<BetalinkNotification>, String?> {
