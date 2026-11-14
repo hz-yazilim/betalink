@@ -1,7 +1,6 @@
 package com.hzyazilim.betalink.core.notifications
 
 import android.app.AlarmManager
-import android.app.BroadcastReceiver
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
