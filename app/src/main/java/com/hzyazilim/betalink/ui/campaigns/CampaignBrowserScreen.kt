@@ -65,6 +65,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
     val repository = remember { CampaignRepository(context) }
     val scope = rememberCoroutineScope()
     var campaigns by remember { mutableStateOf<List<Campaign>>(emptyList()) }
+    var analytics by remember { mutableStateOf<com.hzyazilim.betalink.core.data.DeveloperAnalytics?>(null) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
@@ -817,7 +818,9 @@ private fun DeveloperCampaignsScreen() {
         loading = true
         val result = withContext(Dispatchers.IO) { repository.myDeveloperCampaigns() }
         campaigns = result.first
-        message = result.second
+        val metrics = withContext(Dispatchers.IO) { repository.developerAnalytics() }
+        analytics = metrics.first
+        message = result.second ?: metrics.second
         loading = false
     }
 
@@ -830,6 +833,34 @@ private fun DeveloperCampaignsScreen() {
             Text("GELİŞTİRİCİ PANELİ", color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp)
             Text("Kampanyaların", style = MaterialTheme.typography.headlineSmall)
             WalletStatusCard()
+            analytics?.let { stats ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("GELİŞTİRİCİ ANALİZLERİ", color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Kampanya: ${stats.campaigns}")
+                            Text("Açık: ${stats.openCampaigns}")
+                            Text("Tamamlanan: ${stats.completedCampaigns}")
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Aktif tester katılımı: ${stats.activeTesterSlots}")
+                            Text("Tamamlanan test: ${stats.completedTests}")
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Ayrılan: ${stats.droppedTesterSlots}")
+                            Text("Geri bildirim: ${stats.feedbackCount}")
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Hata: ${stats.bugReports}")
+                            Text("Ortalama puan: ${stats.averageRating?.toString() ?: "—"}")
+                        }
+                        Text("Sayılar yalnızca kendi kampanyalarının kayıtlarından hesaplanır.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    }
+                }
+            }
             Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth()) {
                 Text("＋ Kampanya oluştur · 50 BP")
             }
