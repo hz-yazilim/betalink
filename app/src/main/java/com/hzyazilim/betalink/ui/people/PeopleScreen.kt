@@ -52,6 +52,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private val emailOnlyCommunityPost = Regex("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\\\.[A-Z]{2,}$", RegexOption.IGNORE_CASE)
+
+private fun isCommunityPostBodyAllowed(body: String): Boolean =
+    body.trim().isNotEmpty() && !emailOnlyCommunityPost.matches(body.trim())
+
 @Composable
 fun PeopleScreen(inviteToken: String? = null) {
     val context = LocalContext.current
@@ -89,7 +94,7 @@ fun PeopleScreen(inviteToken: String? = null) {
         blockedPeople = blocked.first
         val blockedIds = blocked.first.map { it.id }.toSet()
         people = directory.first.filterNot { it.id in blockedIds }
-        communityPosts = feed.first.filterNot { it.authorId in blockedIds }
+        communityPosts = feed.first.filter { it.authorId !in blockedIds && isCommunityPostBodyAllowed(it.body) }
         canLoadMore = directory.first.size == 50
         invitations = inbox.first
         myGroups = groups.first.filter { it.isCreator }
@@ -136,7 +141,7 @@ fun PeopleScreen(inviteToken: String? = null) {
                                             message = error ?: "Paylaşımın yayınlandı."
                                             if (error == null) {
                                                 newPostText = ""
-                                                communityPosts = withContext(Dispatchers.IO) { repository.listCommunityPosts() }.first
+                                                communityPosts = withContext(Dispatchers.IO) { repository.listCommunityPosts() }.first.filter { isCommunityPostBodyAllowed(it.body) }
                                             }
                                         } finally {
                                             postSubmitting = false
