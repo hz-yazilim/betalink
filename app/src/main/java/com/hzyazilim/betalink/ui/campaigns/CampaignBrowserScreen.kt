@@ -832,9 +832,13 @@ private fun DeveloperTesterReliabilityDialog(campaignId: String, testerId: Strin
 @Composable
 private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: CampaignRepository, onDismiss: () -> Unit, onMessage: (String) -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var report by remember { mutableStateOf<com.hzyazilim.betalink.core.data.CampaignReport?>(null) }
     var feedback by remember { mutableStateOf<com.hzyazilim.betalink.core.data.FeedbackSummary?>(null) }
     var bugReports by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.BugReport>>(emptyList()) }
+    var campaignMessages by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.CampaignMessage>>(emptyList()) }
+    var newCampaignMessage by remember { mutableStateOf("") }
+    var messageSending by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     LaunchedEffect(campaign.id) {
         val r = withContext(Dispatchers.IO) { repository.campaignReport(campaign.id) }
@@ -846,6 +850,9 @@ private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: Campai
         val bugs = withContext(Dispatchers.IO) { repository.bugReportsForCampaign(campaign.id) }
         bugReports = bugs.first
         bugs.second?.let(onMessage)
+        val room = withContext(Dispatchers.IO) { repository.listCampaignMessages(campaign.id) }
+        campaignMessages = room.first
+        room.second?.let(onMessage)
         loading = false
     }
     AlertDialog(
@@ -886,6 +893,43 @@ private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: Campai
                     Text("Hata bildirimi: ${it.bugs} · Öneri: ${it.suggestions}")
                     Text("Ortalama değerlendirme: ${it.averageRating?.toString() ?: "Henüz yok"}")
                 }
+                Text("KAMPANYA MESAJ ODASI", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
+                campaignMessages.takeLast(8).forEach { chat ->
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(chat.body, style = MaterialTheme.typography.bodySmall)
+                            Text(chat.createdAt.replace("T", " ").take(16), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = newCampaignMessage,
+                    onValueChange = { newCampaignMessage = it.take(1000) },
+                    label = { Text("Tester grubuna mesaj gönder") },
+                    minLines = 2,
+                    enabled = !messageSending,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(
+                    onClick = {
+                        scope.launch {
+                            if (messageSending) return@launch
+                            messageSending = true
+                            try {
+                                val error = withContext(Dispatchers.IO) { repository.sendCampaignMessage(campaign.id, newCampaignMessage) }
+                                onMessage(error ?: "Mesaj gönderildi.")
+                                if (error == null) {
+                                    newCampaignMessage = ""
+                                    campaignMessages = withContext(Dispatchers.IO) { repository.listCampaignMessages(campaign.id) }.first
+                                }
+                            } finally {
+                                messageSending = false
+                            }
+                        }
+                    },
+                    enabled = !messageSending && newCampaignMessage.trim().isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(if (messageSending) "Gönderiliyor…" else "Mesajı gönder") }
                 if (!loading && report == null) Text("Rapor verisi henüz oluşmadı.")
             }
         },
