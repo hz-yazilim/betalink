@@ -70,7 +70,6 @@ fun CampaignBrowserScreen(myTests: Boolean) {
     val repository = remember { CampaignRepository(context) }
     val scope = rememberCoroutineScope()
     var campaigns by remember { mutableStateOf<List<Campaign>>(emptyList()) }
-    var analytics by remember { mutableStateOf<com.hzyazilim.betalink.core.data.DeveloperAnalytics?>(null) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
@@ -971,6 +970,7 @@ private fun DeveloperCampaignsScreen() {
     val repository = remember { CampaignRepository(context) }
     val scope = rememberCoroutineScope()
     var campaigns by remember { mutableStateOf<List<Campaign>>(emptyList()) }
+    var analytics by remember { mutableStateOf<com.hzyazilim.betalink.core.data.DeveloperAnalytics?>(null) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
