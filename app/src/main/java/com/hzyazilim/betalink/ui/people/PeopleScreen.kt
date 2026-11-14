@@ -89,7 +89,7 @@ fun PeopleScreen(inviteToken: String? = null) {
         blockedPeople = blocked.first
         val blockedIds = blocked.first.map { it.id }.toSet()
         people = directory.first.filterNot { it.id in blockedIds }
-        communityPosts = feed.first
+        communityPosts = feed.first.filterNot { it.authorId in blockedIds }
         canLoadMore = directory.first.size == 50
         invitations = inbox.first
         myGroups = groups.first.filter { it.isCreator }
@@ -281,7 +281,8 @@ fun PeopleScreen(inviteToken: String? = null) {
                                 val next = withContext(Dispatchers.IO) { repository.listPeople(people.size) }
                                 message = next.second
                                 if (next.second == null) {
-                                    people = people + next.first
+                                    val blockedIds = blockedPeople.map { it.id }.toSet()
+                                    people = people + next.first.filterNot { it.id in blockedIds }
                                     canLoadMore = next.first.size == 50
                                 }
                             } finally {
