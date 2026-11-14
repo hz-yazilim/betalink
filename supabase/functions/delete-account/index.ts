@@ -7,9 +7,7 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") {
     return Response.json({ error: "Method not allowed" }, { status: 405, headers: corsHeaders });
   }
@@ -26,7 +24,6 @@ Deno.serve(async (req: Request) => {
     return Response.json({ error: "Server configuration is incomplete" }, { status: 500, headers: corsHeaders });
   }
 
-  // Resolve identity from the caller's verified access token; never accept a user ID from the body.
   const userClient = createClient(supabaseUrl, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: authorization } },
@@ -36,10 +33,31 @@ Deno.serve(async (req: Request) => {
     return Response.json({ error: "Invalid or expired session" }, { status: 401, headers: corsHeaders });
   }
 
-  // The service-role credential remains only in the Edge Function environment.
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  // Remove only this verified user's public profile images before deleting the Auth identity.
+  // If cleanup fails, stop here so the user can retry instead of leaving orphaned images.
+  while (true) {
+    const { data: files, error: listError } = await adminClient.storage
+      .from("profile-avatars")
+      .list(userData.user.id, { limit: 100, offset: 0, sortBy: { column: "name", order: "asc" } });
+    if (listError) {
+      return Response.json({ error: "Profile image cleanup failed; account was not deleted." }, { status: 500, headers: corsHeaders });
+    }
+    const paths = (files ?? [])
+      .filter((file) => file.id !== null)
+      .map((file) => userData.user.id + "/" + file.name);
+    for (let i = 0; i < paths.length; i += 100) {
+      const { error: removeError } = await adminClient.storage.from("profile-avatars").remove(paths.slice(i, i + 100));
+      if (removeError) {
+        return Response.json({ error: "Profile image cleanup failed; account was not deleted." }, { status: 500, headers: corsHeaders });
+      }
+    }
+    if (paths.length === 0) break;
+  }
+
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(userData.user.id);
   if (deleteError) {
     return Response.json({ error: "Account deletion failed" }, { status: 500, headers: corsHeaders });
