@@ -1,6 +1,7 @@
 package com.hzyazilim.betalink.ui.campaigns
 
 import android.net.Uri
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -734,8 +735,10 @@ private fun DeveloperTesterReliabilityDialog(campaignId: String, testerId: Strin
 
 @Composable
 private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: CampaignRepository, onDismiss: () -> Unit, onMessage: (String) -> Unit) {
+    val context = LocalContext.current
     var report by remember { mutableStateOf<com.hzyazilim.betalink.core.data.CampaignReport?>(null) }
     var feedback by remember { mutableStateOf<com.hzyazilim.betalink.core.data.FeedbackSummary?>(null) }
+    var bugReports by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.BugReport>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     LaunchedEffect(campaign.id) {
         val r = withContext(Dispatchers.IO) { repository.campaignReport(campaign.id) }
@@ -744,6 +747,9 @@ private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: Campai
         val f = withContext(Dispatchers.IO) { repository.campaignFeedbackSummary(campaign.id) }
         feedback = f.first
         f.second?.let(onMessage)
+        val bugs = withContext(Dispatchers.IO) { repository.bugReportsForCampaign(campaign.id) }
+        bugReports = bugs.first
+        bugs.second?.let(onMessage)
         loading = false
     }
     AlertDialog(
@@ -759,6 +765,24 @@ private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: Campai
                     Text("Günlük test bildirimleri: ${it.totalCheckins}")
                     Text("Geri bildirim: ${it.feedbackCount} · Ortalama puan: ${it.averageRating?.toString() ?: "Henüz yok"}")
                     Text("Hata: ${it.bugReports} · Öneri: ${it.suggestions}")
+                }
+                if (bugReports.isNotEmpty()) {
+                    Text("HATA BİLDİRİMLERİ (${bugReports.size})", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
+                    bugReports.take(8).forEach { bug ->
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                            Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(bug.description, style = MaterialTheme.typography.bodyMedium)
+                                Text("${bug.deviceModel} · Android ${bug.androidVersion} · Betalink ${bug.appVersion}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                Text("Durum: ${bug.status} · ${bug.createdAt.take(10)}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                bug.attachmentUrl?.let { imageUrl ->
+                                    TextButton(onClick = {
+                                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(imageUrl))) }
+                                            .onFailure { onMessage("Ekran görüntüsü açılamadı.") }
+                                    }) { Text("Ekran görüntüsünü aç") }
+                                }
+                            }
+                        }
+                    }
                 }
                 feedback?.let {
                     Text("Geri bildirim özeti", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 5.dp))
