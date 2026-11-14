@@ -35,6 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
+import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -141,7 +144,21 @@ fun PeopleScreen(inviteToken: String? = null) {
                 items(communityPosts, key = { "post-${it.id}" }) { post ->
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text(post.authorName, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (!post.avatarUrl.isNullOrBlank()) {
+                                    AsyncImage(
+                                        model = post.avatarUrl,
+                                        contentDescription = "Paylaşım sahibi profil fotoğrafı",
+                                        modifier = Modifier.size(32.dp).clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Box(Modifier.size(32.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape), contentAlignment = Alignment.Center) {
+                                        Text(post.authorName.trim().firstOrNull()?.uppercase() ?: "B", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                Text(post.authorName, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                            }
                             Text(post.body, style = MaterialTheme.typography.bodyMedium)
                             Text(post.createdAt.replace("T", " ").take(16), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                         }
@@ -205,11 +222,20 @@ fun PeopleScreen(inviteToken: String? = null) {
                 items(people, key = { it.id }) { person ->
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
                         Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(
-                                Modifier.size(42.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(person.displayName.trim().firstOrNull()?.uppercase() ?: "B", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            if (!person.avatarUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = person.avatarUrl,
+                                    contentDescription = "Kullanıcı profil fotoğrafı",
+                                    modifier = Modifier.size(42.dp).clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(
+                                    Modifier.size(42.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(person.displayName.trim().firstOrNull()?.uppercase() ?: "B", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
                             }
                             Column(Modifier.weight(1f)) {
                                 Text(person.displayName, style = MaterialTheme.typography.titleSmall)
