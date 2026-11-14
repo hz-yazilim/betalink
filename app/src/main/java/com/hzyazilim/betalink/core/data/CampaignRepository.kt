@@ -2,6 +2,7 @@ package com.hzyazilim.betalink.core.data
 
 import android.content.Context
 import android.os.Build
+import android.net.Uri
 import com.hzyazilim.betalink.BuildConfig
 import com.hzyazilim.betalink.core.auth.SecureSessionStore
 import org.json.JSONArray
@@ -415,6 +416,66 @@ class CampaignRepository(context: Context) {
         } else {
             val body = JSONObject().put("task_id", taskId).put("tester_id", userId).put("notes", note)
             call("/rest/v1/task_completions", "POST", token, body)
+        }
+        return if (status in 200..299) null else message(response)
+    }
+
+    fun submitBugReport(campaignId: String, bodyText: String, attachmentUri: Uri?): String? {
+        val cleanBody = bodyText.trim()
+        if (campaignId.isBlank()) return "Kampanya bilgisi bulunamadı."
+        if (cleanBody.length !in 10..5000) return "Hata açıklaması 10-5000 karakter olmalı."
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        var attachmentPath: String? = null
+        if (attachmentUri != null) {
+            val mime = context.contentResolver.getType(attachmentUri)?.lowercase()
+                ?: return "Seçilen görselin dosya türü okunamadı."
+            if (mime !in setOf("image/jpeg", "image/png", "image/webp")) return "Yalnızca JPG, PNG veya WebP görsel ekleyebilirsin."
+            val bytes = try {
+                context.contentResolver.openInputStream(attachmentUri)?.use { it.readBytes() }
+                    ?: return "Görsel dosyası açılamadı."
+            } catch (_: Exception) { return "Görsel okunamadı." }
+            if (bytes.isEmpty() || bytes.size > 5 * 1024 * 1024) return "Görsel boş olamaz ve en fazla 5 MB olmalı."
+            val objectPath = "$userId/$campaignId/${java.util.UUID.randomUUID()}"
+            val connection = URL(BuildConfig.SUPABASE_URL + "/storage/v1/object/bug-report-attachments/$objectPath").openConnection() as HttpURLConnection
+            val uploadResult = try {
+                connection.requestMethod = "POST"
+                connection.connectTimeout = 20000
+                connection.readTimeout = 30000
+                connection.doOutput = true
+                connection.setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
+                connection.setRequestProperty("Authorization", "Bearer $token")
+                connection.setRequestProperty("Content-Type", mime)
+                connection.setRequestProperty("x-upsert", "false")
+                connection.outputStream.use { it.write(bytes) }
+                val code = connection.responseCode
+                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                code to (stream?.bufferedReader()?.use { it.readText() } ?: "")
+            } catch (e: Exception) {
+                0 to (e.message ?: "Görsel yüklenemedi.")
+            } finally { connection.disconnect() }
+            if (uploadResult.first !in 200..299) return message(uploadResult.second).ifBlank { "Görsel yüklenemedi." }
+            attachmentPath = objectPath
+        }
+        val report = JSONObject()
+            .put("campaign_id", campaignId)
+            .put("reporter_id", userId)
+            .put("description", cleanBody)
+            .put("device_model", (Build.MANUFACTURER + " " + Build.MODEL).take(120))
+            .put("android_version", Build.VERSION.RELEASE.take(40))
+            .put("app_version", BuildConfig.VERSION_NAME)
+            .put("attachment_path", attachmentPath ?: JSONObject.NULL)
+        val (status, response) = call("/rest/v1/bug_reports", "POST", token, report)
+        if (status !in 200..299 && attachmentPath != null) {
+            val cleanup = URL(BuildConfig.SUPABASE_URL + "/storage/v1/object/bug-report-attachments/$attachmentPath").openConnection() as HttpURLConnection
+            try {
+                cleanup.requestMethod = "DELETE"
+                cleanup.setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
+                cleanup.setRequestProperty("Authorization", "Bearer $token")
+                cleanup.responseCode
+            } catch (_: Exception) { } finally { cleanup.disconnect() }
         }
         return if (status in 200..299) null else message(response)
     }
