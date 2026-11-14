@@ -10,6 +10,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -85,6 +87,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -981,6 +985,33 @@ private fun ProfileScreen(
     var profileLoading by remember { mutableStateOf(true) }
     var profileSaving by remember { mutableStateOf(false) }
     var profileMessage by remember { mutableStateOf<String?>(null) }
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                profileSaving = true
+                profileMessage = null
+                try {
+                    val upload = withContext(Dispatchers.IO) { repository.uploadProfileAvatar(uri) }
+                    val uploadedUrl = upload.first
+                    if (uploadedUrl == null) {
+                        profileMessage = upload.second ?: "Profil fotoğrafı yüklenemedi."
+                    } else {
+                        val saveError = withContext(Dispatchers.IO) {
+                            repository.saveMyProfile(profileName, profileBio, uploadedUrl, contactEmail, showPublicEmail)
+                        }
+                        if (saveError == null) {
+                            profileAvatar = uploadedUrl
+                            profileMessage = "Profil fotoğrafın kaydedildi."
+                        } else {
+                            profileMessage = saveError
+                        }
+                    }
+                } finally {
+                    profileSaving = false
+                }
+            }
+        }
+    }
 
     LaunchedEffect(currentUser.id) {
         reputation = withContext(Dispatchers.IO) { repository.myReputationScore().first }
@@ -1073,15 +1104,36 @@ private fun ProfileScreen(
                         }
                         Switch(checked = showPublicEmail, onCheckedChange = { showPublicEmail = it })
                     }
-                    OutlinedTextField(
-                        value = profileAvatar,
-                        onValueChange = { profileAvatar = it.take(1000) },
-                        label = { Text("Profil fotoğrafı bağlantısı (isteğe bağlı)") },
-                        placeholder = { Text("https://...") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text("Profil fotoğrafı için doğrudan https:// ile başlayan bir görsel bağlantısı kullanabilirsin.", color = Color(0xFF9AA3B8), fontSize = 10.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        if (profileAvatar.isNotBlank()) {
+                            AsyncImage(
+                                model = profileAvatar,
+                                contentDescription = "Profil fotoğrafı",
+                                modifier = Modifier.size(76.dp).clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                Modifier.size(76.dp).clip(CircleShape).background(Color(0xFF26324D)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(profileName.trim().firstOrNull()?.uppercase() ?: "B", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("Profil fotoğrafın", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text("JPG, PNG veya WebP · En fazla 5 MB", color = Color(0xFF9AA3B8), fontSize = 10.sp)
+                            OutlinedButton(
+                                onClick = { avatarPicker.launch("image/*") },
+                                enabled = !profileSaving,
+                                modifier = Modifier.padding(top = 5.dp)
+                            ) { Text(if (profileSaving) "Yükleniyor…" else "Galeriden fotoğraf seç") }
+                        }
+                    }
                     Button(
                         onClick = {
                             scope.launch {
