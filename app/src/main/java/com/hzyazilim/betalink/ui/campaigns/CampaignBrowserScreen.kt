@@ -1,5 +1,8 @@
 package com.hzyazilim.betalink.ui.campaigns
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -278,6 +281,12 @@ private fun CampaignTaskDialog(
 ) {
     val scope = rememberCoroutineScope()
     var tasks by remember { mutableStateOf<List<CampaignTask>>(emptyList()) }
+    var bugDescription by remember { mutableStateOf("") }
+    var bugAttachment by remember { mutableStateOf<Uri?>(null) }
+    var bugSubmitting by remember { mutableStateOf(false) }
+    val bugImagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        bugAttachment = uri
+    }
     var tracking by remember { mutableStateOf<CampaignTracking?>(null) }
     var loading by remember { mutableStateOf(true) }
     var feedback by remember { mutableStateOf("") }
@@ -319,6 +328,49 @@ private fun CampaignTaskDialog(
                                 }
                             }) { Text("Tamamlandı olarak gönder") }
                         }
+                    }
+                    item {
+                        Text("HATA BİLDİRİMİ", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
+                        Text("Uygulamada karşılaştığın hatayı geliştiriciye ilet. İstersen ekran görüntüsü de ekleyebilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        OutlinedTextField(
+                            value = bugDescription,
+                            onValueChange = { bugDescription = it.take(5000) },
+                            label = { Text("Hata nasıl oluştu? Ne bekliyordun?") },
+                            minLines = 3,
+                            enabled = !bugSubmitting,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        TextButton(
+                            onClick = { bugImagePicker.launch("image/*") },
+                            enabled = !bugSubmitting
+                        ) { Text(if (bugAttachment == null) "＋ Ekran görüntüsü ekle" else "Görsel seçildi · Değiştir") }
+                        bugAttachment?.let {
+                            Text("Ek: ${it.lastPathSegment ?: "seçilen görsel"}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            TextButton(onClick = { bugAttachment = null }, enabled = !bugSubmitting) { Text("Görseli kaldır") }
+                        }
+                        Text("JPG, PNG veya WebP · En fazla 5 MB. Cihaz ve uygulama sürümü otomatik eklenir.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    if (bugSubmitting) return@launch
+                                    bugSubmitting = true
+                                    try {
+                                        val error = withContext(Dispatchers.IO) {
+                                            repository.submitBugReport(campaign.id, bugDescription, bugAttachment)
+                                        }
+                                        onMessage(error ?: "Hata bildirimin geliştiriciye iletildi.")
+                                        if (error == null) {
+                                            bugDescription = ""
+                                            bugAttachment = null
+                                        }
+                                    } finally {
+                                        bugSubmitting = false
+                                    }
+                                }
+                            },
+                            enabled = !bugSubmitting && bugDescription.trim().length in 10..5000,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(if (bugSubmitting) "Gönderiliyor…" else "Hata bildir") }
                     }
                     item {
                         Text("Genel geri bildirimin", style = MaterialTheme.typography.titleSmall)
