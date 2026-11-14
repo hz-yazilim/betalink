@@ -44,7 +44,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.GoogleApiClient
 import com.google.android.gms.tasks.Tasks
 import java.util.concurrent.TimeUnit
 import com.hzyazilim.betalink.BuildConfig
