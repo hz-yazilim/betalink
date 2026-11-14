@@ -39,11 +39,10 @@ Deno.serve(async (req: Request) => {
 
   // Remove only this verified user's public profile images before deleting the Auth identity.
   // If cleanup fails, stop here so the user can retry instead of leaving orphaned images.
-  let offset = 0;
   while (true) {
     const { data: files, error: listError } = await adminClient.storage
       .from("profile-avatars")
-      .list(userData.user.id, { limit: 100, offset, sortBy: { column: "name", order: "asc" } });
+      .list(userData.user.id, { limit: 100, offset: 0, sortBy: { column: "name", order: "asc" } });
     if (listError) {
       return Response.json({ error: "Profile image cleanup failed; account was not deleted." }, { status: 500, headers: corsHeaders });
     }
@@ -56,8 +55,7 @@ Deno.serve(async (req: Request) => {
         return Response.json({ error: "Profile image cleanup failed; account was not deleted." }, { status: 500, headers: corsHeaders });
       }
     }
-    if ((files ?? []).length < 100) break;
-    offset += (files ?? []).length;
+    if (paths.length === 0) break;
   }
 
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(userData.user.id);
