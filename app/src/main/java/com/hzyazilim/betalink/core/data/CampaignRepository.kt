@@ -645,8 +645,7 @@ class CampaignRepository(context: Context) {
             val senderId = row.optString("sender_id")
             CampaignMessage(
                 row.optString("id"), senderId, names[senderId] ?: "Kullanıcı",
-                row.optString("body"), row.optString("created_at"),
-                profile.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" }
+                row.optString("body"), row.optString("created_at")
             )
         }.reversed() to null
     }
@@ -680,7 +679,8 @@ class CampaignRepository(context: Context) {
             CommunityPost(
                 row.optString("id"), row.optString("author_id"),
                 profile.optString("display_name").ifBlank { "Betalink kullanıcısı" },
-                row.optString("body"), row.optString("created_at")
+                row.optString("body"), row.optString("created_at"),
+                profile.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" }
             )
         } to null
     }
