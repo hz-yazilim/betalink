@@ -460,11 +460,16 @@ fun PeopleScreen(inviteToken: String? = null) {
                                 append("\n\nUygulama: https://play.google.com/store/apps/details?id=com.hzyazilim.betalink")
                                 append("\nDavetini uygulamadaki Toplum > Gelen grup davetleri bölümünden kabul edebilirsin.")
                             }
-                            runCatching {
+                            val shareError = runCatching {
                                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                                     type = "text/plain"
                                     putExtra(Intent.EXTRA_TEXT, shareText)
                                 }, "Betalink grup davetini paylaş"))
+                            }.exceptionOrNull()
+                            message = if (shareError == null) {
+                                "Davet gönderildi. Paylaşım menüsü açıldı."
+                            } else {
+                                "Davet gönderildi; ancak paylaşım menüsü açılamadı. Davet, karşı tarafın Toplum bölümünde görünecek."
                             }
                             personToInvite = null
                             customMessage = ""
