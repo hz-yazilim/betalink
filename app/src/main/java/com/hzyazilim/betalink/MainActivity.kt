@@ -989,6 +989,7 @@ private fun ProfileScreen(
                 profileSaving = true
                 profileMessage = null
                 try {
+                    val previousAvatar = profileAvatar
                     val upload = withContext(Dispatchers.IO) { repository.uploadProfileAvatar(uri) }
                     val uploadedUrl = upload.first
                     if (uploadedUrl == null) {
@@ -999,6 +1000,9 @@ private fun ProfileScreen(
                         }
                         if (saveError == null) {
                             profileAvatar = uploadedUrl
+                            if (previousAvatar.isNotBlank()) {
+                                withContext(Dispatchers.IO) { repository.deleteOwnProfileAvatar(previousAvatar) }
+                            }
                             profileMessage = "Profil fotoğrafın kaydedildi."
                         } else {
                             profileMessage = saveError
