@@ -290,13 +290,6 @@ fun PeopleScreen(inviteToken: String? = null) {
                         }
                     }, modifier = Modifier.fillMaxWidth()) { Text("Daha fazla kişi yükle") }
                 }
-                item {
-                    Text("Yalnızca halka açık paylaşımı açanların iletişim e-postası görünür. Hesap giriş e-postası gizli kalır. Grup davetlerini kapatan kişiler davet alamaz.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, modifier = Modifier.padding(vertical = 12.dp))
-                }
-            }
-        }
-    }
-
                 if (blockedPeople.isNotEmpty()) item {
                     Text("ENGELLEDİĞİN KULLANICILAR · ${blockedPeople.size}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 14.dp))
                 }
@@ -319,6 +312,13 @@ fun PeopleScreen(inviteToken: String? = null) {
                         }
                     }
                 }
+                item {
+                    Text("Yalnızca halka açık paylaşımı açanların iletişim e-postası görünür. Hesap giriş e-postası gizli kalır. Grup davetlerini kapatan kişiler davet alamaz.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, modifier = Modifier.padding(vertical = 12.dp))
+                }
+            }
+        }
+    }
+
     selectedPerson?.let { person ->
         AlertDialog(
             onDismissRequest = { if (!profileLoading && !blockConfirmation) selectedPerson = null },
