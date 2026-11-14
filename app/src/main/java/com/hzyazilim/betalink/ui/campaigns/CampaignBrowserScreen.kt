@@ -419,6 +419,7 @@ private fun CampaignTaskDialog(
                         campaignMessages.takeLast(8).forEach { chat ->
                             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                                 Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text(chat.senderName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                                     Text(chat.body, style = MaterialTheme.typography.bodySmall)
                                     Text(chat.createdAt.replace("T", " ").take(16), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
                                 }
@@ -924,6 +925,7 @@ private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: Campai
                 campaignMessages.takeLast(8).forEach { chat ->
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(chat.senderName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                             Text(chat.body, style = MaterialTheme.typography.bodySmall)
                             Text(chat.createdAt.replace("T", " ").take(16), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
                         }
