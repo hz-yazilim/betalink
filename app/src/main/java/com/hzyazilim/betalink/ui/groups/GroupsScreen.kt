@@ -164,10 +164,10 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(group.name, style = MaterialTheme.typography.titleMedium)
-                    Text(if (group.isPrivate) "Gizlilik: Ozel grup" else "Gizlilik: Herkese acik grup")
-                    Text(group.description.ifBlank { "Bu grup icin aciklama eklenmemis." })
-                    Text(when (group.membershipStatus) { "approved" -> "Uyelik: Onayli"; "pending" -> "Uyelik: Bekliyor"; else -> if (group.isCreator) "Rol: Kurucu" else "Uyelik: Yok" })
-                    Text("Davetler uygulama icinde gonderilir ve Toplum bolumunden kabul edilir. Harici baglanti paylasilmaz.", fontSize = 12.sp)
+                    Text(if (group.isPrivate) "Gizlilik: Özel grup" else "Gizlilik: Herkese açık grup")
+                    Text(group.description.ifBlank { "Bu grup için açıklama eklenmemiş." })
+                    Text(when (group.membershipStatus) { "approved" -> "Üyelik: Onaylı"; "pending" -> "Üyelik: Bekliyor"; else -> if (group.isCreator) "Rol: Kurucu" else "Üyelik: Yok" })
+                    Text("Davetler uygulama icinde gonderilir ve Toplum bölümünden kabul edilir. Harici bağlantı paylaşılmaz.", fontSize = 12.sp)
                 }
             },
             confirmButton = { TextButton(onClick = { infoGroup = null }) { Text("Kapat") } }
