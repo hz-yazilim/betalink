@@ -36,6 +36,7 @@ data class CampaignReport(val activeTesters: Int, val backupTesters: Int, val dr
 data class FeedbackSummary(val feedbackCount: Int, val averageRating: Double?, val bugs: Int, val experiences: Int, val suggestions: Int, val resolved: Int)
 data class BugReport(val id: String, val reporterId: String, val description: String, val deviceModel: String, val androidVersion: String, val appVersion: String, val attachmentUrl: String?, val status: String, val createdAt: String)
 data class CommunityPost(val id: String, val authorId: String, val authorName: String, val body: String, val createdAt: String)
+data class DeveloperAnalytics(val campaigns: Int, val openCampaigns: Int, val completedCampaigns: Int, val activeTesterSlots: Int, val completedTests: Int, val droppedTesterSlots: Int, val feedbackCount: Int, val bugReports: Int, val averageRating: Double?)
 
 data class Campaign(
     val id: String,
@@ -283,6 +284,20 @@ class CampaignRepository(context: Context) {
         if (status !in 200..299) return null to message(body)
         val row = JSONObject(body)
         return TesterReliability(row.optInt("tests_joined"),row.optInt("tests_completed"),row.optInt("tests_dropped"),row.optInt("daily_checkins"),row.optInt("missed_days"),row.optInt("reputation_points")) to null
+    }
+
+    fun developerAnalytics(): Pair<DeveloperAnalytics?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val (status, body) = call("/rest/v1/rpc/betalink_developer_analytics", "POST", token, JSONObject())
+        if (status !in 200..299) return null to message(body)
+        val row = try { JSONObject(body) } catch (_: Exception) { null }
+            ?: return null to "Geliştirici analizleri okunamadı."
+        return DeveloperAnalytics(
+            row.optInt("campaigns"), row.optInt("open_campaigns"), row.optInt("completed_campaigns"),
+            row.optInt("active_testers"), row.optInt("completed_tests"), row.optInt("dropped_testers"),
+            row.optInt("feedback_count"), row.optInt("bug_reports"),
+            if (row.isNull("average_rating")) null else row.optDouble("average_rating")
+        ) to null
     }
 
     fun campaignReport(campaignId: String): Pair<CampaignReport?, String?> {
