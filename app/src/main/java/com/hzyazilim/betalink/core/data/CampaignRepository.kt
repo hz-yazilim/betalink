@@ -36,7 +36,7 @@ data class CampaignReport(val activeTesters: Int, val backupTesters: Int, val dr
 data class FeedbackSummary(val feedbackCount: Int, val averageRating: Double?, val bugs: Int, val experiences: Int, val suggestions: Int, val resolved: Int)
 data class BugReport(val id: String, val reporterId: String, val description: String, val deviceModel: String, val androidVersion: String, val appVersion: String, val attachmentUrl: String?, val status: String, val createdAt: String)
 data class CommunityPost(val id: String, val authorId: String, val authorName: String, val body: String, val createdAt: String)
-data class CampaignMessage(val id: String, val senderId: String, val body: String, val createdAt: String)
+data class CampaignMessage(val id: String, val senderId: String, val senderName: String, val body: String, val createdAt: String)
 data class DeveloperAnalytics(val campaigns: Int, val openCampaigns: Int, val completedCampaigns: Int, val activeTesterSlots: Int, val completedTests: Int, val droppedTesterSlots: Int, val feedbackCount: Int, val bugReports: Int, val averageRating: Double?)
 
 data class Campaign(
@@ -620,15 +620,34 @@ class CampaignRepository(context: Context) {
     fun listCampaignMessages(campaignId: String): Pair<List<CampaignMessage>, String?> {
         val token = sessions.read()?.first ?: return emptyList<CampaignMessage>() to "Oturum bulunamadı."
         val (status, body) = call(
-            "/rest/v1/campaign_messages?select=id,sender_id,body,created_at&campaign_id=eq.$campaignId&order=created_at.asc&limit=100",
+            "/rest/v1/campaign_messages?select=id,sender_id,body,created_at&campaign_id=eq.$campaignId&order=created_at.desc&limit=100",
             "GET", token
         )
         if (status !in 200..299) return emptyList<CampaignMessage>() to message(body)
         val rows = JSONArray(body)
-        return (0 until rows.length()).map { i ->
-            val row = rows.getJSONObject(i)
-            CampaignMessage(row.optString("id"), row.optString("sender_id"), row.optString("body"), row.optString("created_at"))
-        } to null
+        val raw = (0 until rows.length()).map { i -> rows.getJSONObject(i) }
+        val senderIds = raw.map { it.optString("sender_id") }.filter { it.isNotBlank() }.distinct()
+        val names = if (senderIds.isEmpty()) emptyMap() else {
+            val filter = senderIds.joinToString(",")
+            val (profileStatus, profileBody) = call(
+                "/rest/v1/profiles?select=user_id,display_name&user_id=in.($filter)",
+                "GET", token
+            )
+            if (profileStatus in 200..299) {
+                val profiles = JSONArray(profileBody)
+                (0 until profiles.length()).associate { index ->
+                    val profile = profiles.getJSONObject(index)
+                    profile.optString("user_id") to profile.optString("display_name").ifBlank { "Kullanıcı" }
+                }
+            } else emptyMap()
+        }
+        return raw.map { row ->
+            val senderId = row.optString("sender_id")
+            CampaignMessage(
+                row.optString("id"), senderId, names[senderId] ?: "Kullanıcı",
+                row.optString("body"), row.optString("created_at")
+            )
+        }.reversed() to null
     }
 
     fun sendCampaignMessage(campaignId: String, bodyText: String): String? {
