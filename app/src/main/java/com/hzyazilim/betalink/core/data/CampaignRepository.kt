@@ -35,7 +35,7 @@ data class TesterReliability(val testsJoined: Int, val testsCompleted: Int, val 
 data class CampaignReport(val activeTesters: Int, val backupTesters: Int, val droppedTesters: Int, val totalCheckins: Int, val feedbackCount: Int, val averageRating: Double?, val bugReports: Int, val suggestions: Int, val acceptedTesters: Int)
 data class FeedbackSummary(val feedbackCount: Int, val averageRating: Double?, val bugs: Int, val experiences: Int, val suggestions: Int, val resolved: Int)
 data class BugReport(val id: String, val reporterId: String, val description: String, val deviceModel: String, val androidVersion: String, val appVersion: String, val attachmentUrl: String?, val status: String, val createdAt: String)
-data class CommunityPost(val id: String, val authorId: String, val authorName: String, val body: String, val createdAt: String)
+data class CommunityPost(val id: String, val authorId: String, val authorName: String, val body: String, val createdAt: String, val avatarUrl: String?)
 data class CampaignMessage(val id: String, val senderId: String, val senderName: String, val body: String, val createdAt: String)
 data class DeveloperAnalytics(val campaigns: Int, val openCampaigns: Int, val completedCampaigns: Int, val activeTesterSlots: Int, val completedTests: Int, val droppedTesterSlots: Int, val feedbackCount: Int, val bugReports: Int, val averageRating: Double?)
 
@@ -645,7 +645,8 @@ class CampaignRepository(context: Context) {
             val senderId = row.optString("sender_id")
             CampaignMessage(
                 row.optString("id"), senderId, names[senderId] ?: "Kullanıcı",
-                row.optString("body"), row.optString("created_at")
+                row.optString("body"), row.optString("created_at"),
+                profile.optString("avatar_url").takeIf { it.isNotBlank() && it != "null" }
             )
         }.reversed() to null
     }
@@ -668,7 +669,7 @@ class CampaignRepository(context: Context) {
     fun listCommunityPosts(): Pair<List<CommunityPost>, String?> {
         val token = sessions.read()?.first ?: return emptyList<CommunityPost>() to "Oturum bulunamadı."
         val (status, body) = call(
-            "/rest/v1/community_posts?select=id,author_id,body,created_at,profiles(display_name)&order=created_at.desc&limit=30",
+            "/rest/v1/community_posts?select=id,author_id,body,created_at,profiles(display_name,avatar_url)&created_at=gte.${URLEncoder.encode(utcNowMinusTwoHours(), "UTF-8")}&order=created_at.desc&limit=30",
             "GET", token
         )
         if (status !in 200..299) return emptyList<CommunityPost>() to message(body)
@@ -979,6 +980,62 @@ class CampaignRepository(context: Context) {
             contact.optString("contact_email"),
             contact.optBoolean("show_public_email", false)
         ) to null
+    }
+
+    fun uploadProfileAvatar(uri: Uri): Pair<String?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return null to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val mime = appContext.contentResolver.getType(uri)?.lowercase()
+            ?: return null to "Seçilen görselin dosya türü okunamadı."
+        val extension = when (mime) {
+            "image/jpeg" -> "jpg"
+            "image/png" -> "png"
+            "image/webp" -> "webp"
+            else -> return null to "Yalnızca JPG, PNG veya WebP görsel yükleyebilirsin."
+        }
+        val bytes = try {
+            val output = ByteArrayOutputStream()
+            appContext.contentResolver.openInputStream(uri)?.use { input ->
+                val buffer = ByteArray(8192)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    if (total > 5 * 1024 * 1024) return null to "Profil fotoğrafı en fazla 5 MB olabilir."
+                    output.write(buffer, 0, count)
+                }
+            } ?: return null to "Görsel dosyası açılamadı."
+            output.toByteArray()
+        } catch (_: Exception) {
+            return null to "Görsel okunamadı."
+        }
+        if (bytes.isEmpty()) return null to "Seçilen görsel boş."
+        val objectPath = "$userId/${java.util.UUID.randomUUID()}.$extension"
+        val connection = URL(BuildConfig.SUPABASE_URL + "/storage/v1/object/profile-avatars/$objectPath")
+            .openConnection() as HttpURLConnection
+        val result = try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 20000
+            connection.readTimeout = 30000
+            connection.doOutput = true
+            connection.setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
+            connection.setRequestProperty("Authorization", "Bearer $token")
+            connection.setRequestProperty("Content-Type", mime)
+            connection.setRequestProperty("x-upsert", "false")
+            connection.outputStream.use { it.write(bytes) }
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            status to (stream?.bufferedReader()?.use { it.readText() } ?: "")
+        } catch (e: Exception) {
+            0 to (e.message ?: "Profil fotoğrafı yüklenemedi.")
+        } finally {
+            connection.disconnect()
+        }
+        if (result.first !in 200..299) return null to message(result.second).ifBlank { "Profil fotoğrafı yüklenemedi." }
+        return (BuildConfig.SUPABASE_URL + "/storage/v1/object/public/profile-avatars/$objectPath") to null
     }
 
     fun saveMyProfile(displayName: String, bio: String, avatarUrl: String, contactEmail: String, showPublicEmail: Boolean): String? {
