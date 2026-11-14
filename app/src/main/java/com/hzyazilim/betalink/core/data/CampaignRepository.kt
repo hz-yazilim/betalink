@@ -7,6 +7,7 @@ import com.hzyazilim.betalink.BuildConfig
 import com.hzyazilim.betalink.core.auth.SecureSessionStore
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -469,10 +470,21 @@ class CampaignRepository(context: Context) {
                 ?: return "Seçilen görselin dosya türü okunamadı."
             if (mime !in setOf("image/jpeg", "image/png", "image/webp")) return "Yalnızca JPG, PNG veya WebP görsel ekleyebilirsin."
             val bytes = try {
-                appContext.contentResolver.openInputStream(attachmentUri)?.use { it.readBytes() }
-                    ?: return "Görsel dosyası açılamadı."
+                val output = ByteArrayOutputStream()
+                appContext.contentResolver.openInputStream(attachmentUri)?.use { input ->
+                    val buffer = ByteArray(8192)
+                    var total = 0
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        total += count
+                        if (total > 5 * 1024 * 1024) return "Görsel en fazla 5 MB olmalı."
+                        output.write(buffer, 0, count)
+                    }
+                } ?: return "Görsel dosyası açılamadı."
+                output.toByteArray()
             } catch (_: Exception) { return "Görsel okunamadı." }
-            if (bytes.isEmpty() || bytes.size > 5 * 1024 * 1024) return "Görsel boş olamaz ve en fazla 5 MB olmalı."
+            if (bytes.isEmpty()) return "Görsel boş olamaz."
             val objectPath = "$userId/$campaignId/${java.util.UUID.randomUUID()}"
             val connection = URL(BuildConfig.SUPABASE_URL + "/storage/v1/object/bug-report-attachments/$objectPath").openConnection() as HttpURLConnection
             val uploadResult = try {
