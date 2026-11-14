@@ -24,6 +24,11 @@ using (
   and (storage.foldername(name))[1] = (select auth.uid())::text
 );
 
+drop policy if exists community_posts_read_authenticated on public.community_posts;
+create policy community_posts_read_authenticated
+on public.community_posts for select to authenticated
+using (created_at >= now() - interval '2 hours');
+
 create index if not exists community_posts_created_at_cleanup_idx
   on public.community_posts (created_at);
 
