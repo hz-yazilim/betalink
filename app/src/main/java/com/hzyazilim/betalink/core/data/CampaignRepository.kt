@@ -36,6 +36,7 @@ data class CampaignReport(val activeTesters: Int, val backupTesters: Int, val dr
 data class FeedbackSummary(val feedbackCount: Int, val averageRating: Double?, val bugs: Int, val experiences: Int, val suggestions: Int, val resolved: Int)
 data class BugReport(val id: String, val reporterId: String, val description: String, val deviceModel: String, val androidVersion: String, val appVersion: String, val attachmentUrl: String?, val status: String, val createdAt: String)
 data class CommunityPost(val id: String, val authorId: String, val authorName: String, val body: String, val createdAt: String)
+data class CampaignMessage(val id: String, val senderId: String, val body: String, val createdAt: String)
 data class DeveloperAnalytics(val campaigns: Int, val openCampaigns: Int, val completedCampaigns: Int, val activeTesterSlots: Int, val completedTests: Int, val droppedTesterSlots: Int, val feedbackCount: Int, val bugReports: Int, val averageRating: Double?)
 
 data class Campaign(
@@ -614,6 +615,35 @@ class CampaignRepository(context: Context) {
         val row = try { JSONArray(body).optJSONObject(0) } catch (_: Exception) { null }
             ?: return null to "BetaPuan bakiyesi okunamadı."
         return BetaWallet(row.optInt("balance"), row.optInt("lifetime_earned"), row.optInt("completed_support_tests")) to null
+    }
+
+    fun listCampaignMessages(campaignId: String): Pair<List<CampaignMessage>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<CampaignMessage>() to "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/campaign_messages?select=id,sender_id,body,created_at&campaign_id=eq.$campaignId&order=created_at.asc&limit=100",
+            "GET", token
+        )
+        if (status !in 200..299) return emptyList<CampaignMessage>() to message(body)
+        val rows = JSONArray(body)
+        return (0 until rows.length()).map { i ->
+            val row = rows.getJSONObject(i)
+            CampaignMessage(row.optString("id"), row.optString("sender_id"), row.optString("body"), row.optString("created_at"))
+        } to null
+    }
+
+    fun sendCampaignMessage(campaignId: String, bodyText: String): String? {
+        val clean = bodyText.trim()
+        if (campaignId.isBlank()) return "Kampanya bilgisi bulunamadı."
+        if (clean.length !in 1..1000) return "Mesajın 1-1000 karakter olmalı."
+        val token = sessions.read()?.first ?: return "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return "Oturum doğrulanamadı."
+        val senderId = JSONObject(user.second).optString("id")
+        val (status, response) = call(
+            "/rest/v1/campaign_messages", "POST", token,
+            JSONObject().put("campaign_id", campaignId).put("sender_id", senderId).put("body", clean)
+        )
+        return if (status in 200..299) null else message(response)
     }
 
     fun listCommunityPosts(): Pair<List<CommunityPost>, String?> {
