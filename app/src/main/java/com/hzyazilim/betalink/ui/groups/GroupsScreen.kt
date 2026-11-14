@@ -54,6 +54,7 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
     var creatingGroup by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     var selectedGroup by remember { mutableStateOf<TesterGroup?>(null) }
+    var infoGroup by remember { mutableStateOf<TesterGroup?>(null) }
     var members by remember { mutableStateOf<List<GroupMember>>(emptyList()) }
     var testGroup by remember { mutableStateOf<TesterGroup?>(null) }
     var groupSnapshot by remember { mutableStateOf<GroupSnapshot?>(null) }
@@ -97,6 +98,7 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
                     Column(Modifier.padding(15.dp)) {
                         Text(group.name, style = MaterialTheme.typography.titleMedium)
                         Text(if (group.isPrivate) "Özel grup · yalnızca davetle" else "Herkese açık grup", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
+                        TextButton(onClick = { infoGroup = group }) { Text("Grup bilgileri") }
                         if (group.description.isNotBlank()) Text(group.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
                         if (group.isCreator) {
                             Row {
@@ -153,6 +155,23 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
                 }
             }
         }
+    }
+
+    infoGroup?.let { group ->
+        AlertDialog(
+            onDismissRequest = { infoGroup = null },
+            title = { Text("Grup bilgileri") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(group.name, style = MaterialTheme.typography.titleMedium)
+                    Text(if (group.isPrivate) "Gizlilik: Ozel grup" else "Gizlilik: Herkese acik grup")
+                    Text(group.description.ifBlank { "Bu grup icin aciklama eklenmemis." })
+                    Text(when (group.membershipStatus) { "approved" -> "Uyelik: Onayli"; "pending" -> "Uyelik: Bekliyor"; else -> if (group.isCreator) "Rol: Kurucu" else "Uyelik: Yok" })
+                    Text("Davetler uygulama icinde gonderilir ve Toplum bolumunden kabul edilir. Harici baglanti paylasilmaz.", fontSize = 12.sp)
+                }
+            },
+            confirmButton = { TextButton(onClick = { infoGroup = null }) { Text("Kapat") } }
+        )
     }
 
     selectedGroup?.let { group ->
