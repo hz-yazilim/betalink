@@ -291,6 +291,9 @@ private fun CampaignTaskDialog(
     var bugDescription by remember { mutableStateOf("") }
     var bugAttachment by remember { mutableStateOf<Uri?>(null) }
     var bugSubmitting by remember { mutableStateOf(false) }
+    var campaignMessages by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.CampaignMessage>>(emptyList()) }
+    var newCampaignMessage by remember { mutableStateOf("") }
+    var messageSending by remember { mutableStateOf(false) }
     val bugImagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         bugAttachment = uri
     }
@@ -306,6 +309,9 @@ private fun CampaignTaskDialog(
         val clock = withContext(Dispatchers.IO) { repository.trackingSnapshot(campaign.id) }
         tracking = clock.first
         clock.second?.let(onMessage)
+        val room = withContext(Dispatchers.IO) { repository.listCampaignMessages(campaign.id) }
+        campaignMessages = room.first
+        room.second?.let(onMessage)
         loading = false
     }
     AlertDialog(
@@ -379,6 +385,46 @@ private fun CampaignTaskDialog(
                                 }
                             }) { Text("Tamamlandı olarak gönder") }
                         }
+                    }
+                    item {
+                        Text("KAMPANYA MESAJLARI", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
+                        Text("Bu oda yalnızca kampanya geliştiricisi ve kabul edilmiş tester'lar içindir.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        campaignMessages.takeLast(8).forEach { chat ->
+                            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                                Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text(chat.body, style = MaterialTheme.typography.bodySmall)
+                                    Text(chat.createdAt.replace("T", " ").take(16), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
+                                }
+                            }
+                        }
+                        OutlinedTextField(
+                            value = newCampaignMessage,
+                            onValueChange = { newCampaignMessage = it.take(1000) },
+                            label = { Text("Kampanya odasına mesaj yaz") },
+                            minLines = 2,
+                            enabled = !messageSending,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    if (messageSending) return@launch
+                                    messageSending = true
+                                    try {
+                                        val error = withContext(Dispatchers.IO) { repository.sendCampaignMessage(campaign.id, newCampaignMessage) }
+                                        onMessage(error ?: "Mesaj gönderildi.")
+                                        if (error == null) {
+                                            newCampaignMessage = ""
+                                            campaignMessages = withContext(Dispatchers.IO) { repository.listCampaignMessages(campaign.id) }.first
+                                        }
+                                    } finally {
+                                        messageSending = false
+                                    }
+                                }
+                            },
+                            enabled = !messageSending && newCampaignMessage.trim().isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(if (messageSending) "Gönderiliyor…" else "Mesajı gönder") }
                     }
                     item {
                         Text("HATA BİLDİRİMİ", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
