@@ -31,9 +31,9 @@ as $fn$
       where c.developer_id = (select auth.uid())
     ),
     'bug_reports', (
-      select count(*) from public.feedback f
-      join public.campaigns c on c.id = f.campaign_id
-      where c.developer_id = (select auth.uid()) and f.feedback_type = 'bug'
+      select count(*) from public.bug_reports b
+      join public.campaigns c on c.id = b.campaign_id
+      where c.developer_id = (select auth.uid())
     ),
     'average_rating', (
       select round(avg(f.rating), 2) from public.feedback f
