@@ -1,5 +1,13 @@
 package com.hzyazilim.betalink.ui.campaigns
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import java.util.Calendar
+import android.net.Uri
+import android.os.Build
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,6 +59,7 @@ import com.hzyazilim.betalink.core.data.CampaignTask
 import com.hzyazilim.betalink.core.data.CampaignTracking
 import com.hzyazilim.betalink.core.data.TaskSubmission
 import com.hzyazilim.betalink.core.data.FeedbackItem
+import com.hzyazilim.betalink.core.notifications.TestReminderScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -122,12 +131,30 @@ fun CampaignBrowserScreen(myTests: Boolean) {
                     it.description.contains(searchQuery, ignoreCase = true) ||
                     it.category.contains(searchQuery, ignoreCase = true)
             }
+            val preferredCategory = campaigns
+                .filter { it.membershipStatus == "completed" }
+                .groupingBy { it.category.lowercase() }
+                .eachCount()
+                .maxByOrNull { it.value }?.key
+            val deviceAndroid = Build.VERSION.RELEASE.substringBefore(".").toIntOrNull() ?: Build.VERSION.SDK_INT
+            val rankedCampaigns = filteredCampaigns.sortedByDescending { item ->
+                if (item.membershipStatus != null) -1000
+                else {
+                    val categoryScore = if (preferredCategory != null && item.category.equals(preferredCategory, true)) 60 else 0
+                    val osScore = item.minimumAndroid?.let { (25 - (deviceAndroid - it).coerceAtLeast(0) * 2).coerceIn(0, 25) } ?: 5
+                    categoryScore + osScore
+                }
+            }
             if (filteredCampaigns.isEmpty()) {
                 Text("Aramana uygun kampanya bulunamadı.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 20.dp))
             } else Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 14.dp)) {
-                filteredCampaigns.forEach { campaign ->
+                rankedCampaigns.forEach { campaign ->
                     CampaignCard(
                         campaign = campaign,
+                        recommended = !myTests && campaign.membershipStatus == null && (
+                            (preferredCategory != null && campaign.category.equals(preferredCategory, true)) ||
+                            campaign.minimumAndroid == deviceAndroid
+                        ),
                         repository = repository,
                         myTests = campaign.membershipStatus != null,
                         refreshKey = refresh,
@@ -180,7 +207,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
 }
 
 @Composable
-private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myTests: Boolean, refreshKey: Int, onApply: () -> Unit, onConfirmOptIn: () -> Unit, onCheckIn: () -> Unit, onOpenTasks: () -> Unit) {
+private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myTests: Boolean, refreshKey: Int, recommended: Boolean = false, onApply: () -> Unit, onConfirmOptIn: () -> Unit, onCheckIn: () -> Unit, onOpenTasks: () -> Unit) {
     var tracking by remember(campaign.id) { mutableStateOf<CampaignTracking?>(null) }
     var checkinDates by remember(campaign.id) { mutableStateOf<Set<String>>(emptySet()) }
     var shareAccountEmail by remember(campaign.id) { mutableStateOf(false) }
@@ -205,8 +232,17 @@ private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myT
         Column(Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(campaign.category.uppercase(), color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp)
-                Text("${campaign.targetTesters} tester hedefi", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (recommended) {
+                    Text("SANA UYGUN", color = MaterialTheme.colorScheme.primary, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                } else {
+                    Text("${campaign.targetTesters} tester hedefi", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
+            if (recommended) Text(
+                "Android sürümün ve önceki tamamladığın test kategorileriyle eşleşiyor.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp
+            )
             Text(campaign.appName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 7.dp))
             if (campaign.description.isNotBlank()) {
                 Text(campaign.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
@@ -276,8 +312,18 @@ private fun CampaignTaskDialog(
     onDismiss: () -> Unit,
     onMessage: (String) -> Unit
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var tasks by remember { mutableStateOf<List<CampaignTask>>(emptyList()) }
+    var bugDescription by remember { mutableStateOf("") }
+    var bugAttachment by remember { mutableStateOf<Uri?>(null) }
+    var bugSubmitting by remember { mutableStateOf(false) }
+    var campaignMessages by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.CampaignMessage>>(emptyList()) }
+    var newCampaignMessage by remember { mutableStateOf("") }
+    var messageSending by remember { mutableStateOf(false) }
+    val bugImagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        bugAttachment = uri
+    }
     var tracking by remember { mutableStateOf<CampaignTracking?>(null) }
     var loading by remember { mutableStateOf(true) }
     var feedback by remember { mutableStateOf("") }
@@ -290,6 +336,9 @@ private fun CampaignTaskDialog(
         val clock = withContext(Dispatchers.IO) { repository.trackingSnapshot(campaign.id) }
         tracking = clock.first
         clock.second?.let(onMessage)
+        val room = withContext(Dispatchers.IO) { repository.listCampaignMessages(campaign.id) }
+        campaignMessages = room.first
+        room.second?.let(onMessage)
         loading = false
     }
     AlertDialog(
@@ -302,6 +351,50 @@ private fun CampaignTaskDialog(
                     Text("Durum: ${snapshot.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                            Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text("TEST TAKVİMİ VE HATIRLATICI", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
+                                Text("Test görevlerini unutmamak için telefonuna yerel bir hatırlatıcı kur. Seçtiğin saat cihazının yerel saatidir.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                Button(
+                                    onClick = {
+                                        val now = Calendar.getInstance()
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, day ->
+                                                val selected = Calendar.getInstance().apply {
+                                                    set(Calendar.YEAR, year)
+                                                    set(Calendar.MONTH, month)
+                                                    set(Calendar.DAY_OF_MONTH, day)
+                                                    set(Calendar.SECOND, 0)
+                                                    set(Calendar.MILLISECOND, 0)
+                                                }
+                                                val timeNow = Calendar.getInstance()
+                                                TimePickerDialog(
+                                                    context,
+                                                    { _, hour, minute ->
+                                                        selected.set(Calendar.HOUR_OF_DAY, hour)
+                                                        selected.set(Calendar.MINUTE, minute)
+                                                        val error = TestReminderScheduler.schedule(
+                                                            context, campaign.id, campaign.appName, selected.timeInMillis
+                                                        )
+                                                        onMessage(error ?: "Test hatırlatıcın telefonuna kaydedildi.")
+                                                    },
+                                                    timeNow.get(Calendar.HOUR_OF_DAY),
+                                                    timeNow.get(Calendar.MINUTE),
+                                                    true
+                                                ).show()
+                                            },
+                                            now.get(Calendar.YEAR),
+                                            now.get(Calendar.MONTH),
+                                            now.get(Calendar.DAY_OF_MONTH)
+                                        ).apply { datePicker.minDate = System.currentTimeMillis() }.show()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text("＋ Test hatırlatıcısı kur") }
+                            }
+                        }
+                    }
                     if (loading) item { CircularProgressIndicator() }
                     items(tasks, key = { it.id }) { task ->
                         Column {
@@ -319,6 +412,90 @@ private fun CampaignTaskDialog(
                                 }
                             }) { Text("Tamamlandı olarak gönder") }
                         }
+                    }
+                    item {
+                        Text("KAMPANYA MESAJLARI", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
+                        Text("Bu oda yalnızca kampanya geliştiricisi ve kabul edilmiş tester'lar içindir.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        campaignMessages.takeLast(8).forEach { chat ->
+                            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                                Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text(chat.senderName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                    Text(chat.body, style = MaterialTheme.typography.bodySmall)
+                                    Text(chat.createdAt.replace("T", " ").take(16), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
+                                }
+                            }
+                        }
+                        OutlinedTextField(
+                            value = newCampaignMessage,
+                            onValueChange = { newCampaignMessage = it.take(1000) },
+                            label = { Text("Kampanya odasına mesaj yaz") },
+                            minLines = 2,
+                            enabled = !messageSending,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    if (messageSending) return@launch
+                                    messageSending = true
+                                    try {
+                                        val error = withContext(Dispatchers.IO) { repository.sendCampaignMessage(campaign.id, newCampaignMessage) }
+                                        onMessage(error ?: "Mesaj gönderildi.")
+                                        if (error == null) {
+                                            newCampaignMessage = ""
+                                            campaignMessages = withContext(Dispatchers.IO) { repository.listCampaignMessages(campaign.id) }.first
+                                        }
+                                    } finally {
+                                        messageSending = false
+                                    }
+                                }
+                            },
+                            enabled = !messageSending && newCampaignMessage.trim().isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(if (messageSending) "Gönderiliyor…" else "Mesajı gönder") }
+                    }
+                    item {
+                        Text("HATA BİLDİRİMİ", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
+                        Text("Uygulamada karşılaştığın hatayı geliştiriciye ilet. İstersen ekran görüntüsü de ekleyebilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        OutlinedTextField(
+                            value = bugDescription,
+                            onValueChange = { bugDescription = it.take(5000) },
+                            label = { Text("Hata nasıl oluştu? Ne bekliyordun?") },
+                            minLines = 3,
+                            enabled = !bugSubmitting,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        TextButton(
+                            onClick = { bugImagePicker.launch("image/*") },
+                            enabled = !bugSubmitting
+                        ) { Text(if (bugAttachment == null) "＋ Ekran görüntüsü ekle" else "Görsel seçildi · Değiştir") }
+                        bugAttachment?.let {
+                            Text("Ek: ${it.lastPathSegment ?: "seçilen görsel"}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                            TextButton(onClick = { bugAttachment = null }, enabled = !bugSubmitting) { Text("Görseli kaldır") }
+                        }
+                        Text("JPG, PNG veya WebP · En fazla 5 MB. Cihaz ve uygulama sürümü otomatik eklenir.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    if (bugSubmitting) return@launch
+                                    bugSubmitting = true
+                                    try {
+                                        val error = withContext(Dispatchers.IO) {
+                                            repository.submitBugReport(campaign.id, bugDescription, bugAttachment)
+                                        }
+                                        onMessage(error ?: "Hata bildirimin geliştiriciye iletildi.")
+                                        if (error == null) {
+                                            bugDescription = ""
+                                            bugAttachment = null
+                                        }
+                                    } finally {
+                                        bugSubmitting = false
+                                    }
+                                }
+                            },
+                            enabled = !bugSubmitting && bugDescription.trim().length in 10..5000,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(if (bugSubmitting) "Gönderiliyor…" else "Hata bildir") }
                     }
                     item {
                         Text("Genel geri bildirimin", style = MaterialTheme.typography.titleSmall)
@@ -682,8 +859,14 @@ private fun DeveloperTesterReliabilityDialog(campaignId: String, testerId: Strin
 
 @Composable
 private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: CampaignRepository, onDismiss: () -> Unit, onMessage: (String) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var report by remember { mutableStateOf<com.hzyazilim.betalink.core.data.CampaignReport?>(null) }
     var feedback by remember { mutableStateOf<com.hzyazilim.betalink.core.data.FeedbackSummary?>(null) }
+    var bugReports by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.BugReport>>(emptyList()) }
+    var campaignMessages by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.CampaignMessage>>(emptyList()) }
+    var newCampaignMessage by remember { mutableStateOf("") }
+    var messageSending by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     LaunchedEffect(campaign.id) {
         val r = withContext(Dispatchers.IO) { repository.campaignReport(campaign.id) }
@@ -692,6 +875,12 @@ private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: Campai
         val f = withContext(Dispatchers.IO) { repository.campaignFeedbackSummary(campaign.id) }
         feedback = f.first
         f.second?.let(onMessage)
+        val bugs = withContext(Dispatchers.IO) { repository.bugReportsForCampaign(campaign.id) }
+        bugReports = bugs.first
+        bugs.second?.let(onMessage)
+        val room = withContext(Dispatchers.IO) { repository.listCampaignMessages(campaign.id) }
+        campaignMessages = room.first
+        room.second?.let(onMessage)
         loading = false
     }
     AlertDialog(
@@ -708,12 +897,68 @@ private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: Campai
                     Text("Geri bildirim: ${it.feedbackCount} · Ortalama puan: ${it.averageRating?.toString() ?: "Henüz yok"}")
                     Text("Hata: ${it.bugReports} · Öneri: ${it.suggestions}")
                 }
+                if (bugReports.isNotEmpty()) {
+                    Text("HATA BİLDİRİMLERİ (${bugReports.size})", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
+                    bugReports.take(8).forEach { bug ->
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                            Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(bug.description, style = MaterialTheme.typography.bodyMedium)
+                                Text("${bug.deviceModel} · Android ${bug.androidVersion} · Betalink ${bug.appVersion}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                Text("Durum: ${bug.status} · ${bug.createdAt.take(10)}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                                bug.attachmentUrl?.let { imageUrl ->
+                                    TextButton(onClick = {
+                                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(imageUrl))) }
+                                            .onFailure { onMessage("Ekran görüntüsü açılamadı.") }
+                                    }) { Text("Ekran görüntüsünü aç") }
+                                }
+                            }
+                        }
+                    }
+                }
                 feedback?.let {
                     Text("Geri bildirim özeti", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 5.dp))
                     Text("Deneyim: ${it.experiences} · Çözülen: ${it.resolved}")
                     Text("Hata bildirimi: ${it.bugs} · Öneri: ${it.suggestions}")
                     Text("Ortalama değerlendirme: ${it.averageRating?.toString() ?: "Henüz yok"}")
                 }
+                Text("KAMPANYA MESAJ ODASI", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
+                campaignMessages.takeLast(8).forEach { chat ->
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(chat.senderName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                            Text(chat.body, style = MaterialTheme.typography.bodySmall)
+                            Text(chat.createdAt.replace("T", " ").take(16), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = newCampaignMessage,
+                    onValueChange = { newCampaignMessage = it.take(1000) },
+                    label = { Text("Tester grubuna mesaj gönder") },
+                    minLines = 2,
+                    enabled = !messageSending,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(
+                    onClick = {
+                        scope.launch {
+                            if (messageSending) return@launch
+                            messageSending = true
+                            try {
+                                val error = withContext(Dispatchers.IO) { repository.sendCampaignMessage(campaign.id, newCampaignMessage) }
+                                onMessage(error ?: "Mesaj gönderildi.")
+                                if (error == null) {
+                                    newCampaignMessage = ""
+                                    campaignMessages = withContext(Dispatchers.IO) { repository.listCampaignMessages(campaign.id) }.first
+                                }
+                            } finally {
+                                messageSending = false
+                            }
+                        }
+                    },
+                    enabled = !messageSending && newCampaignMessage.trim().isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(if (messageSending) "Gönderiliyor…" else "Mesajı gönder") }
                 if (!loading && report == null) Text("Rapor verisi henüz oluşmadı.")
             }
         },
@@ -727,6 +972,7 @@ private fun DeveloperCampaignsScreen() {
     val repository = remember { CampaignRepository(context) }
     val scope = rememberCoroutineScope()
     var campaigns by remember { mutableStateOf<List<Campaign>>(emptyList()) }
+    var analytics by remember { mutableStateOf<com.hzyazilim.betalink.core.data.DeveloperAnalytics?>(null) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
@@ -741,7 +987,9 @@ private fun DeveloperCampaignsScreen() {
         loading = true
         val result = withContext(Dispatchers.IO) { repository.myDeveloperCampaigns() }
         campaigns = result.first
-        message = result.second
+        val metrics = withContext(Dispatchers.IO) { repository.developerAnalytics() }
+        analytics = metrics.first
+        message = result.second ?: metrics.second
         loading = false
     }
 
@@ -754,6 +1002,34 @@ private fun DeveloperCampaignsScreen() {
             Text("GELİŞTİRİCİ PANELİ", color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp)
             Text("Kampanyaların", style = MaterialTheme.typography.headlineSmall)
             WalletStatusCard()
+            analytics?.let { stats ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("GELİŞTİRİCİ ANALİZLERİ", color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Kampanya: ${stats.campaigns}")
+                            Text("Açık: ${stats.openCampaigns}")
+                            Text("Tamamlanan: ${stats.completedCampaigns}")
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Aktif tester katılımı: ${stats.activeTesterSlots}")
+                            Text("Tamamlanan test: ${stats.completedTests}")
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Ayrılan: ${stats.droppedTesterSlots}")
+                            Text("Geri bildirim: ${stats.feedbackCount}")
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Hata: ${stats.bugReports}")
+                            Text("Ortalama puan: ${stats.averageRating?.toString() ?: "—"}")
+                        }
+                        Text("Sayılar yalnızca kendi kampanyalarının kayıtlarından hesaplanır.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    }
+                }
+            }
             Button(onClick = { showCreate = true }, modifier = Modifier.fillMaxWidth()) {
                 Text("＋ Kampanya oluştur · 50 BP")
             }

@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hzyazilim.betalink.core.data.CampaignRepository
+import com.hzyazilim.betalink.core.data.CommunityPost
 import com.hzyazilim.betalink.core.data.DirectoryPerson
 import com.hzyazilim.betalink.core.data.GroupInvitation
 import com.hzyazilim.betalink.core.data.TesterGroup
@@ -52,6 +53,9 @@ fun PeopleScreen(inviteToken: String? = null) {
     val repository = remember(context) { CampaignRepository(context) }
     val scope = rememberCoroutineScope()
     var people by remember { mutableStateOf<List<DirectoryPerson>>(emptyList()) }
+    var communityPosts by remember { mutableStateOf<List<CommunityPost>>(emptyList()) }
+    var newPostText by remember { mutableStateOf("") }
+    var postSubmitting by remember { mutableStateOf(false) }
     var invitations by remember { mutableStateOf<List<GroupInvitation>>(emptyList()) }
     var myGroups by remember { mutableStateOf<List<TesterGroup>>(emptyList()) }
     var selectedGroup by remember { mutableStateOf<TesterGroup?>(null) }
@@ -69,11 +73,13 @@ fun PeopleScreen(inviteToken: String? = null) {
         val directory = withContext(Dispatchers.IO) { repository.listPeople(0) }
         val inbox = withContext(Dispatchers.IO) { repository.listIncomingGroupInvitations(inviteToken) }
         val groups = withContext(Dispatchers.IO) { repository.listGroups() }
+        val feed = withContext(Dispatchers.IO) { repository.listCommunityPosts() }
         people = directory.first
+        communityPosts = feed.first
         canLoadMore = directory.first.size == 50
         invitations = inbox.first
         myGroups = groups.first.filter { it.isCreator }
-        message = directory.second ?: inbox.second ?: groups.second
+        message = directory.second ?: inbox.second ?: groups.second ?: feed.second
         if (selectedGroup == null) selectedGroup = myGroups.firstOrNull()
         loading = false
     }
@@ -92,6 +98,55 @@ fun PeopleScreen(inviteToken: String? = null) {
                 modifier = Modifier.fillMaxSize().padding(top = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp)
             ) {
+                item {
+                    Text("TOPLULUK AKIŞI", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary)
+                    Text("Test deneyimini, önerilerini ve geliştirici duyurularını paylaş.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            OutlinedTextField(
+                                value = newPostText,
+                                onValueChange = { newPostText = it.take(280) },
+                                label = { Text("Topluluğa bir şey yaz…") },
+                                supportingText = { Text("${newPostText.length}/280") },
+                                minLines = 2,
+                                enabled = !postSubmitting,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        if (postSubmitting) return@launch
+                                        postSubmitting = true
+                                        try {
+                                            val error = withContext(Dispatchers.IO) { repository.createCommunityPost(newPostText) }
+                                            message = error ?: "Paylaşımın yayınlandı."
+                                            if (error == null) {
+                                                newPostText = ""
+                                                communityPosts = withContext(Dispatchers.IO) { repository.listCommunityPosts() }.first
+                                            }
+                                        } finally {
+                                            postSubmitting = false
+                                        }
+                                    }
+                                },
+                                enabled = !postSubmitting && newPostText.trim().isNotEmpty(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text(if (postSubmitting) "Paylaşılıyor…" else "Paylaş") }
+                        }
+                    }
+                }
+                if (communityPosts.isEmpty()) item {
+                    Text("Henüz paylaşım yok. İlk paylaşımı sen yapabilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+                items(communityPosts, key = { "post-${it.id}" }) { post ->
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(post.authorName, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                            Text(post.body, style = MaterialTheme.typography.bodyMedium)
+                            Text(post.createdAt.replace("T", " ").take(16), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                        }
+                    }
+                }
                 item {
                     Text("Gelen grup davetleri · ${invitations.size}", style = MaterialTheme.typography.titleMedium)
                 }

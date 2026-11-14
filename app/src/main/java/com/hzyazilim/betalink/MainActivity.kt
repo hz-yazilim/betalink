@@ -1123,6 +1123,83 @@ private fun ProfileScreen(
             }
         }
 
+        val completedTests = reliability?.testsCompleted ?: 0
+        val attendanceRate = reliability?.attendancePercent ?: 0
+        val testerLevel = when {
+            completedTests >= 50 && attendanceRate >= 95 -> "Elmas"
+            completedTests >= 25 && attendanceRate >= 90 -> "Altın"
+            completedTests >= 10 && attendanceRate >= 85 -> "Gümüş"
+            completedTests >= 3 && attendanceRate >= 75 -> "Bronz"
+            else -> "Yeni Tester"
+        }
+        val nextLevelTarget = when (testerLevel) {
+            "Bronz" -> 10
+            "Gümüş" -> 25
+            "Altın" -> 50
+            "Elmas" -> 50
+            else -> 3
+        }
+        val levelProgress = if (testerLevel == "Elmas") 100
+            else (completedTests * 100 / nextLevelTarget).coerceIn(0, 100)
+        val earnedBadges = buildList {
+            if (completedTests >= 1) add("İlk Test")
+            if (completedTests >= 5) add("5 Test Tamamlandı")
+            if (completedTests >= 10) add("10 Test Tamamlandı")
+            if (attendanceRate >= 95 && (reliability?.dailyCheckins ?: 0) >= 7) add("Güvenilir Katılım")
+            if ((reliability?.dailyCheckins ?: 0) >= 30) add("Düzenli Tester")
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF141B33))
+        ) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("TESTER SEVİYEN", color = Color(0xFF2EE6A8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(testerLevel.uppercase(), color = Color(0xFF8B8CFF), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+                Text(
+                    when (testerLevel) {
+                        "Elmas" -> "En üst seviye · Güvenilir test geçmişi"
+                        "Altın" -> "İleri seviye · Düzenli ve deneyimli tester"
+                        "Gümüş" -> "Deneyimli tester · İstikrarlı katılım"
+                        "Bronz" -> "İlk başarılar · Test geçmişin büyüyor"
+                        else -> "Testleri tamamladıkça seviyen yükselir"
+                    },
+                    color = Color.White,
+                    fontSize = 13.sp
+                )
+                LinearProgressIndicator(
+                    progress = levelProgress / 100f,
+                    modifier = Modifier.fillMaxWidth().height(7.dp),
+                    color = Color(0xFF2EE6A8),
+                    trackColor = Color(0xFF26324D)
+                )
+                Text(
+                    if (testerLevel == "Elmas") "En yüksek seviyedesin."
+                    else "Sonraki seviye için $completedTests / $nextLevelTarget tamamlanan test",
+                    color = Color(0xFF9AA3B8),
+                    fontSize = 11.sp
+                )
+                Text("KAZANILAN ROZETLER", color = Color(0xFF2EE6A8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                if (earnedBadges.isEmpty()) {
+                    Text("İlk testini tamamladığında ilk rozetin burada görünecek.", color = Color(0xFF9AA3B8), fontSize = 11.sp)
+                } else {
+                    Text(
+                        earnedBadges.joinToString("  •  "),
+                        color = Color(0xFF2EE6A8),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Text(
+                    "Seviye ve rozetler yalnızca sunucudan gelen tamamlanmış test ve katılım kayıtlarına göre hesaplanır.",
+                    color = Color(0xFF9AA3B8),
+                    fontSize = 10.sp
+                )
+            }
+        }
+
         Card(
             modifier = Modifier
                 .fillMaxWidth()

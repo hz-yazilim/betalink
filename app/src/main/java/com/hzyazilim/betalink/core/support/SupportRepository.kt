@@ -39,7 +39,7 @@ class SupportRepository(context: Context) {
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return "Oturum doğrulanamadı."
         val userId = JSONObject(user.second).optString("id")
-        val body = JSONObject().put("user_id", userId).put("subject", cleanSubject).put("message", cleanMessage).put("ticket_type", if (ticketType == "complaint") "complaint" else "support")
+        val body = JSONObject().put("user_id", userId).put("subject", cleanSubject).put("message", cleanMessage).put("ticket_type", when (ticketType) { "complaint" -> "complaint"; "appeal" -> "appeal"; else -> "support" })
         val (status, response) = call("/rest/v1/support_tickets", "POST", token, body)
         return if (status in 200..299) null else error(response)
     }

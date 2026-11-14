@@ -69,6 +69,11 @@ fun SupportDialog(onDismiss: () -> Unit) {
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                             Column(Modifier.padding(12.dp)) {
                                 Text(ticket.subject, style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    when (ticket.ticketType) { "appeal" -> "İTİRAZ"; "complaint" -> "ŞİKAYET"; else -> "DESTEK" },
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontSize = 9.sp
+                                )
                                 Text("Durum: ${ticket.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
                                 Text(ticket.message, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                                 ticket.adminReply?.let {
@@ -114,16 +119,22 @@ private fun NewSupportTicketDialog(onDismiss: () -> Unit, isSubmitting: Boolean,
     var ticketType by remember { mutableStateOf("support") }
     AlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text(if (ticketType == "complaint") "Yeni şikayet" else "Yeni destek talebi") },
+        title = { Text(when (ticketType) { "complaint" -> "Yeni şikayet"; "appeal" -> "Karara itiraz"; else -> "Yeni destek talebi" }) },
         text = {
             Column {
-                androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(onClick = { ticketType = "support" }) { Text(if (ticketType == "support") "✓ Destek" else "Destek") }
                     TextButton(onClick = { ticketType = "complaint" }) { Text(if (ticketType == "complaint") "✓ Şikayet" else "Şikayet") }
+                    TextButton(onClick = { ticketType = "appeal" }) { Text(if (ticketType == "appeal") "✓ İtiraz" else "İtiraz") }
                 }
                 OutlinedTextField(subject, { subject = it }, label = { Text("Konu") }, singleLine = true)
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(body, { body = it }, label = { Text("Mesajın") }, minLines = 3)
+                OutlinedTextField(
+                    body,
+                    { body = it.take(5000) },
+                    label = { Text(if (ticketType == "appeal") "Hangi karara neden itiraz ediyorsun?" else "Mesajın") },
+                    minLines = 3
+                )
             }
         },
         confirmButton = {
