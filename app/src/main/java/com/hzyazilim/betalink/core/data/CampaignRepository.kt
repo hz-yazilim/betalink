@@ -668,7 +668,7 @@ class CampaignRepository(context: Context) {
     fun listCommunityPosts(): Pair<List<CommunityPost>, String?> {
         val token = sessions.read()?.first ?: return emptyList<CommunityPost>() to "Oturum bulunamadı."
         val (status, body) = call(
-            "/rest/v1/community_posts?select=id,author_id,body,created_at,profiles(display_name,avatar_url)&created_at=gte.${URLEncoder.encode(utcNowMinusTwoHours(), "UTF-8")}&order=created_at.desc&limit=30",
+            "/rest/v1/community_posts?select=id,author_id,body,created_at,profiles(display_name,avatar_url)&order=created_at.desc&limit=30",
             "GET", token
         )
         if (status !in 200..299) return emptyList<CommunityPost>() to message(body)
@@ -1153,11 +1153,6 @@ class CampaignRepository(context: Context) {
     }
 
     private fun utcNow(): String = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date())
-
-    private fun utcNowMinusTwoHours(): String =
-        java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
-            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
-            .format(java.util.Date(System.currentTimeMillis() - 2 * 60 * 60 * 1000L))
 
     private fun call(path: String, method: String, token: String, body: JSONObject? = null): Pair<Int, String> {
         val connection = URL(BuildConfig.SUPABASE_URL + path).openConnection() as HttpURLConnection
