@@ -100,36 +100,9 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
                         Text(if (group.isPrivate) "Özel grup · yalnızca davetle" else "Herkese açık grup", color = MaterialTheme.colorScheme.secondary, fontSize = 11.sp)
                         TextButton(onClick = { infoGroup = group }) { Text("Grup bilgileri") }
                         if (group.description.isNotBlank()) Text(group.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
-                        if (group.isCreator) {
-                            Row {
-                                TextButton(onClick = {
-                                    scope.launch {
-                                        val result = withContext(Dispatchers.IO) { repository.groupMembers(group.id) }
-                                        members = result.first
-                                        message = result.second
-                                        selectedGroup = group
-                                    }
-                                }) { Text("Üyeleri yönet") }
-                                TextButton(onClick = onOpenCommunity) { Text("Toplumdan davet et") }
-                            }
-                        }
                         when (group.membershipStatus) {
                             "approved" -> {
                                 Text("Grup üyesisin", color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 8.dp))
-                                TextButton(onClick = {
-                                    scope.launch {
-                                        snapshotLoading = true
-                                        val result = withContext(Dispatchers.IO) { repository.groupSnapshot(group.id) }
-                                        groupSnapshot = result.first
-                                        groupCheckins = withContext(Dispatchers.IO) { repository.groupCheckinDates(group.id) }.first
-                                        shareEmail = result.first?.myEmailShared ?: false
-                                        playTestEmail = result.first?.myPlayTestEmail ?: ""
-                                        shareAccountEmail = withContext(Dispatchers.IO) { repository.groupAccountEmailConsent(group.id) }.first
-                                        message = result.second
-                                        testGroup = if (result.first != null) group else null
-                                        snapshotLoading = false
-                                    }
-                                }) { Text("14 günlük test süreci ve tester e-postaları") }
                             }
                             "pending" -> Text("Katılım isteğin bekliyor", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
                             else -> if (group.isPrivate) {
@@ -162,12 +135,95 @@ fun GroupsScreen(onOpenCommunity: () -> Unit = {}) {
             onDismissRequest = { infoGroup = null },
             title = { Text("Grup bilgileri") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(group.name, style = MaterialTheme.typography.titleMedium)
-                    Text(if (group.isPrivate) "Gizlilik: Özel grup" else "Gizlilik: Herkese açık grup")
-                    Text(group.description.ifBlank { "Bu grup için açıklama eklenmemiş." })
-                    Text(when (group.membershipStatus) { "approved" -> "Üyelik: Onaylı"; "pending" -> "Üyelik: Bekliyor"; else -> if (group.isCreator) "Rol: Kurucu" else "Üyelik: Yok" })
-                    Text("Davetler uygulama icinde gonderilir ve Toplum bölümünden kabul edilir. Harici bağlantı paylaşılmaz.", fontSize = 12.sp)
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(group.name, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                if (group.isPrivate) "Özel grup · yalnızca davetle" else "Herkese açık grup",
+                                color = MaterialTheme.colorScheme.secondary,
+                                fontSize = 12.sp
+                            )
+                            Text(group.description.ifBlank { "Bu grup için henüz açıklama eklenmemiş." })
+                            Text(
+                                when (group.membershipStatus) {
+                                    "approved" -> "Üyelik durumun: Onaylı"
+                                    "pending" -> "Üyelik durumun: Onay bekliyor"
+                                    else -> if (group.isCreator) "Grup rolün: Kurucu" else "Üyelik durumun: Henüz üye değilsin"
+                                },
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    Text("GRUP İŞLEMLERİ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                    if (group.isCreator) {
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                Text("Üyeleri yönet", style = MaterialTheme.typography.titleSmall)
+                                Text("Üyeleri görüntüle, katılım isteklerini onayla veya üyeleri gruptan çıkar.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                TextButton(
+                                    onClick = {
+                                        infoGroup = null
+                                        scope.launch {
+                                            val result = withContext(Dispatchers.IO) { repository.groupMembers(group.id) }
+                                            members = result.first
+                                            message = result.second
+                                            selectedGroup = group
+                                        }
+                                    }
+                                ) { Text("Üyeleri yönet  →") }
+                            }
+                        }
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                Text("Toplumdan davet et", style = MaterialTheme.typography.titleSmall)
+                                Text("Betalink Toplum bölümünden bu gruba yeni testerlar davet et.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                TextButton(
+                                    onClick = {
+                                        infoGroup = null
+                                        onOpenCommunity()
+                                    }
+                                ) { Text("Kullanıcı davet et  →") }
+                            }
+                        }
+                    }
+                    if (group.membershipStatus == "approved") {
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                Text("14 günlük test süreci", style = MaterialTheme.typography.titleSmall)
+                                Text("Test ilerlemesini, günlük katılım bildirimlerini ve paylaşım izni verilen tester Gmail adreslerini görüntüle.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                TextButton(
+                                    onClick = {
+                                        infoGroup = null
+                                        scope.launch {
+                                            snapshotLoading = true
+                                            val result = withContext(Dispatchers.IO) { repository.groupSnapshot(group.id) }
+                                            groupSnapshot = result.first
+                                            groupCheckins = withContext(Dispatchers.IO) { repository.groupCheckinDates(group.id) }.first
+                                            shareEmail = result.first?.myEmailShared ?: false
+                                            playTestEmail = result.first?.myPlayTestEmail ?: ""
+                                            shareAccountEmail = withContext(Dispatchers.IO) { repository.groupAccountEmailConsent(group.id) }.first
+                                            message = result.second
+                                            testGroup = if (result.first != null) group else null
+                                            snapshotLoading = false
+                                        }
+                                    }
+                                ) { Text("Test sürecini ve tester Gmail'lerini aç  →") }
+                            }
+                        }
+                    }
+                    Text(
+                        "Grup davetleri Betalink içinde gönderilir. Alıcılar Toplum bölümündeki gelen grup davetlerinden kabul eder; harici paylaşım bağlantısı açılmaz.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             },
             confirmButton = { TextButton(onClick = { infoGroup = null }) { Text("Kapat") } }
