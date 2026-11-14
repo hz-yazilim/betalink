@@ -33,6 +33,7 @@ data class TesterReliability(val testsJoined: Int, val testsCompleted: Int, val 
 }
 data class CampaignReport(val activeTesters: Int, val backupTesters: Int, val droppedTesters: Int, val totalCheckins: Int, val feedbackCount: Int, val averageRating: Double?, val bugReports: Int, val suggestions: Int, val acceptedTesters: Int)
 data class FeedbackSummary(val feedbackCount: Int, val averageRating: Double?, val bugs: Int, val experiences: Int, val suggestions: Int, val resolved: Int)
+data class BugReport(val id: String, val reporterId: String, val description: String, val deviceModel: String, val androidVersion: String, val appVersion: String, val attachmentUrl: String?, val status: String, val createdAt: String)
 
 data class Campaign(
     val id: String,
@@ -290,6 +291,39 @@ class CampaignRepository(context: Context) {
         if (rows.length() == 0) return null to "Rapor bulunamadı."
         val row = rows.getJSONObject(0)
         return CampaignReport(row.optInt("active_testers"),row.optInt("backup_testers"),row.optInt("dropped_testers"),row.optInt("total_checkins"),row.optInt("feedback_count"),if(row.isNull("average_rating")) null else row.optDouble("average_rating"),row.optInt("bug_reports"),row.optInt("suggestions"),row.optInt("accepted_testers")) to null
+    }
+
+    fun bugReportsForCampaign(campaignId: String): Pair<List<BugReport>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<BugReport>() to "Oturum bulunamadı."
+        val encodedCampaign = URLEncoder.encode(campaignId, "UTF-8")
+        val (status, body) = call(
+            "/rest/v1/bug_reports?select=id,reporter_id,description,device_model,android_version,app_version,attachment_path,status,created_at&campaign_id=eq.$encodedCampaign&order=created_at.desc&limit=50",
+            "GET", token
+        )
+        if (status !in 200..299) return emptyList<BugReport>() to message(body)
+        val rows = JSONArray(body)
+        val result = mutableListOf<BugReport>()
+        for (i in 0 until rows.length()) {
+            val row = rows.getJSONObject(i)
+            val path = row.optString("attachment_path").takeIf { it.isNotBlank() && it != "null" }
+            var signedUrl: String? = null
+            if (path != null) {
+                val (signedStatus, signedBody) = call(
+                    "/storage/v1/object/sign/bug-report-attachments/$path",
+                    "POST", token, JSONObject().put("expiresIn", 900)
+                )
+                if (signedStatus in 200..299) {
+                    val relative = JSONObject(signedBody).optString("signedURL")
+                    signedUrl = if (relative.startsWith("http")) relative else BuildConfig.SUPABASE_URL + "/storage/v1" + relative
+                }
+            }
+            result += BugReport(
+                row.optString("id"), row.optString("reporter_id"), row.optString("description"),
+                row.optString("device_model"), row.optString("android_version"), row.optString("app_version"),
+                signedUrl, row.optString("status"), row.optString("created_at")
+            )
+        }
+        return result to null
     }
 
     fun campaignFeedbackSummary(campaignId: String): Pair<FeedbackSummary?, String?> {
