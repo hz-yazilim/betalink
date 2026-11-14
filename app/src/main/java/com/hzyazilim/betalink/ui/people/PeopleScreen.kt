@@ -448,38 +448,17 @@ fun PeopleScreen(inviteToken: String? = null) {
                                 repository.sendGroupInvitation(group.id, person.id, customMessage)
                             }
                             val error = result.second
-                            message = error ?: "Davet gönderildi. Paylaşım menüsünden grup bilgilerini de iletebilirsin."
+                            message = error ?: "Davet uygulama icinde gonderildi. Alici, Toplum bolumundeki gelen davetlerden kabul edebilir."
                             if (error == null) {
-                            val shareText = buildString {
-                                append("Betalink grup daveti\n\n")
-                                append("${group.name}\n")
-                                if (group.description.isNotBlank()) append("${group.description}\n")
-                                if (customMessage.isNotBlank()) append("\nDavet notu: ${customMessage}\n")
-                                append("\nBetalink; uygulama geliştiricileri ile gerçek testerları buluşturan bir platformdur. Gruplar üzerinden kapalı testlere birlikte katılabilir, test sürecini ve günlük katılımı takip edebilirsin.")
-                                append("\n\nDavet bağlantısı: betalink://group-invite/${result.first ?: ""}")
-                                append("\n\nUygulama: https://play.google.com/store/apps/details?id=com.hzyazilim.betalink")
-                                append("\nDavetini uygulamadaki Toplum > Gelen grup davetleri bölümünden kabul edebilirsin.")
-                            }
-                            val shareError = runCatching {
-                                context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, shareText)
-                                }, "Betalink grup davetini paylaş"))
-                            }.exceptionOrNull()
-                            message = if (shareError == null) {
-                                "Davet gönderildi. Paylaşım menüsü açıldı."
-                            } else {
-                                "Davet gönderildi; ancak paylaşım menüsü açılamadı. Davet, karşı tarafın Toplum bölümünde görünecek."
-                            }
-                            personToInvite = null
-                            customMessage = ""
-                            refresh++
+                                personToInvite = null
+                                customMessage = ""
+                                refresh++
                             }
                         } finally {
                             busy = false
                         }
                     }
-                }) { Text(if (busy) "Gönderiliyor…" else "Davet gönder ve paylaş") }
+                }) { Text(if (busy) "Gönderiliyor…" else "Davet gönder") }
             },
             dismissButton = { TextButton(enabled = !busy, onClick = { personToInvite = null }) { Text("Vazgeç") } }
         )
