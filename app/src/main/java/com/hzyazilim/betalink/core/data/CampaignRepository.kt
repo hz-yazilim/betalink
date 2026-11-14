@@ -16,6 +16,12 @@ data class CampaignMember(val id: String, val testerId: String, val status: Stri
 data class TesterGroup(val id: String, val name: String, val description: String, val isPrivate: Boolean, val membershipStatus: String?, val isCreator: Boolean)
 data class GroupMember(val id: String, val userId: String, val status: String, val displayName: String = "", val email: String = "", val playTestEmail: String = "", val sharesPlayTestEmail: Boolean = false, val accountEmail: String = "")
 data class DirectoryPerson(val id: String, val displayName: String, val canReceiveInvites: Boolean, val publicEmail: String = "", val bio: String = "", val avatarUrl: String = "")
+data class PublicUserProfile(
+    val id: String, val displayName: String, val bio: String, val avatarUrl: String,
+    val reputationPoints: Int, val betaPoints: Int, val testsJoined: Int, val testsCompleted: Int,
+    val testsDropped: Int, val dailyCheckins: Int, val missedDays: Int,
+    val attendancePercent: Int, val sameGroup: Boolean
+)
 data class EditableProfile(val displayName: String, val bio: String, val avatarUrl: String, val contactEmail: String, val showPublicEmail: Boolean)
 data class GroupInvitation(
     val id: String, val groupId: String, val groupName: String, val groupDescription: String,
@@ -592,6 +598,60 @@ class CampaignRepository(context: Context) {
         val blockerId = JSONObject(user.second).optString("id")
         val (status, response) = call("/rest/v1/blocked_users?blocker_id=eq.$blockerId&blocked_id=eq.$targetUserId", "DELETE", token)
         return if (status in 200..299) null else message(response)
+    }
+
+    fun publicUserProfile(targetUserId: String): Pair<PublicUserProfile?, String?> {
+        val token = sessions.read()?.first ?: return null to "Oturum bulunamadı."
+        val (status, body) = call(
+            "/rest/v1/rpc/betalink_public_user_profile", "POST", token,
+            JSONObject().put("p_user_id", targetUserId)
+        )
+        if (status !in 200..299) return null to message(body)
+        val row = try { JSONArray(body).optJSONObject(0) } catch (_: Exception) { null }
+            ?: return null to "Bu kullanıcının profili şu anda görüntülenemiyor."
+        return PublicUserProfile(
+            row.optString("user_id"),
+            row.optString("display_name").ifBlank { "Betalink kullanıcısı" },
+            row.optString("bio"),
+            row.optString("avatar_url"),
+            row.optInt("reputation_points"),
+            row.optInt("beta_points"),
+            row.optInt("tests_joined"),
+            row.optInt("tests_completed"),
+            row.optInt("tests_dropped"),
+            row.optInt("daily_checkins"),
+            row.optInt("missed_days"),
+            row.optInt("attendance_percent", 100),
+            row.optBoolean("same_group")
+        ) to null
+    }
+
+    fun listBlockedPeople(): Pair<List<DirectoryPerson>, String?> {
+        val token = sessions.read()?.first ?: return emptyList<DirectoryPerson>() to "Oturum bulunamadı."
+        val user = call("/auth/v1/user", "GET", token)
+        if (user.first !in 200..299) return emptyList<DirectoryPerson>() to "Oturum doğrulanamadı."
+        val userId = JSONObject(user.second).optString("id")
+        val (blockedStatus, blockedBody) = call(
+            "/rest/v1/blocked_users?select=blocked_id&blocker_id=eq.$userId", "GET", token
+        )
+        if (blockedStatus !in 200..299) return emptyList<DirectoryPerson>() to message(blockedBody)
+        val blockedRows = JSONArray(blockedBody)
+        val ids = (0 until blockedRows.length()).map { blockedRows.getJSONObject(it).optString("blocked_id") }.filter { it.isNotBlank() }
+        if (ids.isEmpty()) return emptyList<DirectoryPerson>() to null
+        val filter = ids.joinToString(",")
+        val (profileStatus, profileBody) = call(
+            "/rest/v1/profiles?select=user_id,display_name,bio,avatar_url&user_id=in.($filter)", "GET", token
+        )
+        if (profileStatus !in 200..299) return emptyList<DirectoryPerson>() to message(profileBody)
+        val rows = JSONArray(profileBody)
+        return (0 until rows.length()).map { index ->
+            val row = rows.getJSONObject(index)
+            DirectoryPerson(
+                row.optString("user_id"),
+                row.optString("display_name").ifBlank { "Betalink kullanıcısı" },
+                false, "", row.optString("bio"), row.optString("avatar_url")
+            )
+        } to null
     }
 
     fun myReputationScore(): Pair<Int, String?> {
