@@ -48,6 +48,7 @@ data class Campaign(
 )
 
 class CampaignRepository(context: Context) {
+    private val appContext = context.applicationContext
     private val sessions = SecureSessionStore(context.applicationContext)
 
     companion object {
@@ -430,11 +431,11 @@ class CampaignRepository(context: Context) {
         val userId = JSONObject(user.second).optString("id")
         var attachmentPath: String? = null
         if (attachmentUri != null) {
-            val mime = context.contentResolver.getType(attachmentUri)?.lowercase()
+            val mime = appContext.contentResolver.getType(attachmentUri)?.lowercase()
                 ?: return "Seçilen görselin dosya türü okunamadı."
             if (mime !in setOf("image/jpeg", "image/png", "image/webp")) return "Yalnızca JPG, PNG veya WebP görsel ekleyebilirsin."
             val bytes = try {
-                context.contentResolver.openInputStream(attachmentUri)?.use { it.readBytes() }
+                appContext.contentResolver.openInputStream(attachmentUri)?.use { it.readBytes() }
                     ?: return "Görsel dosyası açılamadı."
             } catch (_: Exception) { return "Görsel okunamadı." }
             if (bytes.isEmpty() || bytes.size > 5 * 1024 * 1024) return "Görsel boş olamaz ve en fazla 5 MB olmalı."
