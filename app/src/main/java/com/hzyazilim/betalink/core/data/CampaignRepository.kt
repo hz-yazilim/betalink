@@ -1141,6 +1141,11 @@ class CampaignRepository(context: Context) {
 
     private fun utcNow(): String = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date())
 
+    private fun utcNowMinusTwoHours(): String =
+        java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+            .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+            .format(java.util.Date(System.currentTimeMillis() - 2 * 60 * 60 * 1000L))
+
     private fun call(path: String, method: String, token: String, body: JSONObject? = null): Pair<Int, String> {
         val connection = URL(BuildConfig.SUPABASE_URL + path).openConnection() as HttpURLConnection
         return try {
