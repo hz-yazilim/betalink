@@ -1,5 +1,8 @@
 package com.hzyazilim.betalink.ui.campaigns
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import java.util.Calendar
 import android.net.Uri
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -55,6 +58,7 @@ import com.hzyazilim.betalink.core.data.CampaignTask
 import com.hzyazilim.betalink.core.data.CampaignTracking
 import com.hzyazilim.betalink.core.data.TaskSubmission
 import com.hzyazilim.betalink.core.data.FeedbackItem
+import com.hzyazilim.betalink.core.notifications.TestReminderScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -281,6 +285,7 @@ private fun CampaignTaskDialog(
     onDismiss: () -> Unit,
     onMessage: (String) -> Unit
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var tasks by remember { mutableStateOf<List<CampaignTask>>(emptyList()) }
     var bugDescription by remember { mutableStateOf("") }
@@ -313,6 +318,50 @@ private fun CampaignTaskDialog(
                     Text("Durum: ${snapshot.status}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                            Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text("TEST TAKVİMİ VE HATIRLATICI", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
+                                Text("Test görevlerini unutmamak için telefonuna yerel bir hatırlatıcı kur. Seçtiğin saat cihazının yerel saatidir.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                Button(
+                                    onClick = {
+                                        val now = Calendar.getInstance()
+                                        DatePickerDialog(
+                                            context,
+                                            { _, year, month, day ->
+                                                val selected = Calendar.getInstance().apply {
+                                                    set(Calendar.YEAR, year)
+                                                    set(Calendar.MONTH, month)
+                                                    set(Calendar.DAY_OF_MONTH, day)
+                                                    set(Calendar.SECOND, 0)
+                                                    set(Calendar.MILLISECOND, 0)
+                                                }
+                                                val timeNow = Calendar.getInstance()
+                                                TimePickerDialog(
+                                                    context,
+                                                    { _, hour, minute ->
+                                                        selected.set(Calendar.HOUR_OF_DAY, hour)
+                                                        selected.set(Calendar.MINUTE, minute)
+                                                        val error = TestReminderScheduler.schedule(
+                                                            context, campaign.id, campaign.appName, selected.timeInMillis
+                                                        )
+                                                        onMessage(error ?: "Test hatırlatıcın telefonuna kaydedildi.")
+                                                    },
+                                                    timeNow.get(Calendar.HOUR_OF_DAY),
+                                                    timeNow.get(Calendar.MINUTE),
+                                                    true
+                                                ).show()
+                                            },
+                                            now.get(Calendar.YEAR),
+                                            now.get(Calendar.MONTH),
+                                            now.get(Calendar.DAY_OF_MONTH)
+                                        ).apply { datePicker.minDate = System.currentTimeMillis() }.show()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text("＋ Test hatırlatıcısı kur") }
+                            }
+                        }
+                    }
                     if (loading) item { CircularProgressIndicator() }
                     items(tasks, key = { it.id }) { task ->
                         Column {
