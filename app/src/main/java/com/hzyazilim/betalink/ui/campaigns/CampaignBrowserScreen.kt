@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import java.util.Calendar
 import android.net.Uri
+import android.os.Build
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -131,12 +132,30 @@ fun CampaignBrowserScreen(myTests: Boolean) {
                     it.description.contains(searchQuery, ignoreCase = true) ||
                     it.category.contains(searchQuery, ignoreCase = true)
             }
+            val preferredCategory = campaigns
+                .filter { it.membershipStatus == "completed" }
+                .groupingBy { it.category.lowercase() }
+                .eachCount()
+                .maxByOrNull { it.value }?.key
+            val deviceAndroid = Build.VERSION.RELEASE.substringBefore(".").toIntOrNull() ?: Build.VERSION.SDK_INT
+            val rankedCampaigns = filteredCampaigns.sortedByDescending { item ->
+                if (item.membershipStatus != null) -1000
+                else {
+                    val categoryScore = if (preferredCategory != null && item.category.equals(preferredCategory, true)) 60 else 0
+                    val osScore = item.minimumAndroid?.let { (25 - (deviceAndroid - it).coerceAtLeast(0) * 2).coerceIn(0, 25) } ?: 5
+                    categoryScore + osScore
+                }
+            }
             if (filteredCampaigns.isEmpty()) {
                 Text("Aramana uygun kampanya bulunamadı.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 20.dp))
             } else Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 14.dp)) {
-                filteredCampaigns.forEach { campaign ->
+                rankedCampaigns.forEach { campaign ->
                     CampaignCard(
                         campaign = campaign,
+                        recommended = !myTests && campaign.membershipStatus == null && (
+                            (preferredCategory != null && campaign.category.equals(preferredCategory, true)) ||
+                            campaign.minimumAndroid == deviceAndroid
+                        ),
                         repository = repository,
                         myTests = campaign.membershipStatus != null,
                         refreshKey = refresh,
@@ -189,7 +208,7 @@ fun CampaignBrowserScreen(myTests: Boolean) {
 }
 
 @Composable
-private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myTests: Boolean, refreshKey: Int, onApply: () -> Unit, onConfirmOptIn: () -> Unit, onCheckIn: () -> Unit, onOpenTasks: () -> Unit) {
+private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myTests: Boolean, refreshKey: Int, recommended: Boolean = false, onApply: () -> Unit, onConfirmOptIn: () -> Unit, onCheckIn: () -> Unit, onOpenTasks: () -> Unit) {
     var tracking by remember(campaign.id) { mutableStateOf<CampaignTracking?>(null) }
     var checkinDates by remember(campaign.id) { mutableStateOf<Set<String>>(emptySet()) }
     var shareAccountEmail by remember(campaign.id) { mutableStateOf(false) }
@@ -214,8 +233,17 @@ private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myT
         Column(Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(campaign.category.uppercase(), color = MaterialTheme.colorScheme.secondary, fontSize = 10.sp)
-                Text("${campaign.targetTesters} tester hedefi", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (recommended) {
+                    Text("SANA UYGUN", color = MaterialTheme.colorScheme.primary, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                } else {
+                    Text("${campaign.targetTesters} tester hedefi", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
+            if (recommended) Text(
+                "Android sürümün ve önceki tamamladığın test kategorileriyle eşleşiyor.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp
+            )
             Text(campaign.appName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 7.dp))
             if (campaign.description.isNotBlank()) {
                 Text(campaign.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
