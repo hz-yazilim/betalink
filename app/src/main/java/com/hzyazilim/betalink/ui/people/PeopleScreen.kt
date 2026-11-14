@@ -2,6 +2,7 @@ package com.hzyazilim.betalink.ui.people
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import com.hzyazilim.betalink.core.data.CampaignRepository
 import com.hzyazilim.betalink.core.data.CommunityPost
 import com.hzyazilim.betalink.core.data.DirectoryPerson
 import com.hzyazilim.betalink.core.data.GroupInvitation
+import com.hzyazilim.betalink.core.data.PublicUserProfile
 import com.hzyazilim.betalink.core.data.TesterGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -70,19 +72,28 @@ fun PeopleScreen(inviteToken: String? = null) {
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableStateOf(0) }
+    var blockedPeople by remember { mutableStateOf<List<DirectoryPerson>>(emptyList()) }
+    var selectedPerson by remember { mutableStateOf<DirectoryPerson?>(null) }
+    var selectedProfile by remember { mutableStateOf<PublicUserProfile?>(null) }
+    var profileLoading by remember { mutableStateOf(false) }
+    var profileError by remember { mutableStateOf<String?>(null) }
+    var blockConfirmation by remember { mutableStateOf(false) }
 
     LaunchedEffect(refresh, inviteToken) {
         loading = true
         val directory = withContext(Dispatchers.IO) { repository.listPeople(0) }
+        val blocked = withContext(Dispatchers.IO) { repository.listBlockedPeople() }
         val inbox = withContext(Dispatchers.IO) { repository.listIncomingGroupInvitations(inviteToken) }
         val groups = withContext(Dispatchers.IO) { repository.listGroups() }
         val feed = withContext(Dispatchers.IO) { repository.listCommunityPosts() }
-        people = directory.first
+        blockedPeople = blocked.first
+        val blockedIds = blocked.first.map { it.id }.toSet()
+        people = directory.first.filterNot { it.id in blockedIds }
         communityPosts = feed.first
         canLoadMore = directory.first.size == 50
         invitations = inbox.first
         myGroups = groups.first.filter { it.isCreator }
-        message = directory.second ?: inbox.second ?: groups.second ?: feed.second
+        message = directory.second ?: blocked.second ?: inbox.second ?: groups.second ?: feed.second
         if (selectedGroup == null) selectedGroup = myGroups.firstOrNull()
         loading = false
     }
@@ -221,7 +232,18 @@ fun PeopleScreen(inviteToken: String? = null) {
                 }
                 items(people, key = { it.id }) { person ->
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
-                        Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(Modifier.fillMaxWidth().clickable {
+                            selectedPerson = person
+                            selectedProfile = null
+                            profileError = null
+                            profileLoading = true
+                            scope.launch {
+                                val result = withContext(Dispatchers.IO) { repository.publicUserProfile(person.id) }
+                                selectedProfile = result.first
+                                profileError = result.second
+                                profileLoading = false
+                            }
+                        }.padding(13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             if (!person.avatarUrl.isNullOrBlank()) {
                                 AsyncImage(
                                     model = person.avatarUrl,
@@ -273,6 +295,106 @@ fun PeopleScreen(inviteToken: String? = null) {
                 }
             }
         }
+    }
+
+                if (blockedPeople.isNotEmpty()) item {
+                    Text("ENGELLEDİĞİN KULLANICILAR · ${blockedPeople.size}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 14.dp))
+                }
+                items(blockedPeople, key = { "blocked-${it.id}" }) { blocked ->
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = Modifier.fillMaxWidth()) {
+                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(blocked.displayName, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                            TextButton(enabled = !busy, onClick = {
+                                scope.launch {
+                                    busy = true
+                                    try {
+                                        val error = withContext(Dispatchers.IO) { repository.unblockUser(blocked.id) }
+                                        message = error ?: "${blocked.displayName} için engel kaldırıldı."
+                                        if (error == null) refresh++
+                                    } finally {
+                                        busy = false
+                                    }
+                                }
+                            }) { Text("Engeli kaldır") }
+                        }
+                    }
+                }
+    selectedPerson?.let { person ->
+        AlertDialog(
+            onDismissRequest = { if (!profileLoading && !blockConfirmation) selectedPerson = null },
+            title = { Text(person.displayName) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (profileLoading) {
+                        CircularProgressIndicator()
+                    } else if (selectedProfile != null) {
+                        val profile = selectedProfile!!
+                        if (profile.avatarUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = profile.avatarUrl,
+                                contentDescription = "Profil fotoğrafı",
+                                modifier = Modifier.size(76.dp).clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        if (profile.bio.isNotBlank()) Text(profile.bio, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (profile.sameGroup) {
+                            Text("✓ Aynı test grubundasınız", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
+                        }
+                        Text("İtibar puanı: ${profile.reputationPoints}", fontWeight = FontWeight.SemiBold)
+                        Text("BetaPuan: ${profile.betaPoints}", color = MaterialTheme.colorScheme.secondary)
+                        Text("Tamamlanan test: ${profile.testsCompleted}")
+                        Text("Katıldığı test: ${profile.testsJoined} · Ayrıldığı: ${profile.testsDropped}")
+                        Text("Günlük katılım: %${profile.attendancePercent} · Bildirim: ${profile.dailyCheckins} · Kaçırılan gün: ${profile.missedDays}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Text(profileError ?: "Profil bilgileri yüklenemedi.", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    personToInvite = person
+                    selectedPerson = null
+                }, enabled = person.canReceiveInvites && selectedGroup != null) { Text("Gruba davet et") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { selectedPerson = null }) { Text("Kapat") }
+                    TextButton(
+                        enabled = !busy && !profileLoading,
+                        onClick = { blockConfirmation = true }
+                    ) { Text("Engelle", color = MaterialTheme.colorScheme.error) }
+                }
+            }
+        )
+    }
+
+    if (blockConfirmation) {
+        AlertDialog(
+            onDismissRequest = { blockConfirmation = false },
+            title = { Text("Kullanıcı engellensin mi?") },
+            text = { Text("Bu kullanıcıyı engellediğinde Toplum listesinden kaldırılır ve sana grup daveti gönderemez. Engeli daha sonra Engellediğin Kullanıcılar bölümünden kaldırabilirsin.") },
+            confirmButton = {
+                TextButton(enabled = !busy, onClick = {
+                    val person = selectedPerson ?: return@TextButton
+                    scope.launch {
+                        busy = true
+                        try {
+                            val error = withContext(Dispatchers.IO) { repository.blockUser(person.id) }
+                            message = error ?: "${person.displayName} engellendi."
+                            blockConfirmation = false
+                            if (error == null) {
+                                selectedPerson = null
+                                refresh++
+                            }
+                        } finally {
+                            busy = false
+                        }
+                    }
+                }) { Text("Engelle", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { blockConfirmation = false }) { Text("Vazgeç") } }
+        )
     }
 
     if (showGroupPicker) {
