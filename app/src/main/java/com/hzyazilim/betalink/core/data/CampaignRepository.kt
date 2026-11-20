@@ -40,7 +40,7 @@ data class TesterReliability(val testsJoined: Int, val testsCompleted: Int, val 
 }
 data class CampaignReport(val activeTesters: Int, val backupTesters: Int, val droppedTesters: Int, val totalCheckins: Int, val feedbackCount: Int, val averageRating: Double?, val bugReports: Int, val suggestions: Int, val acceptedTesters: Int)
 data class FeedbackSummary(val feedbackCount: Int, val averageRating: Double?, val bugs: Int, val experiences: Int, val suggestions: Int, val resolved: Int)
-data class BugReport(val id: String, val reporterId: String, val description: String, val deviceModel: String, val androidVersion: String, val appVersion: String, val attachmentUrl: String?, val status: String, val createdAt: String)
+data class BugReport(val id: String, val reporterId: String, val description: String, val severity: String, val reproductionSteps: String, val deviceModel: String, val androidVersion: String, val appVersion: String, val attachmentUrl: String?, val status: String, val createdAt: String)
 data class CommunityPost(val id: String, val authorId: String, val authorName: String, val body: String, val createdAt: String, val avatarUrl: String?)
 data class CampaignMessage(val id: String, val senderId: String, val senderName: String, val body: String, val createdAt: String)
 data class DeveloperAnalytics(val campaigns: Int, val openCampaigns: Int, val completedCampaigns: Int, val activeTesterSlots: Int, val completedTests: Int, val droppedTesterSlots: Int, val feedbackCount: Int, val bugReports: Int, val averageRating: Double?)
@@ -321,7 +321,7 @@ class CampaignRepository(context: Context) {
         val token = sessions.read()?.first ?: return emptyList<BugReport>() to "Oturum bulunamadı."
         val encodedCampaign = URLEncoder.encode(campaignId, "UTF-8")
         val (status, body) = call(
-            "/rest/v1/bug_reports?select=id,reporter_id,description,device_model,android_version,app_version,attachment_path,status,created_at&campaign_id=eq.$encodedCampaign&order=created_at.desc&limit=50",
+            "/rest/v1/bug_reports?select=id,reporter_id,description,severity,reproduction_steps,device_model,android_version,app_version,attachment_path,status,created_at&campaign_id=eq.$encodedCampaign&order=created_at.desc&limit=50",
             "GET", token
         )
         if (status !in 200..299) return emptyList<BugReport>() to message(body)
@@ -343,6 +343,7 @@ class CampaignRepository(context: Context) {
             }
             result += BugReport(
                 row.optString("id"), row.optString("reporter_id"), row.optString("description"),
+                row.optString("severity", "medium"), row.optString("reproduction_steps"),
                 row.optString("device_model"), row.optString("android_version"), row.optString("app_version"),
                 signedUrl, row.optString("status"), row.optString("created_at")
             )
@@ -479,10 +480,12 @@ class CampaignRepository(context: Context) {
         return if (status in 200..299) null else message(response)
     }
 
-    fun submitBugReport(campaignId: String, bodyText: String, attachmentUri: Uri?): String? {
+    fun submitBugReport(campaignId: String, bodyText: String, attachmentUri: Uri?, severity: String, reproductionSteps: String): String? {
         val cleanBody = bodyText.trim()
         if (campaignId.isBlank()) return "Kampanya bilgisi bulunamadı."
         if (cleanBody.length !in 10..5000) return "Hata açıklaması 10-5000 karakter olmalı."
+        if (severity !in setOf("low", "medium", "high", "critical")) return "Geçersiz hata önem derecesi."
+        if (reproductionSteps.length > 5000) return "Tekrar oluşturma adımları en fazla 5000 karakter olabilir."
         val token = sessions.read()?.first ?: return "Oturum bulunamadı."
         val user = call("/auth/v1/user", "GET", token)
         if (user.first !in 200..299) return "Oturum doğrulanamadı."
@@ -533,6 +536,8 @@ class CampaignRepository(context: Context) {
             .put("campaign_id", campaignId)
             .put("reporter_id", userId)
             .put("description", cleanBody)
+            .put("severity", severity)
+            .put("reproduction_steps", reproductionSteps.trim())
             .put("device_model", (Build.MANUFACTURER + " " + Build.MODEL).take(120))
             .put("android_version", Build.VERSION.RELEASE.take(40))
             .put("app_version", BuildConfig.VERSION_NAME)
