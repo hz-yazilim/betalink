@@ -284,7 +284,7 @@ private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myT
                         Text("Test durumu: ${progress.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                         Text("İlerleme: ${progress.elapsedDays.coerceAtMost(progress.requiredDays)}/${progress.requiredDays} gün · Tester: ${progress.activeTesters}/${progress.requiredTesters}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("Teste başlangıç: ${startDate ?: "Henüz başlamadı"} · Bitiş: ${endDate ?: "Bekleniyor"}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        val dayCalendar = (1..progress.requiredDays.coerceAtLeast(1).coerceAtMost(14)).joinToString("  ") { day ->
+                        val calendarDays = (1..progress.requiredDays.coerceAtLeast(1).coerceAtMost(14)).map { day ->
                             val dayDate = startDate?.let { plusDaysForDisplay(it, day - 1) }
                             val marker = when {
                                 dayDate == null -> "—"
@@ -292,9 +292,23 @@ private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myT
                                 dayDate < todayUtc -> "!"
                                 else -> "·"
                             }
-                            "$day$marker"
+                            "$day $marker"
                         }
-                        Text("14 günlük takvim: $dayCalendar", fontSize = 10.sp, color = MaterialTheme.colorScheme.secondary)
+                        Text("Günlük katılım takvimi", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+                        calendarDays.chunked(7).forEach { week ->
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                week.forEach { dayLabel ->
+                                    Text(
+                                        dayLabel,
+                                        modifier = Modifier.weight(1f),
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                                repeat(7 - week.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
                         Text("✓ Bildirildi  ·  ! Eksik  ·  · Bekleniyor", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         campaign.joinedAt?.substringBefore("T")?.let { Text("Katılım tarihi: $it", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         Text(
@@ -472,10 +486,19 @@ private fun CampaignTaskDialog(
                         Text("HATA BİLDİRİMİ", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
                         Text("Uygulamada karşılaştığın hatayı geliştiriciye ilet. İstersen ekran görüntüsü de ekleyebilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         Text("Önem derecesi", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                        Row {
-                            listOf("low" to "Düşük", "medium" to "Orta", "high" to "Yüksek", "critical" to "Kritik").forEach { (value, label) ->
-                                TextButton(onClick = { bugSeverity = value }, enabled = !bugSubmitting) {
-                                    Text(if (bugSeverity == value) "✓ $label" else label)
+                        listOf(
+                            listOf("low" to "Düşük", "medium" to "Orta"),
+                            listOf("high" to "Yüksek", "critical" to "Kritik")
+                        ).forEach { severityRow ->
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                severityRow.forEach { (value, label) ->
+                                    TextButton(
+                                        onClick = { bugSeverity = value },
+                                        enabled = !bugSubmitting,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (bugSeverity == value) "✓ $label" else label, maxLines = 1)
+                                    }
                                 }
                             }
                         }
