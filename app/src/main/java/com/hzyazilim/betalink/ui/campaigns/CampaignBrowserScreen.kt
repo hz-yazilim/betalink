@@ -1218,9 +1218,9 @@ private fun campaignReportCsv(
     bugs: List<com.hzyazilim.betalink.core.data.BugReport>
 ): String {
     val rows = mutableListOf<String>()
-    rows += listOf("Kayıt türü", "Kampanya", "Aktif tester", "Yedek tester", "Ayrılan tester", "Günlük bildirim", "Geri bildirim", "Ortalama puan", "Hata", "Öneri").joinToString(",") { csvCell(it) }
-    rows += listOf("Özet", campaign.appName, report.activeTesters.toString(), report.backupTesters.toString(), report.droppedTesters.toString(), report.totalCheckins.toString(), report.feedbackCount.toString(), report.averageRating?.toString() ?: "", report.bugReports.toString(), report.suggestions.toString()).joinToString(",") { csvCell(it) }
-    rows += listOf("Hata kayıtları", "Önem", "Durum", "Açıklama", "Tekrar adımları", "Cihaz", "Android", "Betalink sürümü", "Tarih").joinToString(",") { csvCell(it) }
+    rows += listOf("Kayıt türü", "Kampanya", "Aktif tester", "Kabul edilen", "Yedek tester", "Ayrılan tester", "Günlük bildirim", "Geri bildirim", "Ortalama puan", "Hata", "Öneri").joinToString(",") { csvCell(it) }
+    rows += listOf("Özet", campaign.appName, report.activeTesters.toString(), report.acceptedTesters.toString(), report.backupTesters.toString(), report.droppedTesters.toString(), report.totalCheckins.toString(), report.feedbackCount.toString(), report.averageRating?.toString() ?: "", report.bugReports.toString(), report.suggestions.toString()).joinToString(",") { csvCell(it) }
+    rows += listOf("Kayıt türü", "Kampanya", "Önem", "Durum", "Açıklama", "Tekrar adımları", "Cihaz", "Android", "Betalink sürümü", "Tarih").joinToString(",") { csvCell(it) }
     bugs.forEach { bug ->
         rows += listOf("Hata", campaign.appName, bug.severity, bug.status, bug.description, bug.reproductionSteps, bug.deviceModel, bug.androidVersion, bug.appVersion, bug.createdAt).joinToString(",") { csvCell(it) }
     }
