@@ -284,6 +284,32 @@ private fun CampaignCard(campaign: Campaign, repository: CampaignRepository, myT
                         Text("Test durumu: ${progress.status}", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                         Text("İlerleme: ${progress.elapsedDays.coerceAtMost(progress.requiredDays)}/${progress.requiredDays} gün · Tester: ${progress.activeTesters}/${progress.requiredTesters}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("Teste başlangıç: ${startDate ?: "Henüz başlamadı"} · Bitiş: ${endDate ?: "Bekleniyor"}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val calendarDays = (1..progress.requiredDays.coerceAtLeast(1).coerceAtMost(14)).map { day ->
+                            val dayDate = startDate?.let { plusDaysForDisplay(it, day - 1) }
+                            val marker = when {
+                                dayDate == null -> "—"
+                                dayDate in checkinDates -> "✓"
+                                dayDate < todayUtc -> "!"
+                                else -> "·"
+                            }
+                            "$day $marker"
+                        }
+                        Text("Günlük katılım takvimi", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+                        calendarDays.chunked(7).forEach { week ->
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                week.forEach { dayLabel ->
+                                    Text(
+                                        dayLabel,
+                                        modifier = Modifier.weight(1f),
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                                repeat(7 - week.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
+                        Text("✓ Bildirildi  ·  ! Eksik  ·  · Bekleniyor", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         campaign.joinedAt?.substringBefore("T")?.let { Text("Katılım tarihi: $it", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         Text(
                             when (progress.status) {
@@ -316,6 +342,8 @@ private fun CampaignTaskDialog(
     val scope = rememberCoroutineScope()
     var tasks by remember { mutableStateOf<List<CampaignTask>>(emptyList()) }
     var bugDescription by remember { mutableStateOf("") }
+    var bugSeverity by remember { mutableStateOf("medium") }
+    var bugSteps by remember { mutableStateOf("") }
     var bugAttachment by remember { mutableStateOf<Uri?>(null) }
     var bugSubmitting by remember { mutableStateOf(false) }
     var campaignMessages by remember { mutableStateOf<List<com.hzyazilim.betalink.core.data.CampaignMessage>>(emptyList()) }
@@ -457,6 +485,31 @@ private fun CampaignTaskDialog(
                     item {
                         Text("HATA BİLDİRİMİ", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
                         Text("Uygulamada karşılaştığın hatayı geliştiriciye ilet. İstersen ekran görüntüsü de ekleyebilirsin.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                        Text("Önem derecesi", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        listOf(
+                            listOf("low" to "Düşük", "medium" to "Orta"),
+                            listOf("high" to "Yüksek", "critical" to "Kritik")
+                        ).forEach { severityRow ->
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                severityRow.forEach { (value, label) ->
+                                    TextButton(
+                                        onClick = { bugSeverity = value },
+                                        enabled = !bugSubmitting,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (bugSeverity == value) "✓ $label" else label, maxLines = 1)
+                                    }
+                                }
+                            }
+                        }
+                        OutlinedTextField(
+                            value = bugSteps,
+                            onValueChange = { bugSteps = it.take(5000) },
+                            label = { Text("Tekrar oluşturma adımları (isteğe bağlı)") },
+                            minLines = 2,
+                            enabled = !bugSubmitting,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         OutlinedTextField(
                             value = bugDescription,
                             onValueChange = { bugDescription = it.take(5000) },
@@ -481,11 +534,13 @@ private fun CampaignTaskDialog(
                                     bugSubmitting = true
                                     try {
                                         val error = withContext(Dispatchers.IO) {
-                                            repository.submitBugReport(campaign.id, bugDescription, bugAttachment)
+                                            repository.submitBugReport(campaign.id, bugDescription, bugAttachment, bugSeverity, bugSteps)
                                         }
                                         onMessage(error ?: "Hata bildirimin geliştiriciye iletildi.")
                                         if (error == null) {
                                             bugDescription = ""
+                                            bugSteps = ""
+                                            bugSeverity = "medium"
                                             bugAttachment = null
                                         }
                                     } finally {
@@ -868,6 +923,16 @@ private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: Campai
     var newCampaignMessage by remember { mutableStateOf("") }
     var messageSending by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
+    var pendingCsv by remember { mutableStateOf("") }
+    val csvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) {
+            runCatching {
+                val output = context.contentResolver.openOutputStream(uri) ?: error("Dosya açılamadı.")
+                output.bufferedWriter(Charsets.UTF_8).use { it.write(pendingCsv) }
+            }.onSuccess { onMessage("Kampanya CSV raporu kaydedildi.") }
+                .onFailure { onMessage("Rapor kaydedilemedi: ${it.message ?: "Bilinmeyen hata"}") }
+        }
+    }
     LaunchedEffect(campaign.id) {
         val r = withContext(Dispatchers.IO) { repository.campaignReport(campaign.id) }
         report = r.first
@@ -897,12 +962,24 @@ private fun DeveloperCampaignReportDialog(campaign: Campaign, repository: Campai
                     Text("Geri bildirim: ${it.feedbackCount} · Ortalama puan: ${it.averageRating?.toString() ?: "Henüz yok"}")
                     Text("Hata: ${it.bugReports} · Öneri: ${it.suggestions}")
                 }
+                Button(
+                    enabled = !loading && report != null,
+                    onClick = {
+                        report?.let { summary ->
+                            pendingCsv = campaignReportCsv(campaign, summary, feedback, bugReports)
+                            val safeName = campaign.appName.replace(Regex("[^A-Za-z0-9_-]"), "_").take(40)
+                            csvLauncher.launch("Betalink-$safeName-rapor.csv")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Raporu CSV olarak dışa aktar") }
                 if (bugReports.isNotEmpty()) {
                     Text("HATA BİLDİRİMLERİ (${bugReports.size})", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.secondary)
                     bugReports.take(8).forEach { bug ->
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                             Column(Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(bug.description, style = MaterialTheme.typography.bodyMedium)
+                                Text("[${bug.severity.uppercase()}] ${bug.description}", style = MaterialTheme.typography.bodyMedium)
+                                if (bug.reproductionSteps.isNotBlank()) Text("Tekrar adımları: ${bug.reproductionSteps}", fontSize = 11.sp)
                                 Text("${bug.deviceModel} · Android ${bug.androidVersion} · Betalink ${bug.appVersion}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                                 Text("Durum: ${bug.status} · ${bug.createdAt.take(10)}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                                 bug.attachmentUrl?.let { imageUrl ->
@@ -1152,4 +1229,24 @@ private fun DeveloperCampaignsScreen() {
             confirmButton = { TextButton(onClick = { selectedCampaign = null }) { Text("Kapat") } }
         )
     }
+}
+
+
+private fun csvCell(value: String): String = "\"${value.replace("\"", "\"\"")}\""
+
+private fun campaignReportCsv(
+    campaign: Campaign,
+    report: com.hzyazilim.betalink.core.data.CampaignReport,
+    feedback: com.hzyazilim.betalink.core.data.FeedbackSummary?,
+    bugs: List<com.hzyazilim.betalink.core.data.BugReport>
+): String {
+    val rows = mutableListOf<String>()
+    rows += listOf("Kayıt türü", "Kampanya", "Aktif tester", "Kabul edilen", "Yedek tester", "Ayrılan tester", "Günlük bildirim", "Geri bildirim", "Ortalama puan", "Hata", "Öneri").joinToString(",") { csvCell(it) }
+    rows += listOf("Özet", campaign.appName, report.activeTesters.toString(), report.acceptedTesters.toString(), report.backupTesters.toString(), report.droppedTesters.toString(), report.totalCheckins.toString(), report.feedbackCount.toString(), report.averageRating?.toString() ?: "", report.bugReports.toString(), report.suggestions.toString()).joinToString(",") { csvCell(it) }
+    rows += listOf("Kayıt türü", "Kampanya", "Önem", "Durum", "Açıklama", "Tekrar adımları", "Cihaz", "Android", "Betalink sürümü", "Tarih").joinToString(",") { csvCell(it) }
+    bugs.forEach { bug ->
+        rows += listOf("Hata", campaign.appName, bug.severity, bug.status, bug.description, bug.reproductionSteps, bug.deviceModel, bug.androidVersion, bug.appVersion, bug.createdAt).joinToString(",") { csvCell(it) }
+    }
+    if (feedback != null) rows += listOf("Geri bildirim özeti", feedback.feedbackCount.toString(), feedback.averageRating?.toString() ?: "", feedback.bugs.toString(), feedback.experiences.toString(), feedback.suggestions.toString(), feedback.resolved.toString()).joinToString(",") { csvCell(it) }
+    return "\uFEFF" + rows.joinToString("\r\n")
 }
