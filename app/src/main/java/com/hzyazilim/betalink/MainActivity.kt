@@ -298,6 +298,10 @@ fun BetalinkApp(
                         } else when (tab) {
                             0 -> HomeScreen(
                                 onExplore = { selectedTab = 1 },
+                                onGroups = { selectedTab = 2 },
+                                onCommunity = { selectedTab = 3 },
+                                onMyTests = { selectedTab = 4 },
+                                onProfile = { selectedTab = 5 },
                                 onNotifications = { showNotifications = true },
                                 onHowItWorks = { showHowItWorks = true }
                             )
@@ -467,6 +471,10 @@ private fun BetalinkBottomNav(selectedTab: Int, onTabSelected: (Int) -> Unit) {
 @Composable
 private fun HomeScreen(
     onExplore: () -> Unit,
+    onGroups: () -> Unit,
+    onCommunity: () -> Unit,
+    onMyTests: () -> Unit,
+    onProfile: () -> Unit,
     onNotifications: () -> Unit,
     onHowItWorks: () -> Unit
 ) {
@@ -536,6 +544,101 @@ private fun HomeScreen(
 
         // Keşfet Card
         KesfetCard(onExplore = onExplore)
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SectionHeading(title = "Hızlı erişim", subtitle = "İhtiyacın olan bölüme hemen geç.")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                HomeShortcutCard("Tester grupları", "Grup bul ve katıl", Icons.Filled.Groups, Color(0xFF2EE6A8), Modifier.weight(1f), onGroups)
+                HomeShortcutCard("Topluluk", "Testerları keşfet", Icons.Outlined.Groups, Color(0xFF8B8CFF), Modifier.weight(1f), onCommunity)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                HomeShortcutCard("Testlerim", "Görev ve süreçler", Icons.Filled.Checklist, Color(0xFFFFB86B), Modifier.weight(1f), onMyTests)
+                HomeShortcutCard("Profilim", "İtibar ve ayarlar", Icons.Filled.Person, Color(0xFF69B7FF), Modifier.weight(1f), onProfile)
+            }
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SectionHeading(title = "Betalink nasıl işler?", subtitle = "Karşılıklı test desteği, şeffaf adımlarla.")
+            HowStepCard("01", "Uygun testi keşfet", "Android sürümüne ve cihazına uygun kampanyaları incele.")
+            HowStepCard("02", "Katıl ve görevleri tamamla", "Geliştiricinin onayından sonra Play testine katıl, görevleri ve günlük bildirimlerini takip et.")
+            HowStepCard("03", "Geri bildirim ver, BP kazan", "Gerçek deneyimini paylaş. Tamamlanan test ödüllerini ve BetaPuan hareketlerini cüzdanından izle.")
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = Color(0xFF111A30),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
+        ) {
+            Text(
+                text = "Şeffaflık notu: Betalink'teki günlük katılım bildirimleri kullanıcı beyanıdır; Google Play Console katılımını otomatik olarak doğrulamaz.",
+                color = Color(0xFF9AA3B8),
+                fontSize = 11.sp,
+                lineHeight = 17.sp,
+                modifier = Modifier.padding(14.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionHeading(title: String, subtitle: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(subtitle, color = Color(0xFF9AA3B8), fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun HomeShortcutCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier.height(116.dp).clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xFF141B33),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Box(
+                modifier = Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(accent.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(19.dp))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(subtitle, color = Color(0xFF9AA3B8), fontSize = 10.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HowStepCard(number: String, title: String, description: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+            .background(Color(0xFF111A30))
+            .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(18.dp))
+            .padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFF2EE6A8).copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(number, color = Color(0xFF2EE6A8), fontSize = 11.sp, fontWeight = FontWeight.Black)
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(description, color = Color(0xFF9AA3B8), fontSize = 11.sp, lineHeight = 17.sp)
+        }
     }
 }
 
